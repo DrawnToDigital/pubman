@@ -1,32 +1,74 @@
 services:
   db:
     image: postgres:latest
-    build:
-      dockerfile: db/Dockerfile
     container_name: pubman-db
+    build:
+      context: db
+      dockerfile: Dockerfile
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: pubman_db
     ports:
-      - "5432:5432"
+      - 5432:5432
     volumes:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
       - pgdata:/var/lib/postgresql/data
 
   storage:
     image: adobe/s3mock:latest
-    build:
-      dockerfile: storage/Dockerfile
+    container_name: pubman-storage
     environment:
-      - debug=true
-      - retainFilesOnExit=true
-      - root=data
+      VIRTUAL_HOST: pubman-storage.local
+      VIRTUAL_PORT: 9090
+      debug: false
+      retainFilesOnExit: true
+      root: data
+      initialBuckets: pubman_bucket
     ports:
-      - 9090:9090
-      - 9191:9191
+      - 9090
     volumes:
       - ./storage/data:/data
+
+  app:
+    image: pubman/app
+    container_name: pubman-api
+    build:
+      context: app
+      dockerfile: Dockerfile
+    environment:
+      VIRTUAL_HOST: pubman-api.local
+      VIRTUAL_PORT: 5000
+      LETSENCRYPT_HOST: pubman-api.local
+      LETSENCRYPT_EMAIL: "admin@drawnto.digital"
+      FLASK_APP: __init__
+      FLASK_ENV: development
+      DEBUG: True
+      APP_CONFIG_FILE: local.env
+    depends_on:
+      - db
+    ports:
+      - 5000
+    volumes:
+      - ./app:/app
+      - ./local.env:/config/local.env
+
+  proxy:
+    image: jwilder/nginx-proxy:latest
+    build:
+      context: nginx/proxy
+      dockerfile: Dockerfile
+    container_name: pubman-nginx-proxy
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      TRUST_DOWNSTREAM_PROXY: "false"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    labels:
+        - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
+    
 
 volumes:
   pgdata:
