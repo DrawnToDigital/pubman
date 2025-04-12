@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:latest
+    build:
+      dockerfile: db/Dockerfile
+    container_name: pubman-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pubman_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
