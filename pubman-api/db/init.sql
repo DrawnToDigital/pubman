@@ -160,9 +160,11 @@ $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM users
-        WHERE username = 'testuser') THEN
+        WHERE username = 'testuser'
+    ) THEN
         INSERT INTO users (username, email, password_hash) VALUES (
-        'testuser', 'testuser@example.com', crypt('testuser_password', gen_salt('md5')));
+        'testuser', 'testuser@example.com', '$2b$12$LP3Fcmc7AnXMozTXGCixp.rGSwt6L.z3KlN0Kc6AptBPyRz4r5Pva' -- hash of 'testpass'
+        );
     END IF;
 END
 $$;
