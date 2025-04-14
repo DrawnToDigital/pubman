@@ -50,7 +50,7 @@ def create_design():
 
     if not name:
         current_app.logger.warning(
-            f"Create design failed: Missing 'name' for user ID: {username}"
+            f"Create design failed: Missing 'name' for username: {username}"
         )
         return jsonify({"error": "Design name is required"}), 400
 

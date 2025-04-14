@@ -18,7 +18,7 @@ services:
   storage:
     image: adobe/s3mock:latest
     container_name: pubman-storage
-    domainname: pubman-storage.local
+    hostname: pubman-storage.local
     environment:
       VIRTUAL_HOST: pubman-storage.local
       VIRTUAL_PORT: 9090
@@ -28,6 +28,7 @@ services:
       initialBuckets: pubman_bucket
     ports:
       - "9090:9090"
+      - "9091:9091"
     volumes:
       - ./storage/data:/data
 
@@ -35,7 +36,7 @@ services:
     image: pubman/app
     container_name: pubman-api
     build:
-      dockerfile: pubman_api/Dockerfile
+      dockerfile: Dockerfile
     environment:
       VIRTUAL_HOST: pubman-api.local
       VIRTUAL_PORT: 5000
@@ -47,10 +48,11 @@ services:
       DEBUG: True
     depends_on:
       - db
+      - storage
     ports:
       - "5000"
     volumes:
-      - ./pubman_api:/pubman_api
+      - ./pubman_api:/app/pubman_api
       - ./local.env:/config/local.env
 
   proxy:

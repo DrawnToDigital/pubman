@@ -31,7 +31,7 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code into the image
-COPY --chown=appuser:appuser . .
+COPY --chown=appuser:appuser pubman_api/ pubman_api/
 
 # Expose the port the pubman_api runs on
 EXPOSE 5000

@@ -14,20 +14,6 @@ def create_app():
     configure_logging(app)
     app.logger.setLevel(logging.INFO)
 
-    @app.after_request
-    def after_request(response):
-        timestamp = strftime("[%Y-%b-%d %H:%M]")
-        app.logger.error(
-            "%s %s %s %s %s %s",
-            timestamp,
-            request.remote_addr,
-            request.method,
-            request.scheme,
-            request.full_path,
-            response.status,
-        )
-        return response
-
     logging.info("Starting PubMan API application...")
 
     # Configure the pubman_api

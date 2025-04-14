@@ -1,15 +1,15 @@
 import datetime
 import os
 
-import boto3
 import magic
+
 from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
 from pubman_api.db_model.design import Design
 from pubman_api.db_model.user import User
-from pubman_api.storage import bp
+from pubman_api.storage import bp, s3_client
 
 ALLOWED_EXTENSIONS = {"stl", "obj", "3mf", "jpg", "jpeg", "png", "gif", "bmp", "tiff"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB in bytes
@@ -61,7 +61,7 @@ def upload_file(design_key):
 
     try:
         # Save the file securely to the S3 bucket
-        s3 = boto3.client("s3")
+        s3 = s3_client()
         bucket_name = current_app.config["STORAGE_BUCKET"]
         clean_filename = secure_filename(file.filename)
         date_path = datetime.date.today().strftime("%Y/%m/%d")

@@ -1,5 +1,10 @@
 from flask import request, current_app, jsonify
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_jwt_extended import (
+    get_jwt_identity,
+    jwt_required,
+    create_refresh_token,
+    create_access_token,
+)
 
 from pubman_api.extensions import bcrypt, db
 from pubman_api.db_model.user import User
@@ -52,7 +57,19 @@ def signup():
     try:
         db.session.commit()
         current_app.logger.info(f"User '{username}' created successfully")
-        return jsonify({"message": "User created successfully"}), 201
+
+        access_token = create_access_token(identity=username)
+        refresh_token = create_refresh_token(identity=username)
+        return (
+            jsonify(
+                {
+                    "message": "User created successfully",
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                }
+            ),
+            201,
+        )
     except Exception as e:
         current_app.logger.error(f"Signup failed: Database error - {e}")
         db.session.rollback()
