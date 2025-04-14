@@ -45,7 +45,7 @@ def upload_file():
 
     # Save the file securely to the S3 bucket
     s3 = boto3.client("s3")
-    bucket_name = bp.config["STORAGE_BUCKET_NAME"]
+    bucket_name = current_app.config["STORAGE_BUCKET_NAME"]
     clean_filename = secure_filename(file.filename)
     date_path = datetime.date.today().strftime("%Y/%m/%d")
     file_path = os.path.join(f"user_uploads/", date_path, os.urandom(16).hex())
