@@ -12,3 +12,5 @@ class User(db.Model):
         db.DateTime, server_default=db.func.now(), onupdate=db.func.now()
     )
     status = db.Column(db.String(20), default="active")
+
+    designs = db.relationship("Design", primaryjoin="Design.user_id == User.id", foreign_keys="Design.user_id")

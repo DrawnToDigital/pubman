@@ -64,30 +64,19 @@ ALTER ROLE pubman_api SET search_path TO pubman_db,public;
 SET search_path TO pubman_db, extensions;
 
 -- Grant read, write, and execute permissions on all tables in the schema to pubman_api
-ALTER DEFAULT PRIVILEGES FOR USER pubman_api IN SCHEMA pubman_db
+ALTER DEFAULT PRIVILEGES FOR USER postgres IN SCHEMA pubman_db
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pubman_api;
 -- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA pubman_db TO pubman_api;
 
 -- Grant usage and update permissions on all sequences in the schema to pubman_api
-ALTER DEFAULT PRIVILEGES FOR USER pubman_api IN SCHEMA pubman_db
+ALTER DEFAULT PRIVILEGES FOR USER postgres IN SCHEMA pubman_db
     GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO pubman_api;
 -- GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA pubman_db TO pubman_api;
 
 -- Grant execute permissions on all functions in the schema to pubman_api
-ALTER DEFAULT PRIVILEGES FOR USER pubman_api IN SCHEMA pubman_db
+ALTER DEFAULT PRIVILEGES FOR USER postgres IN SCHEMA pubman_db
     GRANT EXECUTE ON FUNCTIONS TO pubman_api;
 -- GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pubman_db TO pubman_api;
-
-
--- Grant read, write, and execute permissions on all tables in the schema to pubman_api
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA pubman_db TO pubman_api;
-
--- Grant usage and update permissions on all sequences in the schema to pubman_api
-GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA pubman_db TO pubman_api;
-
--- Grant execute permissions on all functions in the schema to pubman_api
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pubman_db TO pubman_api;
-
 
 -- Create the designs table if it doesn't exist
 CREATE TABLE IF NOT EXISTS designs (
