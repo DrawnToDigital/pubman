@@ -1,11 +1,11 @@
 from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from app.db_models.design import Design
-from app.db_models.user import User
-from app.designs.schemas import DesignSchema
+from app.db_model.design import Design
+from app.db_model.user import User
+from app.design.schema import DesignSchema
 from app.extensions import db
-from app.designs import bp
+from app.design import bp
 
 
 @bp.route("/", methods=["GET"])
@@ -20,10 +20,14 @@ def list_designs():
         return jsonify({"error": "User not found"}), 404
     try:
         designs = Design.query.filter_by(user_id=user.id).all()
-        current_app.logger.info(f"{len(designs)} designs retrieved for username: {username}")
+        current_app.logger.info(
+            f"{len(designs)} designs retrieved for username: {username}"
+        )
         return jsonify(DesignSchema(many=True).dump(designs)), 200
     except Exception as e:
-        current_app.logger.error(f"Failed to retrieve designs for username: {username} - {e}")
+        current_app.logger.error(
+            f"Failed to retrieve designs for username: {username} - {e}"
+        )
         return jsonify({"error": "Internal server error"}), 500
 
 
@@ -45,16 +49,22 @@ def create_design():
     )
 
     if not name:
-        current_app.logger.warning(f"Create design failed: Missing 'name' for user ID: {username}")
+        current_app.logger.warning(
+            f"Create design failed: Missing 'name' for user ID: {username}"
+        )
         return jsonify({"error": "Design name is required"}), 400
 
     try:
         new_design = Design(name=name, description=description, user_id=user.id)
         db.session.add(new_design)
         db.session.commit()
-        current_app.logger.info(f"Design '{name}' created successfully for username: {username}")
+        current_app.logger.info(
+            f"Design '{name}' created successfully for username: {username}"
+        )
         return jsonify(DesignSchema().dump(new_design)), 201
     except Exception as e:
-        current_app.logger.error(f"Failed to create design for username: {username} - {e}")
+        current_app.logger.error(
+            f"Failed to create design for username: {username} - {e}"
+        )
         db.session.rollback()
         return jsonify({"error": "Internal server error"}), 500

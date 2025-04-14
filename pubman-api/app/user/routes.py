@@ -2,9 +2,9 @@ from flask import request, current_app, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.extensions import bcrypt, db
-from app.db_models.user import User
+from app.db_model.user import User
 from app.user import bp
-from app.user.schemas import UserSchema
+from app.user.schema import UserSchema
 
 
 @bp.route("/signup", methods=["POST"])
@@ -14,7 +14,9 @@ def signup():
     email = data.get("email")
     password = data.get("password")
 
-    current_app.logger.info(f"Signup request received for username: {username}, email: {email}")
+    current_app.logger.info(
+        f"Signup request received for username: {username}, email: {email}"
+    )
 
     # Basic validation
     if not username or not email or not password:
@@ -34,7 +36,9 @@ def signup():
         return jsonify({"error": "Invalid email format"}), 400
 
     if User.query.filter_by(username=username).first():
-        current_app.logger.warning(f"Signup failed: Username '{username}' already exists")
+        current_app.logger.warning(
+            f"Signup failed: Username '{username}' already exists"
+        )
         return jsonify({"error": "Username already exists"}), 400
 
     if User.query.filter_by(email=email).first():

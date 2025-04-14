@@ -78,7 +78,7 @@ ALTER DEFAULT PRIVILEGES FOR USER postgres IN SCHEMA pubman_db
     GRANT EXECUTE ON FUNCTIONS TO pubman_api;
 -- GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pubman_db TO pubman_api;
 
--- Create the designs table if it doesn't exist
+-- Create the design table if it doesn't exist
 CREATE TABLE IF NOT EXISTS designs (
     id SERIAL PRIMARY KEY,
     design_key CHAR(8) NOT NULL UNIQUE,

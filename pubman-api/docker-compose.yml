@@ -41,7 +41,7 @@ services:
       LETSENCRYPT_HOST: pubman-api.local
       LETSENCRYPT_EMAIL: "admin@drawnto.digital"
       APP_CONFIG_FILE: local.env
-      FLASK_APP: __init__
+      FLASK_APP: app
       FLASK_ENV: development
       DEBUG: True
     depends_on:

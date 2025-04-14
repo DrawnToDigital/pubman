@@ -7,8 +7,8 @@ from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
-from app.db_models.design import Design
-from app.db_models.user import User
+from app.db_model.design import Design
+from app.db_model.user import User
 from app.storage import bp
 
 ALLOWED_EXTENSIONS = {"stl", "obj", "3mf", "jpg", "jpeg", "png", "gif", "bmp", "tiff"}
@@ -16,13 +16,10 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB in bytes
 MAX_FILE_SIZE_STR = "50MB"
 
 
-@bp.route("/<int:design_key>/upload", methods=["POST"])
+@bp.route("/<string:design_key>/upload", methods=["POST"])
 @jwt_required()
 def upload_file(design_key):
     if "file" not in request.files:
-        current_app.logger.warning(
-            f"File upload failed: No file provided for design key: {design_key}"
-        )
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
@@ -65,7 +62,7 @@ def upload_file(design_key):
     try:
         # Save the file securely to the S3 bucket
         s3 = boto3.client("s3")
-        bucket_name = current_app.config["STORAGE_BUCKET_NAME"]
+        bucket_name = current_app.config["STORAGE_BUCKET"]
         clean_filename = secure_filename(file.filename)
         date_path = datetime.date.today().strftime("%Y/%m/%d")
         file_path = os.path.join(f"user_uploads/", date_path, os.urandom(16).hex())
@@ -84,7 +81,7 @@ def upload_file(design_key):
             f"File '{file.filename}' uploaded successfully for design key: {design_key}"
         )
     except Exception as e:
-        current_app.logger.error(f"File upload failed for design key: {design_key} - {e}")
+        current_app.logger.exception(f"File upload failed for design key: {design_key}")
         return jsonify({"error": "Internal server error"}), 500
 
     try:
@@ -96,5 +93,5 @@ def upload_file(design_key):
         )
         return jsonify({"url": signed_url}), 200
     except Exception as e:
-        current_app.logger.error(f"File url signing failed for {design_key} - {e}")
+        current_app.logger.exception(f"File url signing failed for {design_key}")
         return jsonify({"error": "Internal server error"}), 500

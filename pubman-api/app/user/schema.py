@@ -1,4 +1,4 @@
-from app.db_models.user import User
+from app.db_model.user import User
 from app.extensions import ma
 
 from marshmallow_sqlalchemy.fields import Related
