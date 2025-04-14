@@ -6,9 +6,9 @@ from flask_jwt_extended import (
     get_jwt_identity,
 )
 
-from app.auth import bp
-from app.extensions import bcrypt
-from app.db_model.user import User
+from pubman_api.auth import bp
+from pubman_api.extensions import bcrypt
+from pubman_api.db_model.user import User
 
 
 @bp.route("/login", methods=["POST"])

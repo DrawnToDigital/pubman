@@ -7,9 +7,9 @@ from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
-from app.db_model.design import Design
-from app.db_model.user import User
-from app.storage import bp
+from pubman_api.db_model.design import Design
+from pubman_api.db_model.user import User
+from pubman_api.storage import bp
 
 ALLOWED_EXTENSIONS = {"stl", "obj", "3mf", "jpg", "jpeg", "png", "gif", "bmp", "tiff"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB in bytes

@@ -1,4 +1,4 @@
-from app.extensions import db
+from pubman_api.extensions import db
 
 
 class User(db.Model):

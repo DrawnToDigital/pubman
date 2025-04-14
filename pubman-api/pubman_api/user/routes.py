@@ -1,10 +1,10 @@
 from flask import request, current_app, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.extensions import bcrypt, db
-from app.db_model.user import User
-from app.user import bp
-from app.user.schema import UserSchema
+from pubman_api.extensions import bcrypt, db
+from pubman_api.db_model.user import User
+from pubman_api.user import bp
+from pubman_api.user.schema import UserSchema
 
 
 @bp.route("/signup", methods=["POST"])

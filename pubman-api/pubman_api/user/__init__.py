@@ -2,4 +2,4 @@ from flask import Blueprint
 
 bp = Blueprint("user", __name__)
 
-from app.user import routes
+from pubman_api.user import routes

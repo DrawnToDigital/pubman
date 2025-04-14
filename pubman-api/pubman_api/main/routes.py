@@ -1,4 +1,4 @@
-from app.main import bp
+from pubman_api.main import bp
 
 
 @bp.route("/", methods=["GET"])

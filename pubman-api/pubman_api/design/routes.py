@@ -1,11 +1,11 @@
 from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from app.db_model.design import Design
-from app.db_model.user import User
-from app.design.schema import DesignSchema
-from app.extensions import db
-from app.design import bp
+from pubman_api.db_model.design import Design
+from pubman_api.db_model.user import User
+from pubman_api.design.schema import DesignSchema
+from pubman_api.extensions import db
+from pubman_api.design import bp
 
 
 @bp.route("/", methods=["GET"])

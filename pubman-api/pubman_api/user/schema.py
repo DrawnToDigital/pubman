@@ -1,5 +1,5 @@
-from app.db_model.user import User
-from app.extensions import ma
+from pubman_api.db_model.user import User
+from pubman_api.extensions import ma
 
 from marshmallow_sqlalchemy.fields import Related
 

@@ -1,5 +1,5 @@
-from app.db_model.design import Design
-from app.extensions import ma
+from pubman_api.db_model.design import Design
+from pubman_api.extensions import ma
 
 
 class DesignSchema(ma.SQLAlchemyAutoSchema):

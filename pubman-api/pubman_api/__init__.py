@@ -5,7 +5,7 @@ from time import strftime
 from flask import Flask, request
 from dotenv import load_dotenv
 
-from app.extensions import bcrypt, db, jwt, ma, configure_logging
+from pubman_api.extensions import bcrypt, db, jwt, ma, configure_logging
 
 
 def create_app():
@@ -30,7 +30,7 @@ def create_app():
 
     logging.info("Starting PubMan API application...")
 
-    # Configure the app
+    # Configure the pubman_api
     dotenv_path = os.path.join(
         "/config", os.environ.get("APP_CONFIG_FILE", "local.env")
     )
@@ -58,23 +58,23 @@ def create_app():
     # Register blueprints
     logging.info("Registering blueprints...")
 
-    from app.main import bp as main_bp
+    from pubman_api.main import bp as main_bp
 
     app.register_blueprint(main_bp)
 
-    from app.auth import bp as auth_bp
+    from pubman_api.auth import bp as auth_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
 
-    from app.design.routes import bp as designs_bp
+    from pubman_api.design.routes import bp as designs_bp
 
     app.register_blueprint(designs_bp, url_prefix="/design")
 
-    from app.storage.routes import bp as storage_bp
+    from pubman_api.storage.routes import bp as storage_bp
 
     app.register_blueprint(storage_bp, url_prefix="/storage")
 
-    from app.user.routes import bp as user_bp
+    from pubman_api.user.routes import bp as user_bp
 
     app.register_blueprint(user_bp, url_prefix="/user")
 

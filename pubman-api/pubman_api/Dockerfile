@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev gcc \
     libmagic1
 
-# Create a non-privileged user that the app will run under.
+# Create a non-privileged user that the pubman_api will run under.
 # See https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
 ARG UID=10001
 RUN adduser \
@@ -17,10 +17,6 @@ RUN adduser \
     --no-create-home \
     --uid "${UID}" \
     appuser
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=app
 
 # Set the working directory
 WORKDIR /app
@@ -37,10 +33,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code into the image
 COPY --chown=appuser:appuser . .
 
-# Expose the port the app runs on
+# Expose the port the pubman_api runs on
 EXPOSE 5000
 
 USER appuser
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV FLASK_APP=pubman_api
 
 # Run the Flask server
 CMD ["flask", "run", "--host=0.0.0.0"]
