@@ -1,5 +1,10 @@
 # PubMan API
 
+## Postman Collection
+This is a Postman collection for the PubMan API. It contains all the endpoints and examples of how to use them.
+
+[<img src="https://run.pstmn.io/button.svg" alt="Run In Postman" style="width: 128px; height: 32px;">](https://.postman.co/workspace/My-Workspace~622b49d0-88c2-442a-84fe-e34acc7ecc2a/collection/8500514-57e45628-630c-4fb1-bc98-e607295bf056?action=share&creator=8500514)
+
 ## Local Setup
 
 ### 1. Edit `/etc/hosts` and add
