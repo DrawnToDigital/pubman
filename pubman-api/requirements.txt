@@ -27,10 +27,13 @@ flask==3.1.0
     #   -r requirements.in
     #   flask-bcrypt
     #   flask-jwt-extended
+    #   flask-marshmallow
     #   flask-sqlalchemy
 flask-bcrypt==1.0.1
     # via -r requirements.in
 flask-jwt-extended==4.7.1
+    # via -r requirements.in
+flask-marshmallow==1.3.0
     # via -r requirements.in
 flask-sqlalchemy==3.1.1
     # via -r requirements.in
@@ -50,6 +53,14 @@ markupsafe==3.0.2
     # via
     #   jinja2
     #   werkzeug
+marshmallow==3.26.1
+    # via
+    #   flask-marshmallow
+    #   marshmallow-sqlalchemy
+marshmallow-sqlalchemy==1.4.2
+    # via -r requirements.in
+packaging==24.2
+    # via marshmallow
 psycopg2==2.9.10
     # via -r requirements.in
 pyjwt==2.10.1
@@ -67,9 +78,13 @@ s3transfer==0.11.4
 six==1.17.0
     # via python-dateutil
 sqlalchemy==2.0.40
-    # via flask-sqlalchemy
+    # via
+    #   flask-sqlalchemy
+    #   marshmallow-sqlalchemy
 typing-extensions==4.13.2
-    # via sqlalchemy
+    # via
+    #   marshmallow-sqlalchemy
+    #   sqlalchemy
 urllib3==1.26.20
     # via
     #   botocore

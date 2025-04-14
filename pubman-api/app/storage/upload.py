@@ -4,8 +4,11 @@ import os
 import boto3
 import magic
 from flask import request, jsonify, current_app
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
+from app.db_models.design import Design
+from app.db_models.user import User
 from app.storage import bp
 
 ALLOWED_EXTENSIONS = {"stl", "obj", "3mf", "jpg", "jpeg", "png", "gif", "bmp", "tiff"}
@@ -13,17 +16,33 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB in bytes
 MAX_FILE_SIZE_STR = "50MB"
 
 
-@bp.route("/upload", methods=["POST"])
-def upload_file():
-    # Check if a file is included in the request
+@bp.route("/<int:design_key>/upload", methods=["POST"])
+@jwt_required()
+def upload_file(design_key):
     if "file" not in request.files:
-        return jsonify({"error": "No file part in the request"}), 400
+        current_app.logger.warning(
+            f"File upload failed: No file provided for design key: {design_key}"
+        )
+        return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
-
     # Check if the file is valid
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
+
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        current_app.logger.warning(f"User '{username}' not found")
+        return jsonify({"error": "User not found"}), 404
+
+    # Check if the design exists and belongs to the user
+    design = Design.query.filter_by(design_key=design_key, user_id=user.id).first()
+    if not design:
+        current_app.logger.warning(
+            f"File upload failed: Design key {design_key} not found for username: {username}"
+        )
+        return jsonify({"error": "Design not found"}), 404
 
     mime_type = magic.from_buffer(file.read(2048), mime=True)
 
@@ -43,31 +62,39 @@ def upload_file():
             400,
         )
 
-    # Save the file securely to the S3 bucket
-    s3 = boto3.client("s3")
-    bucket_name = current_app.config["STORAGE_BUCKET_NAME"]
-    clean_filename = secure_filename(file.filename)
-    date_path = datetime.date.today().strftime("%Y/%m/%d")
-    file_path = os.path.join(f"user_uploads/", date_path, os.urandom(16).hex())
+    try:
+        # Save the file securely to the S3 bucket
+        s3 = boto3.client("s3")
+        bucket_name = current_app.config["STORAGE_BUCKET_NAME"]
+        clean_filename = secure_filename(file.filename)
+        date_path = datetime.date.today().strftime("%Y/%m/%d")
+        file_path = os.path.join(f"user_uploads/", date_path, os.urandom(16).hex())
 
-    s3.upload_fileobj(
-        file,
-        bucket_name,
-        file_path,
-        ExtraArgs={
-            "ContentDisposition": f"attachment;filename={clean_filename}",
-            "ContentType": mime_type,
-        },
-    )
+        s3.upload_fileobj(
+            file,
+            bucket_name,
+            file_path,
+            ExtraArgs={
+                "ContentDisposition": f"attachment;filename={clean_filename}",
+                "ContentType": mime_type,
+            },
+        )
 
-    # Generate a public URL for the uploaded file
-    signed_url = s3.generate_presigned_url(
-        "get_object",
-        Params={"Bucket": bucket_name, "Key": file_path},
-        ExpiresIn=24 * 60 * 60,  # URL valid for 24 hours
-    )
+        current_app.logger.info(
+            f"File '{file.filename}' uploaded successfully for design key: {design_key}"
+        )
+    except Exception as e:
+        current_app.logger.error(f"File upload failed for design key: {design_key} - {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
-    return (
-        jsonify({"message": "File uploaded successfully", "file_url": signed_url}),
-        200,
-    )
+    try:
+        # Generate a public URL for the uploaded file
+        signed_url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket_name, "Key": file_path},
+            ExpiresIn=24 * 60 * 60,  # URL valid for 24 hours
+        )
+        return jsonify({"url": signed_url}), 200
+    except Exception as e:
+        current_app.logger.error(f"File url signing failed for {design_key} - {e}")
+        return jsonify({"error": "Internal server error"}), 500

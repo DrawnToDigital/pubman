@@ -3,6 +3,7 @@ import logging
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
+from flask_marshmallow import Marshmallow
 from flask import request, has_request_context
 from flask.logging import default_handler
 
@@ -10,6 +11,7 @@ from flask.logging import default_handler
 bcrypt = Bcrypt()
 db = SQLAlchemy()
 jwt = JWTManager()
+ma = Marshmallow()  # must be initialized after db
 
 
 def configure_logging(app):

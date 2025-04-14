@@ -2,11 +2,10 @@ import logging
 import os
 from time import strftime
 
-from flask import Flask, has_request_context, request
-from flask.logging import default_handler
+from flask import Flask, request
 from dotenv import load_dotenv
 
-from app.extensions import bcrypt, db, jwt, configure_logging
+from app.extensions import bcrypt, db, jwt, ma, configure_logging
 
 
 def create_app():
@@ -53,6 +52,7 @@ def create_app():
     bcrypt.init_app(app)
     db.init_app(app)
     jwt.init_app(app)
+    ma.init_app(app)
     app.logger.info("Extensions initialized")
 
     # Register blueprints
