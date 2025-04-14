@@ -76,8 +76,8 @@ def login():
         current_app.logger.warning(f"Login failed: Invalid credentials for username '{username}'")
         return jsonify({"error": "Invalid username or password"}), 401
 
-    access_token = create_access_token(identity=user.id)
-    refresh_token = create_refresh_token(identity=user.id)
+    access_token = create_access_token(identity=username)
+    refresh_token = create_refresh_token(identity=username)
     current_app.logger.info(f"User '{username}' logged in successfully")
     return jsonify({"access_token": access_token, "refresh_token": refresh_token}), 200
 
@@ -85,13 +85,20 @@ def login():
 @bp.route("/refresh", methods=["POST"])
 @jwt_required(refresh=True)
 def refresh():
-    user_id = get_jwt_identity()
-    current_app.logger.info(f"Token refresh request received for user ID: {user_id}")
+    username = get_jwt_identity()
+    current_app.logger.info(f"Token refresh request received for username: {username}")
 
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        current_app.logger.warning(f"Token refresh failed: User '{username}' not found")
+        return jsonify({"error": "User not found"}), 404
+    if user.status != "active":
+        current_app.logger.warning(f"Token refresh failed: User '{username}' ID {user.id} is inactive")
+        return jsonify({"error": "User is inactive"}), 403
     try:
-        access_token = create_access_token(identity=user_id)
-        current_app.logger.info(f"Token refreshed successfully for user ID: {user_id}")
+        access_token = create_access_token(identity=username)
+        current_app.logger.info(f"Token refreshed successfully for username: {username} ID {user.id}")
         return jsonify({"access_token": access_token}), 200
     except Exception as e:
-        current_app.logger.error(f"Token refresh failed for user ID: {user_id} - {e}")
+        current_app.logger.error(f"Token refresh failed for username: {username} ID {user.id} - {e}")
         return jsonify({"error": "Internal server error"}), 500
