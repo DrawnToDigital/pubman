@@ -8,8 +8,6 @@ from werkzeug.utils import secure_filename
 
 from app.storage import bp
 
-logger = current_app.logger
-
 ALLOWED_EXTENSIONS = {"stl", "obj", "3mf", "jpg", "jpeg", "png", "gif", "bmp", "tiff"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB in bytes
 MAX_FILE_SIZE_STR = "50MB"

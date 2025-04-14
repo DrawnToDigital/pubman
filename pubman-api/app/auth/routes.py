@@ -10,8 +10,6 @@ from app.auth import bp
 from app.extensions import db, bcrypt
 from app.db_models.user import User
 
-logger = current_app.logger
-
 
 @bp.route("/signup", methods=["POST"])
 def signup():
@@ -20,31 +18,31 @@ def signup():
     email = data.get("email")
     password = data.get("password")
 
-    logger.info(f"Signup request received for username: {username}, email: {email}")
+    current_app.logger.info(f"Signup request received for username: {username}, email: {email}")
 
     # Basic validation
     if not username or not email or not password:
-        logger.warning("Signup failed: Missing required fields")
+        current_app.logger.warning("Signup failed: Missing required fields")
         return jsonify({"error": "Missing required fields"}), 400
 
     if len(password) < 8:
-        logger.warning("Signup failed: Password too short")
+        current_app.logger.warning("Signup failed: Password too short")
         return jsonify({"error": "Password must be at least 8 characters long"}), 400
 
     if not username.isalnum():
-        logger.warning("Signup failed: Username must be alphanumeric")
+        current_app.logger.warning("Signup failed: Username must be alphanumeric")
         return jsonify({"error": "Username must be alphanumeric"}), 400
 
     if email.count("@") != 1 or "." not in email.split("@")[-1]:
-        logger.warning("Signup failed: Invalid email format")
+        current_app.logger.warning("Signup failed: Invalid email format")
         return jsonify({"error": "Invalid email format"}), 400
 
     if User.query.filter_by(username=username).first():
-        logger.warning(f"Signup failed: Username '{username}' already exists")
+        current_app.logger.warning(f"Signup failed: Username '{username}' already exists")
         return jsonify({"error": "Username already exists"}), 400
 
     if User.query.filter_by(email=email).first():
-        logger.warning(f"Signup failed: Email '{email}' already exists")
+        current_app.logger.warning(f"Signup failed: Email '{email}' already exists")
         return jsonify({"error": "Email already exists"}), 400
 
     # Create new user
@@ -53,10 +51,10 @@ def signup():
     db.session.add(new_user)
     try:
         db.session.commit()
-        logger.info(f"User '{username}' created successfully")
+        current_app.logger.info(f"User '{username}' created successfully")
         return jsonify({"message": "User created successfully"}), 201
     except Exception as e:
-        logger.error(f"Signup failed: Database error - {e}")
+        current_app.logger.error(f"Signup failed: Database error - {e}")
         db.session.rollback()
         return jsonify({"error": "Internal server error"}), 500
 
@@ -67,20 +65,20 @@ def login():
     username = data.get("username")
     password = data.get("password")
 
-    logger.info(f"Login request received for username: {username}")
+    current_app.logger.info(f"Login request received for username: {username}")
 
     if not username or not password:
-        logger.warning("Login failed: Missing username or password")
+        current_app.logger.warning("Login failed: Missing username or password")
         return jsonify({"error": "Missing username or password"}), 400
 
     user = User.query.filter_by(username=username).first()
     if not user or not bcrypt.check_password_hash(user.password_hash, password):
-        logger.warning(f"Login failed: Invalid credentials for username '{username}'")
+        current_app.logger.warning(f"Login failed: Invalid credentials for username '{username}'")
         return jsonify({"error": "Invalid username or password"}), 401
 
     access_token = create_access_token(identity=user.id)
     refresh_token = create_refresh_token(identity=user.id)
-    logger.info(f"User '{username}' logged in successfully")
+    current_app.logger.info(f"User '{username}' logged in successfully")
     return jsonify({"access_token": access_token, "refresh_token": refresh_token}), 200
 
 
@@ -88,12 +86,12 @@ def login():
 @jwt_required(refresh=True)
 def refresh():
     user_id = get_jwt_identity()
-    logger.info(f"Token refresh request received for user ID: {user_id}")
+    current_app.logger.info(f"Token refresh request received for user ID: {user_id}")
 
     try:
         access_token = create_access_token(identity=user_id)
-        logger.info(f"Token refreshed successfully for user ID: {user_id}")
+        current_app.logger.info(f"Token refreshed successfully for user ID: {user_id}")
         return jsonify({"access_token": access_token}), 200
     except Exception as e:
-        logger.error(f"Token refresh failed for user ID: {user_id} - {e}")
+        current_app.logger.error(f"Token refresh failed for user ID: {user_id} - {e}")
         return jsonify({"error": "Internal server error"}), 500

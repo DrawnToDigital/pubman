@@ -2,6 +2,7 @@ from app.extensions import db
 
 
 class Design(db.Model):
+    __tablename__ = 'designs'
     id = db.Column(db.Integer, primary_key=True)
     design_key = db.Column(db.String(8), unique=True, nullable=False)
     name = db.Column(db.String(255), nullable=False)
