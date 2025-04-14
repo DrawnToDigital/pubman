@@ -1,4 +1,5 @@
 import datetime
+import io
 import os
 
 import magic
@@ -11,7 +12,7 @@ from pubman_api.db_model.design import Design
 from pubman_api.db_model.user import User
 from pubman_api.storage import bp, s3_client
 
-ALLOWED_EXTENSIONS = {"stl", "obj", "3mf", "jpg", "jpeg", "png", "gif", "bmp", "tiff"}
+ALLOWED_EXTENSIONS = {"stl", "obj", "3mf", "jpg", "jpeg", "png", "gif"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB in bytes
 MAX_FILE_SIZE_STR = "50MB"
 
@@ -23,7 +24,6 @@ def upload_file(design_key):
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
-    # Check if the file is valid
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
@@ -33,7 +33,6 @@ def upload_file(design_key):
         current_app.logger.warning(f"User '{username}' not found")
         return jsonify({"error": "User not found"}), 404
 
-    # Check if the design exists and belongs to the user
     design = Design.query.filter_by(design_key=design_key, user_id=user.id).first()
     if not design:
         current_app.logger.warning(
@@ -41,19 +40,20 @@ def upload_file(design_key):
         )
         return jsonify({"error": "Design not found"}), 404
 
-    mime_type = magic.from_buffer(file.read(2048), mime=True)
+    # Read the file content once
+    file_content = file.read()
+    file_size = len(file_content)
 
+    # Validate file type
+    mime_type = magic.from_buffer(file_content, mime=True)
     if (
-        "." not in file.filename
-        or file.filename.rsplit(".", 1)[1].lower() not in ALLOWED_EXTENSIONS
+            "." not in file.filename
+            or file.filename.rsplit(".", 1)[1].lower() not in ALLOWED_EXTENSIONS
     ):
         return jsonify({"error": "File type not allowed"}), 400
 
-    # Check file size
-    file.seek(0, 2)  # Move to the end of the file
-    file_length = file.tell()
-    file.seek(0)  # Reset file pointer to the beginning
-    if file_length > MAX_FILE_SIZE:
+    # Validate file size
+    if file_size > MAX_FILE_SIZE:
         return (
             jsonify({"error": f"File exceeds maximum size of {MAX_FILE_SIZE_STR}"}),
             400,
@@ -68,7 +68,7 @@ def upload_file(design_key):
         file_path = os.path.join(f"user_uploads/", date_path, os.urandom(16).hex())
 
         s3.upload_fileobj(
-            file,
+            io.BytesIO(file_content),  # Use the in-memory file content
             bucket_name,
             file_path,
             ExtraArgs={

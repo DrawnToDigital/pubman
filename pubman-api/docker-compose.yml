@@ -40,12 +40,9 @@ services:
     environment:
       VIRTUAL_HOST: pubman-api.local
       VIRTUAL_PORT: 5000
-      LETSENCRYPT_HOST: pubman-api.local
-      LETSENCRYPT_EMAIL: "admin@drawnto.digital"
       APP_CONFIG_FILE: local.env
-      FLASK_APP: pubman_api
-      FLASK_ENV: development
-      DEBUG: True
+    env_file:
+      - local.env
     depends_on:
       - db
       - storage
@@ -68,8 +65,6 @@ services:
       TRUST_DOWNSTREAM_PROXY: "false"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-    labels:
-        - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
     
 
 volumes:

@@ -13,6 +13,4 @@ class User(db.Model):
     )
     status = db.Column(db.String(20), default="active")
 
-    designs = db.relationship(
-        "Design", primaryjoin="Design.user_id == User.id", foreign_keys="Design.user_id"
-    )
+    # designs: ref to db_model.Design
