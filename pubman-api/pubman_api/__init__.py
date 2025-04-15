@@ -1,18 +1,24 @@
 import logging
-
 from flask import Flask
+from flask.logging import default_handler
 
 from pubman_api import config
-from pubman_api.extensions import bcrypt, db, jwt, ma, configure_logging, configure_gunicorn
+from pubman_api.extensions import bcrypt, db, jwt, ma
+from pubman_api.extensions import configure_gunicorn, configure_teardown, configure_logging
+
+configure_logging(debug=False)
 
 
 def create_app() -> Flask:
-    configure_logging(debug=False)
     app = Flask(__name__)
     config.from_env(app)
     app.logger.setLevel(logging.INFO)
+    formatter = logging.Formatter(
+        "[%(asctime)s] [%(process)d] [%(thread)d %(threadName)s] %(levelname)s in %(module)s: %(message)s",
+    )
+    default_handler.setFormatter(formatter)
 
-    logging.info("Starting PubMan API application...")
+    app.logger.info("Starting PubMan API application...")
 
     # Initialize extensions
     bcrypt.init_app(app)
@@ -20,17 +26,12 @@ def create_app() -> Flask:
     jwt.init_app(app)
     ma.init_app(app)
     configure_gunicorn(app)
-
-    # Note: This makes shutdown MUCH faster
-    @app.teardown_appcontext
-    def shutdown_session(exc=None):
-        if hasattr(app, 'db_connection'):
-            app.db_connection.close()
+    configure_teardown(app)
 
     app.logger.info("Extensions initialized")
 
     # Register blueprints
-    logging.info("Registering blueprints...")
+    app.logger.info("Registering blueprints...")
 
     from pubman_api.main import bp as main_bp
     from pubman_api.auth import bp as auth_bp

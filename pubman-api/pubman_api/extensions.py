@@ -15,10 +15,10 @@ ma = Marshmallow()  # must be initialized after db
 def configure_logging(debug: bool):
     dictConfig({
         "version": 1,
-        "disable_existing_loggers": True,
+        "disable_existing_loggers": False,
         "formatters": {
             "default": {
-                "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
+                "format": "[%(asctime)s] [%(process)d] [%(thread)d %(threadName)s] %(levelname)s in %(module)s: %(message)s",
             },
             "access": {
                 "format": "%(message)s",
@@ -30,32 +30,16 @@ def configure_logging(debug: bool):
                 "class": "logging.StreamHandler",
                 "formatter": "default",
                 "stream": "ext://sys.stdout",
-            },
-            "error_file": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "formatter": "default",
-                "filename": "/var/log/gunicorn.error.log",
-                "maxBytes": 10000,
-                "backupCount": 10,
-                "delay": True,
-            },
-            "access_file": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "formatter": "access",
-                "filename": "/var/log/gunicorn.access.log",
-                "maxBytes": 10000,
-                "backupCount": 10,
-                "delay": True,
             }
         },
         "loggers": {
             "gunicorn.error": {
-                "handlers": ["console"] if debug else ["console", "error_file"],
+                "handlers": ["console"],
                 "level": "INFO",
                 "propagate": False,
             },
             "gunicorn.access": {
-                "handlers": ["console"] if debug else ["console", "access_file"],
+                "handlers": ["console"],
                 "level": "INFO",
                 "propagate": False,
             }
@@ -70,3 +54,10 @@ def configure_gunicorn(app):
     app.wsgi_app = ProxyFix(
         app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
     )
+
+def configure_teardown(app):
+    # Note: This makes shutdown MUCH faster
+    @app.teardown_appcontext
+    def shutdown_session(exc=None):
+        if hasattr(app, 'db_connection'):
+            app.db_connection.close()
