@@ -172,3 +172,16 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# IDEs
+.zed
+.ropeproject
+.vscode
+
+# Pubman custom
+data/
+*.crt
+*.key
+
+# macOS
+.DS_Store

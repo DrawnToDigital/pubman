@@ -64,42 +64,31 @@ ALTER ROLE pubman_api SET search_path TO pubman_db,public;
 SET search_path TO pubman_db, extensions;
 
 -- Grant read, write, and execute permissions on all tables in the schema to pubman_api
-ALTER DEFAULT PRIVILEGES FOR USER pubman_api IN SCHEMA pubman_db
+ALTER DEFAULT PRIVILEGES FOR USER postgres IN SCHEMA pubman_db
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pubman_api;
 -- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA pubman_db TO pubman_api;
 
 -- Grant usage and update permissions on all sequences in the schema to pubman_api
-ALTER DEFAULT PRIVILEGES FOR USER pubman_api IN SCHEMA pubman_db
+ALTER DEFAULT PRIVILEGES FOR USER postgres IN SCHEMA pubman_db
     GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO pubman_api;
 -- GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA pubman_db TO pubman_api;
 
 -- Grant execute permissions on all functions in the schema to pubman_api
-ALTER DEFAULT PRIVILEGES FOR USER pubman_api IN SCHEMA pubman_db
+ALTER DEFAULT PRIVILEGES FOR USER postgres IN SCHEMA pubman_db
     GRANT EXECUTE ON FUNCTIONS TO pubman_api;
 -- GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pubman_db TO pubman_api;
 
-
--- Grant read, write, and execute permissions on all tables in the schema to pubman_api
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA pubman_db TO pubman_api;
-
--- Grant usage and update permissions on all sequences in the schema to pubman_api
-GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA pubman_db TO pubman_api;
-
--- Grant execute permissions on all functions in the schema to pubman_api
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pubman_db TO pubman_api;
-
-
--- Create the models table if it doesn't exist
-CREATE TABLE IF NOT EXISTS models (
+-- Create the design table if it doesn't exist
+CREATE TABLE IF NOT EXISTS designs (
     id SERIAL PRIMARY KEY,
-    model_key CHAR(8) NOT NULL UNIQUE,
+    design_key CHAR(8) NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     user_id INTEGER NOT NULL
 );
 
--- Function to generate a unique 8-character model_key
-CREATE OR REPLACE FUNCTION generate_model_key()
+-- Function to generate a unique 8-character design_key
+CREATE OR REPLACE FUNCTION generate_design_key()
 RETURNS TRIGGER AS $$
 DECLARE
     key CHAR(8);
@@ -109,24 +98,24 @@ BEGIN
         key := substring(md5(random()::text) from 1 for 8);
 
         -- Ensure the key is unique
-        EXIT WHEN NOT EXISTS (SELECT 1 FROM models WHERE model_key = key);
+        EXIT WHEN NOT EXISTS (SELECT 1 FROM designs WHERE design_key = key);
     END LOOP;
-    NEW.model_key := key;
+    NEW.design_key := key;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger to set the model_key before inserting a new row
+-- Trigger to set the design_key before inserting a new row
 DO
 $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_trigger
-        WHERE tgname = 'set_model_key') THEN
-        CREATE TRIGGER set_model_key
-        BEFORE INSERT ON models
+        WHERE tgname = 'set_design_key') THEN
+        CREATE TRIGGER set_design_key
+        BEFORE INSERT ON designs
         FOR EACH ROW
-        EXECUTE FUNCTION generate_model_key();
+        EXECUTE FUNCTION generate_design_key();
     END IF;
 END
 $$;
@@ -171,21 +160,23 @@ $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM users
-        WHERE username = 'testuser') THEN
+        WHERE username = 'testuser'
+    ) THEN
         INSERT INTO users (username, email, password_hash) VALUES (
-        'testuser', 'testuser@example.com', crypt('testuser_password', gen_salt('md5')));
+        'testuser', 'testuser@example.com', '$2b$12$LP3Fcmc7AnXMozTXGCixp.rGSwt6L.z3KlN0Kc6AptBPyRz4r5Pva' -- hash of 'testpass'
+        );
     END IF;
 END
 $$;
 
--- Insert an example model associated with the test user if it doesn't exist
+-- Insert an example design associated with the test user if it doesn't exist
 DO
 $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM models
-        WHERE name = 'example_model' AND user_id = 1) THEN
-        INSERT INTO models (name, description, user_id) VALUES ('example_model', 'This is an example model.', 1);
+        SELECT 1 FROM designs
+        WHERE name = 'example_design' AND user_id = 1) THEN
+        INSERT INTO designs (name, description, user_id) VALUES ('example_design', 'This is an example design.', 1);
     END IF;
 END
 $$;
