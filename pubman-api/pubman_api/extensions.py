@@ -37,7 +37,7 @@ def configure_logging(debug: bool):
                 "filename": "/var/log/gunicorn.error.log",
                 "maxBytes": 10000,
                 "backupCount": 10,
-                "delay": "True",
+                "delay": True,
             },
             "access_file": {
                 "class": "logging.handlers.RotatingFileHandler",
@@ -45,7 +45,7 @@ def configure_logging(debug: bool):
                 "filename": "/var/log/gunicorn.access.log",
                 "maxBytes": 10000,
                 "backupCount": 10,
-                "delay": "True",
+                "delay": True,
             }
         },
         "loggers": {
