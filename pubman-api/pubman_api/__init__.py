@@ -3,13 +3,13 @@ import logging
 from flask import Flask
 
 from pubman_api import config
-from pubman_api.extensions import bcrypt, db, jwt, ma, configure_logging
+from pubman_api.extensions import bcrypt, db, jwt, ma, configure_logging, configure_gunicorn
 
 
 def create_app() -> Flask:
+    configure_logging(debug=False)
     app = Flask(__name__)
     config.from_env(app)
-    configure_logging(app)
     app.logger.setLevel(logging.INFO)
 
     logging.info("Starting PubMan API application...")
@@ -19,7 +19,9 @@ def create_app() -> Flask:
     db.init_app(app)
     jwt.init_app(app)
     ma.init_app(app)
+    configure_gunicorn(app)
 
+    # Note: This makes shutdown MUCH faster
     @app.teardown_appcontext
     def shutdown_session(exc=None):
         if hasattr(app, 'db_connection'):

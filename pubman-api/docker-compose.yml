@@ -17,18 +17,20 @@ services:
 
   storage:
     image: adobe/s3mock:latest
+    build:
+      context: storage
+      dockerfile: Dockerfile
     container_name: pubman-storage
     hostname: pubman-storage.local
     environment:
       VIRTUAL_HOST: pubman-storage.local
-      VIRTUAL_PORT: 9090
+      VIRTUAL_PORT: 80
       debug: false
       retainFilesOnExit: true
       root: data
       initialBuckets: pubman_bucket
     ports:
-      - "9090:9090"
-      - "9091:9091"
+      - "80"
     volumes:
       - ./storage/data:/data
 
@@ -53,7 +55,7 @@ services:
       - ./local.env:/config/local.env
 
   proxy:
-    image: jwilder/nginx-proxy:latest
+    image: nginxproxy/nginx-proxy:1.7
     build:
       context: nginx/proxy
       dockerfile: Dockerfile
@@ -62,7 +64,8 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      TRUST_DOWNSTREAM_PROXY: "false"
+      TRUST_DOWNSTREAM_PROXY: false
+      HTTPS_METHOD: noredirect
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
     

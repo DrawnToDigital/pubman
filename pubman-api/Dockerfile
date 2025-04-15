@@ -43,4 +43,4 @@ ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=pubman_api
 
 # Run the Flask server
-CMD ["flask", "run", "--host=0.0.0.0"]
+CMD ["gunicorn", "-w", "2", "--bind", "0.0.0.0:5000", "--log-level=info", "pubman_api:create_app()"]
