@@ -8,7 +8,7 @@ from pubman_api.storage.s3 import s3_client
 class DesignAssetSchema(ma.SQLAlchemySchema):
     class Meta:
         model = DesignAsset
-        execlude = ("id", "design_id", "user_id")
+        exclude = ("id", "design_id", "user_id")
 
     file_name = ma.auto_field()
     mime_type = ma.auto_field()
