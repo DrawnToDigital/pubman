@@ -47,8 +47,8 @@ def upload_file(design_key):
     # Validate file type
     mime_type = magic.from_buffer(file_content, mime=True)
     if (
-            "." not in file.filename
-            or file.filename.rsplit(".", 1)[1].lower() not in ALLOWED_EXTENSIONS
+        "." not in file.filename
+        or file.filename.rsplit(".", 1)[1].lower() not in ALLOWED_EXTENSIONS
     ):
         return jsonify({"error": "File type not allowed"}), 400
 

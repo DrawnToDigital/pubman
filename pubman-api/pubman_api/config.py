@@ -2,6 +2,7 @@ import os
 
 from flask import Flask
 
+
 class BaseConfig:
     DEBUG = os.getenv("DEBUG", "").lower() in ("true", "1")
     SECRET_KEY = "my-secret-key"
@@ -24,6 +25,7 @@ class BaseConfig:
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
 
 class ProductionConfig(BaseConfig):
     DEBUG = False

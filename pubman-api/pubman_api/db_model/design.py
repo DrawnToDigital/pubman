@@ -10,5 +10,8 @@ class Design(db.Model):
     user_id = db.Column(db.Integer, nullable=False)
 
     user = db.relationship(
-        "User", primaryjoin="Design.user_id == User.id", foreign_keys=[user_id], backref="designs",
+        "User",
+        primaryjoin="Design.user_id == User.id",
+        foreign_keys=[user_id],
+        backref="designs",
     )
