@@ -180,3 +180,14 @@ BEGIN
     END IF;
 END
 $$;
+
+-- Create the designs_assets table if it doesn't exist
+CREATE TABLE IF NOT EXISTS designs_assets (
+    id SERIAL PRIMARY KEY,
+    design_id INTEGER NOT NULL REFERENCES designs(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_path TEXT NOT NULL,
+    mime_type VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
