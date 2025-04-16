@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:latest
+    image: pubman/db
     container_name: pubman-db
     build:
       context: db
@@ -16,7 +16,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   storage:
-    image: adobe/s3mock:latest
+    image: pubman/storage
     build:
       context: storage
       dockerfile: Dockerfile
@@ -55,11 +55,11 @@ services:
       - ./local.env:/config/local.env
 
   proxy:
-    image: nginxproxy/nginx-proxy:1.7
+    image: pubman/proxy
     build:
       context: nginx/proxy
       dockerfile: Dockerfile
-    container_name: pubman-nginx-proxy
+    container_name: pubman-proxy
     ports:
       - "80:80"
       - "443:443"

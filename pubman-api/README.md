@@ -16,7 +16,7 @@ This is a Postman collection for the PubMan API. It contains all the endpoints a
 
 ### 2. Setup Python Env
 ```shell
-./pubman/setup.sh  # creates pubman/.venv/ and installs deps
+../setup.sh  # creates pubman/.venv/ and installs deps
 ```
 
 ### 3. Setup Docker
