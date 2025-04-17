@@ -46,6 +46,9 @@ def configure_logging(app: Flask):
             "START",
             request.headers.get("User-Agent"),
         )
+        if app.debug:
+            app.logger.debug("Headers:\n%s", request.headers)
+            app.logger.debug("Body:\n%s", request.get_data())
 
     @app.after_request
     def after_request(response):

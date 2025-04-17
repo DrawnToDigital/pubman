@@ -8,7 +8,10 @@ from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
+from pubman_api.design_asset.schema import DesignAssetSchema
+from pubman_api.extensions import db
 from pubman_api.db_model.design import Design
+from pubman_api.db_model.design_asset import DesignAsset
 from pubman_api.db_model.user import User
 from pubman_api.storage import bp, s3_client
 
@@ -85,13 +88,18 @@ def upload_file(design_key):
         return jsonify({"error": "Internal server error"}), 500
 
     try:
-        # Generate a public URL for the uploaded file
-        signed_url = s3.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": bucket_name, "Key": file_path},
-            ExpiresIn=24 * 60 * 60,  # URL valid for 24 hours
+        # Register the uploaded file in the designs_assets table
+        new_asset = DesignAsset(
+            design_id=design.id,
+            user_id=user.id,
+            file_name=clean_filename,
+            file_path=file_path,
+            mime_type=mime_type,
         )
-        return jsonify({"url": signed_url}), 200
+        db.session.add(new_asset)
+        db.session.commit()
+
+        return jsonify(DesignAssetSchema().dump(new_asset)), 201
     except Exception as e:
-        current_app.logger.exception(f"File url signing failed for {design_key}")
+        current_app.logger.exception(f"File registration failed for {design_key}")
         return jsonify({"error": "Internal server error"}), 500
