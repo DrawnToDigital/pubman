@@ -23,12 +23,16 @@ def login():
         current_app.logger.warning("Login failed: Missing username or password")
         return jsonify({"error": "Missing username or password"}), 400
 
-    designer = Designer.query.filter_by(username=username, deleted_at=None, status='active').first()
+    designer = Designer.query.filter_by(username=username, deleted_at=None).first()
     if not designer or not bcrypt.check_password_hash(designer.password_hash, password):
         current_app.logger.warning(
             f"Login failed: Invalid credentials for username '{username}'"
         )
         return jsonify({"error": "Invalid username or password"}), 401
+
+    if designer.status != "active":
+        current_app.logger.warning(f"Attempted login failed: Designer '{username}' ID {designer.id} is {designer.status}")
+        return jsonify({"error": "Designer is inactive"}), 403
 
     access_token = create_access_token(identity=username)
     refresh_token = create_refresh_token(identity=username)
@@ -42,7 +46,7 @@ def refresh():
     username = get_jwt_identity()
     current_app.logger.info(f"Token refresh request received for username: {username}")
 
-    designer = Designer.query.filter_by(username=username, deleted_at=None, status='active').first()
+    designer = Designer.query.filter_by(username=username, deleted_at=None).first()
     if not designer:
         current_app.logger.warning(
             f"Token refresh failed: Designer '{username}' not found"
