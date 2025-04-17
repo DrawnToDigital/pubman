@@ -2,7 +2,7 @@ from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from pubman_api.db_model.design import Design
-from pubman_api.db_model.user import User
+from pubman_api.db_model.designer import Designer
 from pubman_api.design.schema import DesignSchema
 from pubman_api.extensions import db
 from pubman_api.design import bp
@@ -14,12 +14,12 @@ def list_designs():
     username = get_jwt_identity()
     current_app.logger.info(f"List designs request received for username: {username}")
 
-    user = User.query.filter_by(username=username).first()
-    if not user:
-        current_app.logger.warning(f"User '{username}' not found")
-        return jsonify({"error": "User not found"}), 404
+    designer = Designer.query.filter_by(username=username, deleted_at=None, status='active').first()
+    if not designer:
+        current_app.logger.warning(f"Designer '{username}' not found")
+        return jsonify({"error": "Designer not found"}), 404
     try:
-        designs = Design.query.filter_by(user_id=user.id).all()
+        designs = Design.query.filter_by(designer_id=designer.id, deleted_at=None).all()
         current_app.logger.info(
             f"{len(designs)} designs retrieved for username: {username}"
         )
@@ -36,30 +36,30 @@ def list_designs():
 def create_design():
     username = get_jwt_identity()
     data = request.get_json()
-    name = data.get("name")
+    main_name = data.get("main_name")
     description = data.get("description")
 
-    user = User.query.filter_by(username=username).first()
-    if not user:
-        current_app.logger.warning(f"User '{username}' not found")
-        return jsonify({"error": "User not found"}), 404
+    designer = Designer.query.filter_by(username=username, deleted_at=None, status='active').first()
+    if not designer:
+        current_app.logger.warning(f"Designer '{username}' not found")
+        return jsonify({"error": "Designer not found"}), 404
 
     current_app.logger.info(
-        f"Create design request received for username: {username} with name: {name}"
+        f"Create design request received for username: {username} with main_name: {main_name}"
     )
 
-    if not name:
+    if not main_name:
         current_app.logger.warning(
-            f"Create design failed: Missing 'name' for username: {username}"
+            f"Create design failed: Missing 'main_name' for username: {username}"
         )
-        return jsonify({"error": "Design name is required"}), 400
+        return jsonify({"error": "Design 'main_name' is required"}), 400
 
     try:
-        new_design = Design(name=name, description=description, user_id=user.id)
+        new_design = Design(main_name=main_name, description=description, designer_id=designer.id)
         db.session.add(new_design)
         db.session.commit()
         current_app.logger.info(
-            f"Design '{name}' created successfully for username: {username}"
+            f"Design '{main_name}' created successfully for username: {username}"
         )
         return jsonify(DesignSchema().dump(new_design)), 201
     except Exception as e:

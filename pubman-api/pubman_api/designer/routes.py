@@ -7,9 +7,9 @@ from flask_jwt_extended import (
 )
 
 from pubman_api.extensions import bcrypt, db
-from pubman_api.db_model.user import User
-from pubman_api.user import bp
-from pubman_api.user.schema import UserSchema
+from pubman_api.db_model.designer import Designer
+from pubman_api.designer import bp
+from pubman_api.designer.schema import DesignerSchema
 
 
 @bp.route("/signup", methods=["POST"])
@@ -40,30 +40,30 @@ def signup():
         current_app.logger.warning("Signup failed: Invalid email format")
         return jsonify({"error": "Invalid email format"}), 400
 
-    if User.query.filter_by(username=username).first():
+    if Designer.query.filter_by(username=username).first():
         current_app.logger.warning(
             f"Signup failed: Username '{username}' already exists"
         )
         return jsonify({"error": "Username already exists"}), 400
 
-    if User.query.filter_by(email=email).first():
+    if Designer.query.filter_by(email=email).first():
         current_app.logger.warning(f"Signup failed: Email '{email}' already exists")
         return jsonify({"error": "Email already exists"}), 400
 
-    # Create new user
+    # Create new designer
     password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
-    new_user = User(username=username, email=email, password_hash=password_hash)
-    db.session.add(new_user)
+    new_designer = Designer(username=username, email=email, password_hash=password_hash)
+    db.session.add(new_designer)
     try:
         db.session.commit()
-        current_app.logger.info(f"User '{username}' created successfully")
+        current_app.logger.info(f"Designer '{username}' created successfully")
 
         access_token = create_access_token(identity=username)
         refresh_token = create_refresh_token(identity=username)
         return (
             jsonify(
                 {
-                    "message": "User created successfully",
+                    "message": "Designer created successfully",
                     "access_token": access_token,
                     "refresh_token": refresh_token,
                 }
@@ -76,16 +76,16 @@ def signup():
         return jsonify({"error": "Internal server error"}), 500
 
 
-@bp.route("/my", methods=["POST"])
+@bp.route("/my", methods=["GET"])
 @jwt_required()
 def get_user_info():
     username = get_jwt_identity()
-    current_app.logger.info(f"User info request received for username: {username}")
+    current_app.logger.info(f"Designer info request received for username: {username}")
 
-    user = User.query.filter_by(username=username).first()
-    if not user:
-        current_app.logger.warning(f"User '{username}' not found")
-        return jsonify({"error": "User not found"}), 404
+    designer = Designer.query.filter_by(username=username, deleted_at=None, status='active').first()
+    if not designer:
+        current_app.logger.warning(f"Designer '{username}' not found")
+        return jsonify({"error": "Designer not found"}), 404
 
-    current_app.logger.info(f"User info retrieved for username: {username}")
-    return jsonify(UserSchema().dump(user)), 200
+    current_app.logger.info(f"Designer info retrieved for username: {username}")
+    return jsonify(DesignerSchema().dump(designer)), 200

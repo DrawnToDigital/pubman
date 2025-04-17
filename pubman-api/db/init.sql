@@ -14,7 +14,7 @@ alter default privileges in schema extensions
 -- Enable extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto schema extensions;
 
--- Create the pubman_api user if it doesn't exist
+-- Create the pubman_api USER if it doesn't exist
 DO
 $$
 BEGIN
@@ -41,7 +41,7 @@ $$;
 -- Connect to the database
 \c pubman_db;
 
--- Grant database permissions to postgres superuser
+-- Grant database permissions to postgres SUPERUSER
 GRANT CONNECT ON DATABASE pubman_db TO postgres;
 GRANT ALL PRIVILEGES ON DATABASE pubman_db TO postgres;
 
@@ -49,7 +49,7 @@ GRANT ALL PRIVILEGES ON DATABASE pubman_db TO postgres;
 -- Create the pubman_db schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS pubman_db;
 
--- Grant schema permissions to postgres superuser
+-- Grant schema permissions to postgres SUPERUSER
 GRANT USAGE ON SCHEMA pubman_db TO postgres;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA pubman_db TO postgres;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA pubman_db TO postgres;
@@ -79,12 +79,15 @@ ALTER DEFAULT PRIVILEGES FOR USER postgres IN SCHEMA pubman_db
 -- GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pubman_db TO pubman_api;
 
 -- Create the design table if it doesn't exist
-CREATE TABLE IF NOT EXISTS designs (
+CREATE TABLE IF NOT EXISTS design (
     id SERIAL PRIMARY KEY,
+    designer_id INTEGER NOT NULL,
     design_key CHAR(8) NOT NULL UNIQUE,
-    name VARCHAR(255) NOT NULL,
+    main_name VARCHAR(255) NOT NULL,
     description TEXT,
-    user_id INTEGER NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 -- Function to generate a unique 8-character design_key
@@ -98,7 +101,7 @@ BEGIN
         key := substring(md5(random()::text) from 1 for 8);
 
         -- Ensure the key is unique
-        EXIT WHEN NOT EXISTS (SELECT 1 FROM designs WHERE design_key = key);
+        EXIT WHEN NOT EXISTS (SELECT 1 FROM design WHERE design_key = key);
     END LOOP;
     NEW.design_key := key;
     RETURN NEW;
@@ -113,81 +116,61 @@ BEGIN
         SELECT 1 FROM pg_trigger
         WHERE tgname = 'set_design_key') THEN
         CREATE TRIGGER set_design_key
-        BEFORE INSERT ON designs
+        BEFORE INSERT ON design
         FOR EACH ROW
         EXECUTE FUNCTION generate_design_key();
     END IF;
 END
 $$;
 
--- Create the users table if it doesn't exist
-CREATE TABLE IF NOT EXISTS users (
+-- Create the designer table if it doesn't exist
+CREATE TABLE IF NOT EXISTS designer (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
+    status VARCHAR(20) DEFAULT 'active',
     email VARCHAR(50) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(20) DEFAULT 'active'
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
+
 );
 
--- Create a trigger to update the updated_at column on row update
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-   NEW.updated_at = NOW();
-   RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
+-- Insert a test designer if it doesn't exist
 DO
 $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM pg_trigger
-        WHERE tgname = 'update_users_updated_at') THEN
-        CREATE TRIGGER update_users_updated_at
-        BEFORE UPDATE ON users
-        FOR EACH ROW
-        EXECUTE FUNCTION update_updated_at_column();
-    END IF;
-END
-$$;
-
--- Insert a test user if it doesn't exist
-DO
-$$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE username = 'testuser'
+        SELECT 1 FROM designer
+        WHERE username = 'testdesigner'
     ) THEN
-        INSERT INTO users (username, email, password_hash) VALUES (
-        'testuser', 'testuser@example.com', '$2b$12$LP3Fcmc7AnXMozTXGCixp.rGSwt6L.z3KlN0Kc6AptBPyRz4r5Pva' -- hash of 'testpass'
+        INSERT INTO designer (username, email, password_hash) VALUES (
+        'testdesigner', 'designer@smallbusiness.local', '$2b$12$LP3Fcmc7AnXMozTXGCixp.rGSwt6L.z3KlN0Kc6AptBPyRz4r5Pva' -- hash of 'testpass'
         );
     END IF;
 END
 $$;
 
--- Insert an example design associated with the test user if it doesn't exist
+-- Insert an example design associated with the test designer if it doesn't exist
 DO
 $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM designs
-        WHERE name = 'example_design' AND user_id = 1) THEN
-        INSERT INTO designs (name, description, user_id) VALUES ('example_design', 'This is an example design.', 1);
+        SELECT 1 FROM design
+        WHERE main_name = 'example_design' AND designer_id = 1) THEN
+        INSERT INTO design (main_name, description, designer_id) VALUES ('example_design', 'This is an example design.', 1);
     END IF;
 END
 $$;
 
--- Create the designs_assets table if it doesn't exist
-CREATE TABLE IF NOT EXISTS designs_assets (
+-- Create the design_asset table if it doesn't exist
+CREATE TABLE IF NOT EXISTS design_asset (
     id SERIAL PRIMARY KEY,
-    design_id INTEGER NOT NULL REFERENCES designs(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    design_id INTEGER NOT NULL,
+    designer_id INTEGER NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     file_path TEXT NOT NULL,
     mime_type VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );

@@ -5,4 +5,4 @@ from pubman_api.extensions import ma
 class DesignSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Design
-        exclude = ("id", "user_id")
+        exclude = ("id", "designer_id", "deleted_at")

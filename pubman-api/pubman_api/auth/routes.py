@@ -8,7 +8,7 @@ from flask_jwt_extended import (
 
 from pubman_api.auth import bp
 from pubman_api.extensions import bcrypt
-from pubman_api.db_model.user import User
+from pubman_api.db_model.designer import Designer
 
 
 @bp.route("/login", methods=["POST"])
@@ -23,8 +23,8 @@ def login():
         current_app.logger.warning("Login failed: Missing username or password")
         return jsonify({"error": "Missing username or password"}), 400
 
-    user = User.query.filter_by(username=username).first()
-    if not user or not bcrypt.check_password_hash(user.password_hash, password):
+    designer = Designer.query.filter_by(username=username, deleted_at=None, status='active').first()
+    if not designer or not bcrypt.check_password_hash(designer.password_hash, password):
         current_app.logger.warning(
             f"Login failed: Invalid credentials for username '{username}'"
         )
@@ -32,7 +32,7 @@ def login():
 
     access_token = create_access_token(identity=username)
     refresh_token = create_refresh_token(identity=username)
-    current_app.logger.info(f"User '{username}' logged in successfully")
+    current_app.logger.info(f"Designer '{username}' logged in successfully")
     return jsonify({"access_token": access_token, "refresh_token": refresh_token}), 200
 
 
@@ -42,23 +42,25 @@ def refresh():
     username = get_jwt_identity()
     current_app.logger.info(f"Token refresh request received for username: {username}")
 
-    user = User.query.filter_by(username=username).first()
-    if not user:
-        current_app.logger.warning(f"Token refresh failed: User '{username}' not found")
-        return jsonify({"error": "User not found"}), 404
-    if user.status != "active":
+    designer = Designer.query.filter_by(username=username, deleted_at=None, status='active').first()
+    if not designer:
         current_app.logger.warning(
-            f"Token refresh failed: User '{username}' ID {user.id} is inactive"
+            f"Token refresh failed: Designer '{username}' not found"
         )
-        return jsonify({"error": "User is inactive"}), 403
+        return jsonify({"error": "Designer not found"}), 404
+    if designer.status != "active":
+        current_app.logger.warning(
+            f"Token refresh failed: Designer '{username}' ID {designer.id} is inactive"
+        )
+        return jsonify({"error": "Designer is inactive"}), 403
     try:
         access_token = create_access_token(identity=username)
         current_app.logger.info(
-            f"Token refreshed successfully for username: {username} ID {user.id}"
+            f"Token refreshed successfully for username: {username} ID {designer.id}"
         )
         return jsonify({"access_token": access_token}), 200
     except Exception as e:
         current_app.logger.error(
-            f"Token refresh failed for username: {username} ID {user.id} - {e}"
+            f"Token refresh failed for username: {username} ID {designer.id} - {e}"
         )
         return jsonify({"error": "Internal server error"}), 500

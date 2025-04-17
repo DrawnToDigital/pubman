@@ -12,7 +12,7 @@ from pubman_api.design_asset.schema import DesignAssetSchema
 from pubman_api.extensions import db
 from pubman_api.db_model.design import Design
 from pubman_api.db_model.design_asset import DesignAsset
-from pubman_api.db_model.user import User
+from pubman_api.db_model.designer import Designer
 from pubman_api.storage import bp, s3_client
 
 ALLOWED_EXTENSIONS = {"stl", "obj", "3mf", "jpg", "jpeg", "png", "gif"}
@@ -31,12 +31,14 @@ def upload_file(design_key):
         return jsonify({"error": "No selected file"}), 400
 
     username = get_jwt_identity()
-    user = User.query.filter_by(username=username).first()
-    if not user:
-        current_app.logger.warning(f"User '{username}' not found")
-        return jsonify({"error": "User not found"}), 404
+    designer = Designer.query.filter_by(username=username, deleted_at=None, status='active').first()
+    if not designer:
+        current_app.logger.warning(f"Designer '{username}' not found")
+        return jsonify({"error": "Designer not found"}), 404
 
-    design = Design.query.filter_by(design_key=design_key, user_id=user.id).first()
+    design = Design.query.filter_by(
+        design_key=design_key, designer_id=designer.id
+    ).first()
     if not design:
         current_app.logger.warning(
             f"File upload failed: Design key {design_key} not found for username: {username}"
@@ -88,10 +90,10 @@ def upload_file(design_key):
         return jsonify({"error": "Internal server error"}), 500
 
     try:
-        # Register the uploaded file in the designs_assets table
+        # Register the uploaded file in the design_asset table
         new_asset = DesignAsset(
             design_id=design.id,
-            user_id=user.id,
+            designer_id=designer.id,
             file_name=clean_filename,
             file_path=file_path,
             mime_type=mime_type,

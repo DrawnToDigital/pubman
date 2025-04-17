@@ -45,7 +45,7 @@ docker compose logs -f
 
 ### 6. Connect to the mysql console as `postgres` superuser
 ```shell
-./connect_db.sh  # connects to postman_db as postgres user
+./connect_db.sh  # connects to postman_db as postgres USER
 ```
 Then in the `mysql` console:
 ```
@@ -54,7 +54,7 @@ Then in the `mysql` console:
 
 SET role TO pubman_api;
 
-select * from users;  # list users
+select * from designer;  # list designers
 ```
 
 

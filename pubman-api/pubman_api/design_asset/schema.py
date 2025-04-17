@@ -5,13 +5,11 @@ from pubman_api.extensions import ma
 from pubman_api.storage.s3 import s3_client
 
 
-class DesignAssetSchema(ma.SQLAlchemySchema):
+class DesignAssetSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = DesignAsset
-        exclude = ("id", "design_id", "user_id")
+        exclude = ("id", "design_id", "designer_id", "file_path", "deleted_at")
 
-    file_name = ma.auto_field()
-    mime_type = ma.auto_field()
     url = ma.Method("get_presigned_url", dump_only=True)
 
     def get_presigned_url(self, obj):

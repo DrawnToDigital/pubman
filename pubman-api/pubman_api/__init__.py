@@ -89,14 +89,14 @@ def create_app() -> Flask:
 
     from pubman_api.main import bp as main_bp
     from pubman_api.auth import bp as auth_bp
-    from pubman_api.design.routes import bp as designs_bp
+    from pubman_api.design.routes import bp as design_bp
     from pubman_api.storage.routes import bp as storage_bp
-    from pubman_api.user.routes import bp as user_bp
+    from pubman_api.designer.routes import bp as designer_bp
 
     app.register_blueprint(main_bp)
-    app.register_blueprint(user_bp, url_prefix="/user")
+    app.register_blueprint(designer_bp, url_prefix="/designer")
     app.register_blueprint(auth_bp, url_prefix="/auth")
-    app.register_blueprint(designs_bp, url_prefix="/design")
+    app.register_blueprint(design_bp, url_prefix="/design")
     app.register_blueprint(storage_bp, url_prefix="/storage")
 
     app.logger.info("Blueprints registered")

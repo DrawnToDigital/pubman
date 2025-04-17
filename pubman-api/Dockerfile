@@ -43,15 +43,4 @@ ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=pubman_api
 
 # Run the Flask server
-CMD gunicorn \
-    --workers 2 --bind 0.0.0.0:5000 \
-    --max-requests 100 \
-    pubman_api.wsgi:app
-
-# With gunicorn access logs
-# CMD gunicorn \
-#    --workers 2 --bind 0.0.0.0:5000 \
-#    --max-requests 100 \
-#    --log-level info \
-#    --access-logfile=- \
-#    pubman_api.wsgi:app
+CMD ["gunicorn", "--conf=pubman_api/gunicorn_conf.py", "--bind=0.0.0.0:5000", "pubman_api.wsgi:app"]
