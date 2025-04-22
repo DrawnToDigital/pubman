@@ -20,7 +20,7 @@ interface Design {
 }
 
 export default async function DesignsChart() {
-  const cookieJar = cookies();
+  const cookieJar = await cookies();
   const accessToken = cookieJar.get('access-token')?.value;
 
   if (!accessToken) {
