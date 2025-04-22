@@ -50,19 +50,19 @@ export default async function DesignsChart() {
 
   return (
     <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 p-5">
-      {designs.map((model) => {
-        const pubmanTags = model.tags.filter((tag) => tag.platform === "PUBMAN");
-        const pubmanCategories = model.categories.filter((category) => category.platform === "PUBMAN");
-        const imageAssets = model.assets.filter((asset) => asset.mime_type.startsWith("image/"));
+      {designs.map((design) => {
+        const pubmanTags = design.tags.filter((tag) => tag.platform === "PUBMAN");
+        const pubmanCategories = design.categories.filter((category) => category.platform === "PUBMAN");
+        const imageAssets = design.assets.filter((asset) => asset.mime_type.startsWith("image/"));
 
         return (
           <div
-            key={model.design_key}
+            key={design.design_key}
             className="border rounded-lg shadow-md p-4 bg-white"
           >
-            <h2 className="text-lg font-bold">{model.main_name} ({model.design_key})</h2>
-            <p className="text-sm text-gray-600">{model.summary}</p>
-            <p className="text-sm text-gray-600">{model.description}</p>
+            <h2 className="text-lg font-bold">{design.main_name} ({design.design_key})</h2>
+            <p className="text-sm text-gray-600">{design.summary}</p>
+            <p className="text-sm text-gray-600">{design.description}</p>
             <p className="text-sm text-gray-600">
               Tags:{" "}
               {pubmanTags.map((tag) => (
@@ -82,12 +82,12 @@ export default async function DesignsChart() {
                 </span>
               ))}
             </p>
-            <p className="text-sm text-gray-600">License: {model.license_key}</p>
+            <p className="text-sm text-gray-600">License: {design.license_key}</p>
             <p className="text-sm text-gray-600">
-              Created: {new Date(model.created_at).toLocaleDateString()}
+              Created: {new Date(design.created_at).toLocaleDateString()}
             </p>
             <p className="text-sm text-gray-600">
-              Last Updated: {new Date(model.updated_at).toLocaleDateString()}
+              Last Updated: {new Date(design.updated_at).toLocaleDateString()}
             </p>
 
             {imageAssets.map((asset) => (

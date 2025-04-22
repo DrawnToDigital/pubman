@@ -16,11 +16,9 @@ export default function Page({}) {
                 Import Design
             </Button>
             </div>
-            <div className="grid gap-6 sm:grid-cols-1">
-                <Suspense fallback={<DesignsChartSkeleton />}>
-                    <DesignsChart></DesignsChart>
-                </Suspense>
-            </div>
+            <Suspense fallback={<DesignsChartSkeleton />}>
+                <DesignsChart></DesignsChart>
+            </Suspense>
         </main>
     )
 }
