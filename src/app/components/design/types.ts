@@ -22,6 +22,20 @@ export const licenses = z.enum([
     "SDFL"
 ])
 
+export const pubmanCategories = z.enum([
+  "3D Printing",
+  "Art",
+  "Fashion",
+  "Gadgets",
+  "Hobby",
+  "Household",
+  "Learning",
+  "Models",
+  "Tools",
+  "Toys & Games",
+  "Other"
+])
+
 export const designSchema = z.object({
     design_key: z.string(),
     main_name: z.string(),
@@ -33,7 +47,7 @@ export const designSchema = z.object({
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     tags: z.array(z.object({ tag: z.string(), platform: platforms })),
-    categories: z.array(z.object({ category: z.string(), platform: platforms })),
+    categories: z.array(z.object({ category: pubmanCategories, platform: platforms })),
     assets: z.array(
         z.object({
             asset_key: z.string(),
@@ -51,9 +65,9 @@ export const designCreateSchema = z.object({
     main_name: z.string(),
     summary: z.string(),
     description: z.string(),
-    license_key: licenses.default("SDFL"),
-    tags: z.array(z.string()),
-    category: z.string(),
+    license_key: licenses.default("SDFL").optional(),
+    tags: z.string(),
+    category: pubmanCategories,
 })
 
 export type DesignCreateSchema = z.infer<typeof designCreateSchema>
