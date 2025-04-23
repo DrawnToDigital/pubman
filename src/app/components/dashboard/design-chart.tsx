@@ -78,22 +78,26 @@ export default async function DesignsChart() {
 
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               {imageAssets.slice(0, 2).map((asset) => (
-                <img
-                  key={asset.url}
-                  src={asset.url}
-                  alt={asset.file_name}
-                  className="rounded object-contain w-full h-auto"
-                  loading="lazy"
-                />
+                <div className="bg-gray-100 rounded w-full h-auto flex items-center justify-center">
+                  <img
+                    key={asset.url}
+                    src={asset.url}
+                    alt={asset.file_name}
+                    className="rounded object-contain max-w-full max-h-full"
+                    loading="lazy"
+                  />
+                </div>
               ))}
               {imageAssets.length === 3 && (
-                <img
-                  key={imageAssets[2].url}
-                  src={imageAssets[2].url}
-                  alt={imageAssets[2].file_name}
-                  className="rounded object-contain w-full h-auto"
-                  loading="lazy"
-                />
+                <div className="bg-gray-100 rounded w-full h-auto flex items-center justify-center">
+                  <img
+                    key={imageAssets[2].url}
+                    src={imageAssets[2].url}
+                    alt={imageAssets[2].file_name}
+                    className="rounded object-contain max-w-full max-h-full"
+                    loading="lazy"
+                  />
+                </div>
               )}
               {imageAssets.length > 3 && (
                 <div className="flex items-center justify-center bg-gray-200 rounded w-full h-auto text-gray-700 font-bold text-lg">
