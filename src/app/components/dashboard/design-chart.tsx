@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import {designSchema, DesignSchema} from "@/src/app/components/design/types";
+import Link from "next/link";
 
 const API_BASE = `${process.env.API_BASE}:${process.env.API_PORT}`;
 
@@ -46,7 +47,9 @@ export default async function DesignsChart() {
             key={design.design_key}
             className="border rounded-lg shadow-md p-4 bg-white"
           >
-            <h2 className="text-lg font-bold">{design.main_name} ({design.design_key})</h2>
+            <h2 className="text-lg font-bold">{design.main_name} (<Link href={`/design/${design.design_key}`} className="text-blue-500 underline">
+              {design.design_key}
+              </Link>)</h2>
             <p className="text-sm text-gray-600">{design.summary}</p>
             <p className="text-sm text-gray-600">{design.description}</p>
             <p className="text-sm text-gray-600">
