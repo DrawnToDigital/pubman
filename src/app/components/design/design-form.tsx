@@ -1,165 +1,178 @@
 'use client';
 
-import React, { useState } from "react";
-import { createDesign } from "@/src/app/actions/design";
+import { useState } from "react";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { designCreateSchema, DesignCreateSchema, pubmanCategories } from "./types";
+import { createDesign } from "@/src/app/actions/design";
+import { FormControl, FormField, FormItem } from "@/src/app/components/ui/form";
+import { Input } from "@/src/app/components/ui/input";
 
 const DesignForm = () => {
-  const [formData, setFormData] = useState({
-    main_name: "",
-    description: "",
-    summary: "",
-    tags: "",
-    category: "",
-  });
   const router = useRouter();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  const form = useForm<DesignCreateSchema>({
+    resolver: zodResolver(designCreateSchema),
+    defaultValues: {
+      main_name: "",
+      summary: "",
+      description: "",
+      license_key: "SDFL",
+      tags: "",
+      category: "Other",
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const onSubmit = async (data: DesignCreateSchema) => {
+    setErrorMessage(null); // Clear previous errors
     try {
-      const data = await createDesign(formData);
-      console.log("Design created successfully:", data);
-      router.push(`/design/${data["design_key"]}`);
+      const response = await createDesign(data);
+      if (response && response.design_key) {
+        router.push(`/design/${response.design_key}`);
+      } else {
+        console.error("Unexpected response:", response);
+        setErrorMessage("Failed to create design. Please try again.");
+      }
     } catch (error) {
-      console.error("Error submitting form:", error);
+      console.error("Failed to create design:", error);
+      setErrorMessage("Failed to create design. Please try again.");
     }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      style={{
-        maxWidth: "500px",
-        margin: "0 auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: "1rem",
-        padding: "1rem",
-        border: "1px solid #ccc",
-        borderRadius: "8px",
-        backgroundColor: "#f9f9f9",
-      }}
-    >
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <label htmlFor="main_name" style={{ marginBottom: "0.5rem" }}>
-          Main Name
-        </label>
-        <input
-          type="text"
-          id="main_name"
-          name="main_name"
-          placeholder="Enter main name"
-          value={formData.main_name}
-          onChange={handleChange}
-          required
-          style={{
-            padding: "0.5rem",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-          }}
-        />
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <label htmlFor="summary" style={{ marginBottom: "0.5rem" }}>
-          Summary
-        </label>
-        <textarea
-          id="summary"
-          name="summary"
-          placeholder="Enter summary"
-          value={formData.summary}
-          onChange={handleChange}
-          required
-          style={{
-            padding: "0.5rem",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            minHeight: "100px",
-          }}
-        />
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <label htmlFor="description" style={{ marginBottom: "0.5rem" }}>
-          Description
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          placeholder="Enter description"
-          value={formData.description}
-          onChange={handleChange}
-          required
-          style={{
-            padding: "0.5rem",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            minHeight: "100px",
-          }}
-        />
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <label htmlFor="tags" style={{ marginBottom: "0.5rem" }}>
-          Tags
-        </label>
-        <input
-          type="text"
-          id="tags"
-          name="tags"
-          placeholder="Enter tags (comma-separated)"
-          value={formData.tags}
-          onChange={handleChange}
-          required
-          style={{
-            padding: "0.5rem",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-          }}
-        />
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <label htmlFor="category" style={{ marginBottom: "0.5rem" }}>
-          Category
-        </label>
-        <input
-          type="text"
-          id="category"
-          name="category"
-          placeholder="Enter category"
-          value={formData.category}
-          onChange={handleChange}
-          required
-          style={{
-            padding: "0.5rem",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-          }}
-        />
-      </div>
-
-      <button
-        type="submit"
-        style={{
-          padding: "0.75rem",
-          backgroundColor: "#007BFF",
-          color: "#fff",
-          border: "none",
-          borderRadius: "4px",
-          cursor: "pointer",
-        }}
+    <FormProvider {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-6"
       >
-        Submit
-      </button>
-    </form>
+        {errorMessage && (
+          <div className="text-red-500 text-sm">{errorMessage}</div>
+        )}
+
+        <FormField
+          control={form.control}
+          name="main_name"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <label htmlFor="main_name" className="text-sm font-medium mb-1">
+                Name
+              </label>
+              <FormControl>
+                <Input
+                  id="main_name"
+                  placeholder="Enter name"
+                  {...field}
+                  required
+                  className="border border-gray-300 rounded-md p-2"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="summary"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <label htmlFor="summary" className="text-sm font-medium mb-1">
+                Summary
+              </label>
+              <FormControl>
+                <textarea
+                  id="summary"
+                  placeholder="Enter summary"
+                  {...field}
+                  required
+                  className="border border-gray-300 rounded-md p-2"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <label htmlFor="description" className="text-sm font-medium mb-1">
+                Description
+              </label>
+              <FormControl>
+                <textarea
+                  id="description"
+                  placeholder="Enter description"
+                  {...field}
+                  required
+                  className="border border-gray-300 rounded-md p-2"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="tags"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <label htmlFor="tags" className="text-sm font-medium mb-1">
+                Tags
+              </label>
+              <FormControl>
+                <Input
+                  id="tags"
+                  placeholder="Enter tags (comma-separated)"
+                  {...field}
+                  required
+                  className="border border-gray-300 rounded-md p-2"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <label htmlFor="category" className="text-sm font-medium mb-1">
+                Category
+              </label>
+              <FormControl>
+                <select
+                  id="category"
+                  {...field}
+                  required
+                  className="border border-gray-300 rounded-md p-2"
+                >
+                  <option value="" disabled>
+                    Select a category
+                  </option>
+                  {pubmanCategories.options.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <button
+          type="submit"
+          disabled={form.formState.isSubmitting}
+          className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 disabled:bg-gray-300"
+        >
+          {form.formState.isSubmitting ? "Submitting..." : "Submit"}
+        </button>
+      </form>
+    </FormProvider>
   );
 };
 

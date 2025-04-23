@@ -1,16 +1,11 @@
 'use server';
 
 import {cookies} from "next/headers";
+import {DesignCreateSchema} from "@/src/app/components/design/types";
 
 const API_BASE = `${process.env.API_BASE}:${process.env.API_PORT}`;
 
-export async function createDesign(formData: {
-  main_name: string;
-  description: string;
-  summary: string;
-  tags: string;
-  category: string;
-}) {
+export async function createDesign(formData: DesignCreateSchema) {
 
   const cookieJar = await cookies();
   const accessToken = cookieJar.get('access-token')?.value;
