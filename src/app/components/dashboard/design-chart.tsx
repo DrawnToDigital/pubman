@@ -86,7 +86,7 @@ export default async function DesignsChart() {
                   loading="lazy"
                 />
               ))}
-              {imageAssets.length == 3 && (
+              {imageAssets.length === 3 && (
                 <img
                   key={imageAssets[2].url}
                   src={imageAssets[2].url}
