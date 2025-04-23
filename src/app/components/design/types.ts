@@ -30,8 +30,8 @@ export const designSchema = z.object({
     license_key: licenses,
     is_ready: z.boolean(),
     is_published: z.boolean(),
-    created_at: z.string(),
-    updated_at: z.string(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
     tags: z.array(z.object({ tag: z.string(), platform: platforms })),
     categories: z.array(z.object({ category: z.string(), platform: platforms })),
     assets: z.array(
@@ -40,7 +40,7 @@ export const designSchema = z.object({
             file_name: z.string(),
             mime_type: z.string(),
             url: z.string(),
-            created_at: z.date(),
+            created_at: z.string().datetime({ offset: true }),
         }),
     ),
 })

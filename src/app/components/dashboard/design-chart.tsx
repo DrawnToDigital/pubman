@@ -1,7 +1,7 @@
 'use server';
 
 import { cookies } from "next/headers";
-import {DesignSchema} from "@/src/app/components/design/types";
+import {designSchema, DesignSchema} from "@/src/app/components/design/types";
 
 const API_BASE = `${process.env.API_BASE}:${process.env.API_PORT}`;
 
@@ -24,7 +24,7 @@ export default async function DesignsChart() {
     if (!response.ok) {
       throw new Error("Failed to fetch designs");
     }
-    designs = await response.json();
+    designs = designSchema.array().parse(await response.json());
   } catch (error) {
     console.error(error);
     return <p className="mt-4 text-gray-400">Failed to load designs.</p>;
