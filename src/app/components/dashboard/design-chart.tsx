@@ -1,23 +1,9 @@
 'use server';
 
 import { cookies } from "next/headers";
+import {DesignSchema} from "@/src/app/components/design/types";
 
 const API_BASE = `${process.env.API_BASE}:${process.env.API_PORT}`;
-
-interface Design {
-  design_key: string;
-  main_name: string;
-  summary: string;
-  description: string;
-  license_key: string;
-  is_ready: boolean;
-  is_published: boolean;
-  assets: { asset_key: string; file_name: string; url: string; mime_type: string; created_at: string }[];
-  tags: { tag: string; platform: string }[];
-  categories: { category: string; platform: string }[];
-  created_at: string;
-  updated_at: string;
-}
 
 export default async function DesignsChart() {
   const cookieJar = await cookies();
@@ -27,7 +13,7 @@ export default async function DesignsChart() {
     return <p className="mt-4 text-gray-400">Access token is missing.</p>;
   }
 
-  let designs: Design[] = [];
+  let designs: DesignSchema[] = [];
   try {
     const response = await fetch(`${API_BASE}/design`, {
       headers: {
