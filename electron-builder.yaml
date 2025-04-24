@@ -1,0 +1,39 @@
+asar: true
+productName: "PubMan"
+executableName: "PubMan"
+appId: "digital.drawnto.pubman.electron"
+copyright: "Copyright (c) 2025 DrawnToDigital"
+asarUnpack:
+  - "node_modules/next"
+  - "node_modules/@img"
+  - "node_modules/sharp"
+  - "**\\*.{node,dll}"
+files:
+  - build
+  - from: .next/standalone
+    to: app
+    filter:
+      #- "!**/.env"
+      - "!**/package.json"
+  - from: .next/static
+    to: app/.next/static
+  - from: public
+    to: app/public
+win:
+  target: ["portable"]
+  icon: "resources/icon.ico"
+linux:
+  target: ["appimage"]
+  icon: "resources/icon.png"
+mac:
+  target:
+    - target: dmg
+      arch:
+        - universal
+  identity: null  # Skip code signing
+  icon: "resources/icon.icns"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+dmg:
+  writeUpdateInfo: false
+  sign: false
