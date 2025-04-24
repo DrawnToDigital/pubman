@@ -81,7 +81,7 @@ export default async function DesignsChart() {
 
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               {imageAssets.slice(0, 2).map((asset) => (
-                <div className="bg-gray-100 rounded w-full h-auto flex items-center justify-center">
+                <div key={asset.asset_key} className="bg-gray-100 rounded w-full h-auto flex items-center justify-center">
                   <img
                     key={asset.url}
                     src={asset.url}

@@ -5,10 +5,11 @@ import { useParams } from "next/navigation";
 import { Input } from "@/src/app/components/ui/input";
 import { Button } from "@/src/app/components/ui/button";
 import {fetchDesign, removeFile, uploadFile} from "@/src/app/actions/design";
+import {DesignSchema} from "@/src/app/components/design/types";
 
 const DesignDetailsPage = () => {
   const { designKey } = useParams();
-  const [design, setDesign] = useState(null);
+  const [design, setDesign] = useState<DesignSchema | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -72,7 +73,7 @@ const DesignDetailsPage = () => {
                 {file.file_name}
               </a>
               <Button
-                variant="danger"
+                variant="destructive"
                 onClick={() => handleFileRemove(file.asset_key)}
               >
                 Remove
