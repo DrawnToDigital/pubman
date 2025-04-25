@@ -8,7 +8,7 @@ import {fetchDesign, removeFile, uploadFile} from "@/src/app/actions/design";
 import {DesignSchema} from "@/src/app/components/design/types";
 
 const DesignDetailsPage = () => {
-  const { designKey } = useParams();
+  const { designID } = useParams();
   const [design, setDesign] = useState<DesignSchema | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -17,8 +17,8 @@ const DesignDetailsPage = () => {
     // Fetch design details
     const fetch = async () => {
       try {
-        if (!designKey) throw new Error("Design key is required");
-        const design = await fetchDesign (designKey.toString());
+        if (!designID) throw new Error("Design ID is required");
+        const design = await fetchDesign (designID.toString());
         setDesign(design);
       } catch (error) {
         console.error(error);
@@ -27,16 +27,16 @@ const DesignDetailsPage = () => {
     };
 
     fetch();
-  }, [designKey]);
+  }, [designID]);
 
   const handleFileUpload = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!file || !designKey) return;
+    if (!file || !designID) return;
 
     try {
-      await uploadFile(designKey.toString(), file);
+      await uploadFile(designID.toString(), file);
       setFile(null); // Clear the file input
-      const updatedDesign = await fetchDesign(designKey.toString());
+      const updatedDesign = await fetchDesign(designID.toString());
       setDesign(updatedDesign);
     } catch (error) {
       console.error(error);
@@ -45,11 +45,11 @@ const DesignDetailsPage = () => {
   };
 
   const handleFileRemove = async (fileKey: string) => {
-    if (!designKey) return;
+    if (!designID) return;
 
     try {
-      await removeFile(designKey.toString(), fileKey);
-      const updatedDesign = await fetchDesign(designKey.toString());
+      await removeFile(designID.toString(), fileKey);
+      const updatedDesign = await fetchDesign(designID.toString());
       setDesign(updatedDesign);
     } catch (error) {
       console.error(error);
@@ -68,13 +68,13 @@ const DesignDetailsPage = () => {
       {design.assets.length > 0 ? (
         <ul>
           {design.assets.map((file) => (
-            <li key={file.asset_key} className="flex justify-between items-center">
+            <li key={file.id} className="flex justify-between items-center">
               <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-blue-500">
                 {file.file_name}
               </a>
               <Button
                 variant="destructive"
-                onClick={() => handleFileRemove(file.asset_key)}
+                onClick={() => handleFileRemove(file.id)}
               >
                 Remove
               </Button>

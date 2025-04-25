@@ -1,25 +1,16 @@
 'use server';
 
-import { cookies } from "next/headers";
-import {designSchema, DesignSchema} from "@/src/app/components/design/types";
+import { designSchema, DesignSchema } from "@/src/app/components/design/types";
 import Link from "next/link";
 
-const API_BASE = `${process.env.API_BASE}:${process.env.API_PORT}`;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default async function DesignsChart() {
-  const cookieJar = await cookies();
-  const accessToken = cookieJar.get('access-token')?.value;
-
-  if (!accessToken) {
-    return <p className="mt-4 text-gray-400">Access token is missing.</p>;
-  }
-
   let designs: DesignSchema[] = [];
   try {
-    const response = await fetch(`${API_BASE}/design`, {
+    const response = await fetch(`${API_URL}/api/design`, {
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
       },
     });
     if (!response.ok) {
@@ -44,11 +35,11 @@ export default async function DesignsChart() {
 
         return (
           <div
-            key={design.design_key}
+            key={design.id}
             className="border rounded-lg shadow-md p-4 bg-white"
           >
-            <h2 className="text-lg font-bold">{design.main_name} (<Link href={`/design/${design.design_key}`} className="text-blue-500 underline">
-              {design.design_key}
+            <h2 className="text-lg font-bold">{design.main_name} (<Link href={`/design/${design.id}`} className="text-blue-500 underline">
+              {design.id}
               </Link>)</h2>
             <p className="text-sm text-gray-600">{design.summary}</p>
             <p className="text-sm text-gray-600">{design.description}</p>
@@ -81,7 +72,7 @@ export default async function DesignsChart() {
 
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               {imageAssets.slice(0, 2).map((asset) => (
-                <div key={asset.asset_key} className="bg-gray-100 rounded w-full h-auto flex items-center justify-center">
+                <div key={asset.id} className="bg-gray-100 rounded w-full h-auto flex items-center justify-center">
                   <img
                     key={asset.url}
                     src={asset.url}

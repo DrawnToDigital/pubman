@@ -37,24 +37,24 @@ export const pubmanCategories = z.enum([
 ])
 
 export const designSchema = z.object({
-    design_key: z.string(),
+    id: z.string(),
     main_name: z.string(),
     summary: z.string(),
     description: z.string(),
     license_key: licenses,
     is_ready: z.boolean(),
     is_published: z.boolean(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
+    created_at: z.string().datetime({ offset: false }),
+    updated_at: z.string().datetime({ offset: false }),
     tags: z.array(z.object({ tag: z.string(), platform: platforms })),
     categories: z.array(z.object({ category: pubmanCategories, platform: platforms })),
     assets: z.array(
         z.object({
-            asset_key: z.string(),
+            id: z.string(),
             file_name: z.string(),
             mime_type: z.string(),
             url: z.string(),
-            created_at: z.string().datetime({ offset: true }),
+            created_at: z.string().datetime({ offset: false }),
         }),
     ),
 })

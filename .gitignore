@@ -1,6 +1,8 @@
 build
 dist
 
+pubman.db
+
 # Logs
 logs
 *.log
