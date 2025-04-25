@@ -52,7 +52,7 @@ export const designSchema = z.object({
         z.object({
             id: z.string(),
             file_name: z.string(),
-            mime_type: z.string(),
+            file_ext: z.string(),
             url: z.string(),
             created_at: z.string().datetime({ offset: false }),
         }),

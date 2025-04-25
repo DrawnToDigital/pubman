@@ -35,7 +35,7 @@ export async function GET(request, context) {
 
   // Fetch assets
   const asset = db.prepare(`
-    SELECT id, file_name, mime_type, file_path AS url,
+    SELECT id, file_name, file_ext, file_path AS url,
            strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
     FROM design_asset
     WHERE design_id = ? AND id = ? AND deleted_at IS NULL

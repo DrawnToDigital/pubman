@@ -1,8 +1,36 @@
 import { is } from "@electron-toolkit/utils";
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import { getPort } from "get-port-please";
 import { startServer } from "next/dist/server/lib/start-server";
-import { join } from "path";
+import path, { join } from "path";
+
+function getAppDataPath() {
+  switch (process.platform) {
+    case "darwin": {
+      return path.join(process.env.HOME || '/tmp', "Library", "Application Support", "PubMan");
+    }
+    case "win32": {
+      return path.join(process.env.APPDATA || '/tmp', "PubMan");
+    }
+    case "linux": {
+      return path.join(process.env.HOME || '/tmp', ".PubMan");
+    }
+    default: {
+      console.log("Unsupported platform!");
+      process.exit(1);
+    }
+  }
+}
+
+const appPath = __dirname;
+const appDataPath =
+  !process.env.NODE_ENV || process.env.NODE_ENV === "production"
+    ? getAppDataPath() // Live Mode
+    : path.join(appPath, "AppData"); // Dev Mode
+
+
+const dbPath = path.join(appDataPath, "db/pubman.db");
+
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
@@ -66,6 +94,15 @@ app.whenReady().then(() => {
   createWindow();
 
   ipcMain.on("ping", () => console.log("pong"));
+  ipcMain.handle("get-db-path", () => {
+    return dbPath;
+  })
+  ipcMain.handle("get-app-data-path", () => {
+    return appDataPath
+  })
+  ipcMain.handle("dialog:openFile", (event, args) => {
+    return dialog.showOpenDialog(args[0]);
+  });
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

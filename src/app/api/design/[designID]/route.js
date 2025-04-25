@@ -59,7 +59,7 @@ export async function GET(request, context) {
 
   // Fetch assets
   const assets = db.prepare(`
-    SELECT id, file_name, mime_type, file_path AS url,
+    SELECT id, file_name, file_ext, file_path AS url,
            strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
     FROM design_asset
     WHERE design_id = ? AND deleted_at IS NULL
@@ -87,7 +87,7 @@ export async function GET(request, context) {
     assets: assets.map((asset) => ({
       id: asset.id.toString(),
       file_name: asset.file_name,
-      mime_type: asset.mime_type,
+      file_ext: asset.file_ext,
       url: asset.url,
       created_at: asset.created_at,
     })),

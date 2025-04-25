@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Database from 'better-sqlite3';
+import {z} from "zod";
 
 function getDatabase() {
   try {
@@ -35,7 +36,7 @@ export async function GET(request, context) {
 
   // Fetch assets
   const assets = db.prepare(`
-    SELECT id, file_name, mime_type, file_path AS url,
+    SELECT id, file_name, file_ext, file_path AS url,
            strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
     FROM design_asset
     WHERE design_id = ? AND deleted_at IS NULL
@@ -44,12 +45,20 @@ export async function GET(request, context) {
   return NextResponse.json(assets);
 }
 
+const assetCreateSchema = z.object({
+  file_name: z.string(),
+  file_ext: z.string(),
+  file_path: z.string(),
+});
+
 export async function POST(request, context) {
   const { designID } = await context.params; // Await params
   const db = getDatabase();
 
   const username = request.headers.get('x-username') || 'default';
-  const { fileName, mimeType, filePath } = await request.json();
+  const body  = await request.json();
+  const data = assetCreateSchema.parse(body);
+  const { file_name: fileName, file_ext: fileExt, file_path: filePath } = data;
 
   const designer = db.prepare(`
     SELECT id FROM designer
@@ -71,9 +80,9 @@ export async function POST(request, context) {
   // Add file metadata to design_asset
   try {
     db.prepare(`
-    INSERT INTO design_asset (design_id, file_name, mime_type, file_path, created_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `).run(designID, fileName, mimeType, filePath);
+    INSERT INTO design_asset (design_id, designer_id, file_name, file_ext, file_path, created_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).run(designID, designer.id, fileName, fileExt, filePath);
 
     return NextResponse.json({ message: 'File metadata added successfully' }, { status: 200 });
   } catch (error) {
