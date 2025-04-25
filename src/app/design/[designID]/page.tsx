@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Input } from "@/src/app/components/ui/input";
 import { Button } from "@/src/app/components/ui/button";
-import {fetchDesign, removeFile, uploadFile} from "@/src/app/actions/design";
+import {fetchDesign} from "@/src/app/actions/design";
 import {DesignSchema} from "@/src/app/components/design/types";
+import {addFile, removeFile} from "@/src/app/actions/file";
 
 const DesignDetailsPage = () => {
   const { designID } = useParams();
@@ -34,7 +35,7 @@ const DesignDetailsPage = () => {
     if (!file || !designID) return;
 
     try {
-      await uploadFile(designID.toString(), file);
+      await addFile(designID.toString(), file);
       setFile(null); // Clear the file input
       const updatedDesign = await fetchDesign(designID.toString());
       setDesign(updatedDesign);
@@ -44,11 +45,11 @@ const DesignDetailsPage = () => {
     }
   };
 
-  const handleFileRemove = async (fileKey: string) => {
+  const handleFileRemove = async (assetID: string) => {
     if (!designID) return;
 
     try {
-      await removeFile(designID.toString(), fileKey);
+      await removeFile(designID.toString(), assetID);
       const updatedDesign = await fetchDesign(designID.toString());
       setDesign(updatedDesign);
     } catch (error) {
