@@ -136,8 +136,8 @@ CREATE TABLE IF NOT EXISTS design_asset (
 
 -- Insert an example design asset associated with the example design if it doesn't exist
 INSERT OR IGNORE INTO design_asset (design_id, designer_id, file_name, file_path, file_ext) VALUES
-    (1, 1, 'example_design.stl', 'user_uploads/example_design.stl', 'stl'),
-    (1, 1, 'example_image.png', 'user_uploads/example_image.png', 'png');
+    (1, 1, 'example_design.stl', '/assets/example_design.stl', 'stl'),
+    (1, 1, 'example_image.png', '/assets/example_image.png', 'png');
 
 -- Insert an example design tag associated with the example design if it doesn't exist
 INSERT OR IGNORE INTO design_tag (design_id, tag, platform_id) VALUES

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import Database from 'better-sqlite3';
+import path from "node:path";
 
 function getDatabase() {
   try {
-    return new Database('db/pubman.db');
+    return new Database(path.join(process.env.NEXT_PUBLIC_APP_DATA_PATH || 'appdata', 'db/pubman.db'));
   } catch (error) {
     console.error('Failed to initialize database:', error);
     throw new Error('Database initialization failed');
@@ -35,7 +36,7 @@ export async function GET(request, context) {
 
   // Fetch asset
   const asset = db.prepare(`
-    SELECT id, file_name, file_ext, file_path AS url,
+    SELECT id, file_name, file_ext, file_path,
            strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
     FROM design_asset
     WHERE design_id = ? AND id = ? AND deleted_at IS NULL

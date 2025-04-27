@@ -12,16 +12,20 @@
     "next:start": "next start",
     "next:lint": "next lint",
     "format": "dprint fmt",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "electron-builder install-app-deps && npm run install:better-sqlite3:all",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
     "electron:dist": "electron-builder --dir",
     "electron:dist:deb": "electron-builder --linux deb",
     "electron:build": "tsup",
     "build": "run-s next:build electron:build",
     "dist": "run-s next:build electron:dist",
-    "dev": "npm-run-all --parallel electron:dev next:dev",
+    "dev": "npm-run-all --parallel next:dev electron:dev",
     "electron:build_watch": "tsup --watch",
     "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
-    "electron:watch": "cross-env NODE_ENV='development' nodemon"
+    "electron:watch": "cross-env NODE_ENV='development' nodemon",
+    "install:better-sqlite3:x64": "npm rebuild better-sqlite",
+    "install:better-sqlite3:arm64": "npm_config_arch=arm64 npm install better-sqlite3 --prefix node_modules/better-sqlite3-arm64 --build-from-source --runtime=electron --target=35.2.1 --dist-url=https://electronjs.org/headers",
+    "install:better-sqlite3:all": "npm-run-all install:better-sqlite3:x64 install:better-sqlite3:arm64"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",

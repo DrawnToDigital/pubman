@@ -1,5 +1,7 @@
 asar: true
 productName: "PubMan"
+electronVersion: "35.2.1"
+buildDependenciesFromSource: true
 executableName: "PubMan"
 appId: "digital.drawnto.pubman.electron"
 copyright: "Copyright (c) 2025 DrawnToDigital"

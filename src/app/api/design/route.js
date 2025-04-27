@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import Database from 'better-sqlite3';
 import { designCreateSchema } from '@/src/app/components/design/types';
+import path from "node:path";
 
-let db;
-try {
-  db = new Database('db/pubman.db');
-} catch (error) {
-  console.error('Failed to initialize database:', error);
-  throw new Error('Database initialization failed');
+function getDatabase() {
+  try {
+    return new Database(path.join(process.env.NEXT_PUBLIC_APP_DATA_PATH || 'appdata', 'db/pubman.db'));
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+    throw new Error('Database initialization failed');
+  }
 }
 
 // TODO: Move this to a shared location
@@ -20,9 +22,10 @@ const platformMap = {
 const PLATFORM_PUBMAN = 1;
 
 export async function GET(request) {
-  const username = request.headers.get('x-username') || 'default';
-
   try {
+    const db = getDatabase();
+    const username = request.headers.get('x-username') || 'default';
+
     // Fetch the designer
     const designer = db
       .prepare(
@@ -67,7 +70,7 @@ export async function GET(request) {
       // Fetch assets
       const assets = db
         .prepare(
-          `SELECT id, file_name, file_ext, file_path AS url,
+          `SELECT id, file_name, file_ext, file_path,
                   strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
            FROM design_asset 
            WHERE design_id = ? AND deleted_at IS NULL`
@@ -96,7 +99,7 @@ export async function GET(request) {
           id: asset.id.toString(),
           file_name: asset.file_name,
           file_ext: asset.file_ext,
-          url: asset.url,
+          url: `local://${asset.file_path}`,
           created_at: asset.created_at,
         })),
       };
@@ -111,6 +114,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const db = getDatabase();
     const body = await request.json();
 
     // Validate request body using designCreateSchema
