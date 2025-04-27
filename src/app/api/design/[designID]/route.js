@@ -11,7 +11,7 @@ function getDatabase() {
 }
 
 // TODO: Move this to a shared location
-const patformMap = {
+const platformMap = {
   1: 'PUBMAN',
   2: 'DUMMY',
   3: 'THINGIVERSE'
@@ -78,11 +78,11 @@ export async function GET(request, context) {
     updated_at: design.updated_at,
     tags: tags.map((tag) => ({
       tag: tag.tag,
-      platform: patformMap[tag.platform_id] || 'UNKNOWN',
+      platform: platformMap[tag.platform_id] || 'UNKNOWN',
     })),
     categories: categories.map((category) => ({
       category: category.category,
-      platform: patformMap[category.platform_id] || 'UNKNOWN',
+      platform: platformMap[category.platform_id] || 'UNKNOWN',
     })),
     assets: assets.map((asset) => ({
       id: asset.id.toString(),

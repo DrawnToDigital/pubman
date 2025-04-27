@@ -33,13 +33,13 @@ export async function GET(request, context) {
     return NextResponse.json({ error: 'Design not found' }, { status: 404 });
   }
 
-  // Fetch assets
+  // Fetch asset
   const asset = db.prepare(`
     SELECT id, file_name, file_ext, file_path AS url,
            strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
     FROM design_asset
     WHERE design_id = ? AND id = ? AND deleted_at IS NULL
-  `).all(designID, assetID);
+  `).get(designID, assetID);
 
   return NextResponse.json(asset);
 }
@@ -83,7 +83,7 @@ export async function DELETE(request, context) {
       WHERE id = ?
     `).run(asset.id);
 
-    return NextResponse.json({ message: 'Design deleted successfully' }, { status: 200 });
+    return NextResponse.json({ message: 'Asset deleted successfully' }, { status: 200 });
   } catch (error) {
     console.error('Failed to delete design:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
