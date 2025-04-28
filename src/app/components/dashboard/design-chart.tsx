@@ -31,7 +31,7 @@ export default async function DesignsChart() {
       {designs.map((design) => {
         const pubmanTags = design.tags.filter((tag) => tag.platform === "PUBMAN");
         const pubmanCategories = design.categories.filter((category) => category.platform === "PUBMAN");
-        const imageAssets = design.assets.filter((asset) => ["jpg", "jpeg", "png", "gif"].includes(asset.file_ext));
+        const imageAssets = design.assets.filter((asset) => ["jpg", "jpeg", "png", "gif"].includes(asset.file_ext.toLowerCase()));
 
         return (
           <div
