@@ -12,20 +12,6 @@ export default function getBetterSqlite3() {
 export function getDatabase() {
   let dbPath = "";
   try {
-    // let appGetPath = null;
-    // try {
-    //   // eslint-disable-next-line @typescript-eslint/no-require-imports
-    //   const electron = require('electron');
-    //   if (electron.app) {
-    //     appGetPath = electron.app.getPath.bind(electron.app);
-    //   } else if (electron.remote?.app) {
-    //     appGetPath = electron.remote.app.getPath.bind(electron.remote.app); // legacy fallback
-    //   }
-    // } catch (error) {
-    //   // electron not available: probably running in Next.js / Node.js dev server
-    //   console.error('Electron not available:', error);
-    //   appGetPath = null;
-    // }
     const appGetPath = () => "appdata";
 
     if (appGetPath && process.env.NODE_ENV === 'production') {

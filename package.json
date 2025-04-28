@@ -8,6 +8,7 @@
   "description": "Publishing Manager for 3D Designs",
   "scripts": {
     "next:dev": "next dev",
+    "next:build": "next build",
     "format": "dprint fmt",
     "electron:dist": "electron-builder --dir",
     "electron:dist:deb": "electron-builder --linux deb",
@@ -18,7 +19,7 @@
     "electron:build_watch": "tsup --watch",
     "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
     "electron:watch": "wait-on http://localhost:3000 && nodemon --watch build/main.js --exec 'electron .'",
-    "postinstall": "electron-builder install-app-deps && node scripts/install-better-sqlite3.js"
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
@@ -46,6 +47,7 @@
     "@types/node": "^20.17.30",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "better-sqlite3-darwin": "npm:better-sqlite3@^11.9.1",
     "cross-env": "^7.0.3",
     "electron": "^35.2.1",
     "electron-builder": "^26.0.12",
@@ -56,7 +58,6 @@
     "tailwindcss": "^4.1.4",
     "tsup": "^8.4.0",
     "typescript": "^5.8.3",
-    "wait-on": "^8.0.3",
-    "better-sqlite3-darwin": "npm:better-sqlite3@^11.9.1"
+    "wait-on": "^8.0.3"
   }
 }

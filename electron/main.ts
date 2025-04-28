@@ -30,7 +30,7 @@ const sampleAssetsPath =
     ? path.join(process.resourcesPath, "sample_assets")
     : path.resolve("sample_assets"); // Dev Mode
 
-console.log("1111111");
+console.log("Main.ts");
 console.log(`node_env: ${process.env.NODE_ENV}`);
 console.log(`appDataPath: ${appDataPath}`);
 console.log(`dbPath: ${dbPath}`);
@@ -125,7 +125,7 @@ const createWindow = () => {
     }
 
     console.error("Failed to connect to the server after maximum retries.");
-    mainWindow.loadFile("path/to/fallback.html"); // Optional: Load a fallback page
+    await mainWindow.loadFile("path/to/fallback.html"); // Optional: Load a fallback page
   };
 
   loadURL();
