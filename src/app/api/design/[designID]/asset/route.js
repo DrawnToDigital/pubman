@@ -1,16 +1,9 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
 import {z} from "zod";
-import path from "node:path";
+import { getDatabase } from "../../../../lib/betterSqlite3";
 
-function getDatabase() {
-  try {
-    return new Database(path.join(process.env.NEXT_PUBLIC_APP_DATA_PATH || 'appdata', 'db/pubman.db'));
-  } catch (error) {
-    console.error('Failed to initialize database:', error);
-    throw new Error('Database initialization failed');
-  }
-}
+import os from "node:os";
+console.log(`ROUTE.js ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron} ${process?.versions?.node}`);
 
 export async function GET(request, context) {
   const { designID } = await context.params; // Await params

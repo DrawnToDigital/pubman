@@ -1,16 +1,6 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
 import { designCreateSchema } from '@/src/app/components/design/types';
-import path from "node:path";
-
-function getDatabase() {
-  try {
-    return new Database(path.join(process.env.NEXT_PUBLIC_APP_DATA_PATH || 'appdata', 'db/pubman.db'));
-  } catch (error) {
-    console.error('Failed to initialize database:', error);
-    throw new Error('Database initialization failed');
-  }
-}
+import { getDatabase } from "../../lib/betterSqlite3"
 
 // TODO: Move this to a shared location
 const platformMap = {

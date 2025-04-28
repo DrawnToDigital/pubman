@@ -1,15 +1,5 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from "node:path";
-
-function getDatabase() {
-  try {
-    return new Database(path.join(process.env.NEXT_PUBLIC_APP_DATA_PATH || 'appdata', 'db/pubman.db'));
-  } catch (error) {
-    console.error('Failed to initialize database:', error);
-    throw new Error('Database initialization failed');
-  }
-}
+import { getDatabase } from "../../../../../lib/betterSqlite3";
 
 export async function GET(request, context) {
   const { designID, assetID } = await context.params; // Await params

@@ -8,24 +8,17 @@
   "description": "Publishing Manager for 3D Designs",
   "scripts": {
     "next:dev": "next dev",
-    "next:build": "next build",
-    "next:start": "next start",
-    "next:lint": "next lint",
     "format": "dprint fmt",
-    "postinstall": "electron-builder install-app-deps && npm run install:better-sqlite3:all",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
     "electron:dist": "electron-builder --dir",
     "electron:dist:deb": "electron-builder --linux deb",
     "electron:build": "tsup",
     "build": "run-s next:build electron:build",
     "dist": "run-s next:build electron:dist",
-    "dev": "npm-run-all --parallel next:dev electron:dev",
+    "dev": "export NODE_ENV=development && npm-run-all --parallel electron:dev next:dev",
     "electron:build_watch": "tsup --watch",
     "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
-    "electron:watch": "cross-env NODE_ENV='development' nodemon",
-    "install:better-sqlite3:x64": "npm rebuild better-sqlite",
-    "install:better-sqlite3:arm64": "npm_config_arch=arm64 npm install better-sqlite3 --prefix node_modules/better-sqlite3-arm64 --build-from-source --runtime=electron --target=35.2.1 --dist-url=https://electronjs.org/headers",
-    "install:better-sqlite3:all": "npm-run-all install:better-sqlite3:x64 install:better-sqlite3:arm64"
+    "electron:watch": "wait-on http://localhost:3000 && nodemon --watch build/main.js --exec 'electron .'",
+    "postinstall": "electron-builder install-app-deps && node scripts/install-better-sqlite3.js"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
@@ -62,6 +55,8 @@
     "npm-run-all": "^4.1.5",
     "tailwindcss": "^4.1.4",
     "tsup": "^8.4.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "wait-on": "^8.0.3",
+    "better-sqlite3-darwin": "npm:better-sqlite3@^11.9.1"
   }
 }

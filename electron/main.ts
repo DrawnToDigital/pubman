@@ -6,51 +6,52 @@ import path, { join } from "path";
 import nodeUrl from "node:url";
 import * as process from "node:process";
 import fs from "fs/promises";
-import * as os from "node:os";
 import { existsSync } from "node:fs";
+import getBetterSqlite3 from "@/src/app/lib/betterSqlite3";
+import os from "node:os";
+const Database = getBetterSqlite3();
 
 const isProd = !process.env.NODE_ENV || process.env.NODE_ENV === "production";
-const repoPath = path.normalize(__dirname + "/..");
 const appDataPath =
   isProd
     ? app.getPath("userData") // Live Mode
-    : path.join(repoPath, "appdata"); // Dev Mode
-const dbPath = path.join(appDataPath, "db/pubman.db")
+    : path.resolve("appdata"); // Dev Mode
+const dbPath =
+  isProd
+    ? path.join(appDataPath, "db/pubman.db") // Live Mode
+    : path.resolve(appDataPath, "db/pubman.db"); // Dev Mode
+const assetsDir = path.join(appDataPath, "assets");
 const dbInitFilePath =
   isProd
-    ? path.join(appDataPath, "db/init.txt")
-    : path.join(repoPath, "db/init.txt");
-const assetsDir = path.join(appDataPath, "assets");
+    ? path.join(process.resourcesPath, "db/init.txt")
+    : path.resolve("db/init.txt"); // Dev Mode
 const sampleAssetsPath =
   isProd
-    ? path.join(appDataPath, "sample_assets")
-    : path.join(repoPath, "sample_assets");
+    ? path.join(process.resourcesPath, "sample_assets")
+    : path.resolve("sample_assets"); // Dev Mode
 
-function getBetterSqlite3() {
-  if (!isProd && os.arch() === "arm64") {
-    const modulePath = path.join(
-      __dirname,
-      `../node_modules/better-sqlite3-arm64/node_modules/better-sqlite3`
-    );
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require(modulePath);
-  }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require("better-sqlite3");
-}
+console.log("1111111");
+console.log(`node_env: ${process.env.NODE_ENV}`);
+console.log(`appDataPath: ${appDataPath}`);
+console.log(`dbPath: ${dbPath}`);
+console.log(`assetsDir: ${assetsDir}`);
+console.log(`dbInitFilePath: ${dbInitFilePath}`);
+console.log(`sampleAssetsPath: ${sampleAssetsPath}`);
 
 async function initializeAppData() {
+  console.log(`MAIN.ts ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron}  ${process?.versions?.node}`);
   if (existsSync(dbPath) && existsSync(assetsDir)) {
     return;
   }
-  const Database = getBetterSqlite3();
   try {
+    console.log(`Initializing app data dir ${appDataPath}`);
     // Ensure appDataPath and db directory exist
     const dbDir = path.dirname(dbPath);
     await fs.mkdir(dbDir, { recursive: true });
 
     // Create or open the SQLite database
     const db = new Database(dbPath);
+    console.log(`DB init script ${dbInitFilePath}`);
 
     // Read and execute SQL commands from init.txt
     const initSQL = await fs.readFile(dbInitFilePath, "utf-8");
@@ -92,7 +93,7 @@ const createWindow = () => {
   mainWindow.on("ready-to-show", () => mainWindow.show());
 
   const loadURL = async () => {
-    const maxRetries = 10; // Maximum number of retries
+    const maxRetries = 2; // Maximum number of retries
     const retryDelay = 1000; // Delay between retries in milliseconds
     let attempt = 0;
 
@@ -157,8 +158,9 @@ const startNextJSServer = async () => {
 };
 
 app.whenReady().then(() => {
-  initializeAppData();
-  createWindow();
+  initializeAppData().finally(() => {
+    createWindow();
+  });
 
   ipcMain.on("ping", () => console.log("pong"));
   ipcMain.handle("get-db-path", () => {
