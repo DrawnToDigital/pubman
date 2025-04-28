@@ -20,7 +20,7 @@ export function getDatabase() {
       dbPath = path.join(userDataPath, 'db', 'pubman.db');
     } else {
       // Local development or non-main Electron process
-      const repoRoot = path.resolve(__dirname, '../../../../..'); // adjust if needed
+      const repoRoot = process.cwd();
       dbPath = path.join(repoRoot, 'appdata', 'db', 'pubman.db');
     }
 
