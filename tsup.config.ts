@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["./main/main.ts", "./main/preload.ts"],
+  entry: ["./electron/main.ts", "./electron/preload.ts"],
   splitting: false,
   sourcemap: false,
   clean: true,
@@ -9,7 +9,7 @@ export default defineConfig({
   skipNodeModulesBundle: true,
   treeshake: true,
   outDir: "build",
-  external: ["main"],
+  external: ["electron"],
   format: ["cjs"],
   bundle: true,
 });

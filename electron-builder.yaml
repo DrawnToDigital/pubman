@@ -1,5 +1,7 @@
 asar: true
 productName: "PubMan"
+electronVersion: "35.2.1"
+buildDependenciesFromSource: true
 executableName: "PubMan"
 appId: "digital.drawnto.pubman.electron"
 copyright: "Copyright (c) 2025 DrawnToDigital"
@@ -10,15 +12,20 @@ asarUnpack:
   - "**\\*.{node,dll}"
 files:
   - build
+  - node_modules/better-sqlite3/**/*
   - from: .next/standalone
     to: app
     filter:
-      #- "!**/.env"
       - "!**/package.json"
   - from: .next/static
     to: app/.next/static
   - from: public
     to: app/public
+extraResources:
+  - from: ./db/init.txt
+    to: ./db/init.txt
+  - from: ./sample_assets
+    to: ./sample_assets
 win:
   target: ["portable"]
   icon: "resources/icon.ico"

@@ -1,0 +1,150 @@
+-- Create the license table if it doesn't exist
+CREATE TABLE IF NOT EXISTS license (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT NOT NULL,
+    name TEXT NOT NULL
+);
+
+-- Initial licenses
+INSERT OR IGNORE INTO license (key, name) VALUES
+    ('CC', 'Creative Commons'),
+    ('CC0', 'Creative Commons — Public Domain'),
+    ('CC-BY', 'Creative Commons — Attribution'),
+    ('CC-BY-SA', 'Creative Commons — Attribution — Share Alike'),
+    ('CC-BY-ND', 'Creative Commons — Attribution — NoDerivatives'),
+    ('CC-BY-NC', 'Creative Commons — Attribution — Noncommercial'),
+    ('CC-BY-NC-SA', 'Creative Commons — Attribution — Noncommercial — Share Alike'),
+    ('CC-BY-NC-ND', 'Creative Commons — Attribution — Noncommercial — NoDerivatives'),
+    ('GPL-2.0', 'GNU General Public License v2.0'),
+    ('GPL-3.0', 'GNU General Public License v3.0'),
+    ('LGPL', 'GNU Lesser General Public License'),
+    ('BSD', 'BSD License'),
+    ('SDFL', 'Standard Digital File License');
+
+-- Create the category table if it doesn't exist
+CREATE TABLE IF NOT EXISTS category (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    platform_id INTEGER NOT NULL
+);
+
+-- Initial pubman categories
+INSERT OR IGNORE INTO category (category, platform_id) VALUES
+    ('3D Printing', 1),
+    ('Art', 1),
+    ('Fashion', 1),
+    ('Gadgets', 1),
+    ('Hobby', 1),
+    ('Household', 1),
+    ('Learning', 1),
+    ('Models', 1),
+    ('Tools', 1),
+    ('Toys & Games', 1),
+    ('Other', 1);
+
+-- Initial thingiverse categories
+INSERT OR IGNORE INTO category (category, platform_id) VALUES
+    ('3D Printing', 3),
+    ('Art', 3),
+    ('Fashion', 3),
+    ('Gadgets', 3),
+    ('Hobby', 3),
+    ('Household', 3),
+    ('Learning', 3),
+    ('Models', 3),
+    ('Tools', 3),
+    ('Toys & Games', 3),
+    ('Other', 3);
+
+-- Create the design table if it doesn't exist
+CREATE TABLE IF NOT EXISTS design (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    designer_id INTEGER NOT NULL,
+    main_name TEXT NOT NULL,
+    summary TEXT,
+    description TEXT,
+    license_key TEXT NOT NULL,
+    is_ready INTEGER NOT NULL DEFAULT 0,
+    is_published INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Create the design_tag table if it doesn't exist
+CREATE TABLE IF NOT EXISTS design_tag (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    design_id INTEGER NOT NULL,
+    tag TEXT NOT NULL,
+    platform_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Create the design_category table if it doesn't exist
+CREATE TABLE IF NOT EXISTS design_category (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    design_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Create the design_platform table if it doesn't exist
+CREATE TABLE IF NOT EXISTS design_platform (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    platform_id INTEGER NOT NULL,
+    design_id INTEGER NOT NULL,
+    published_status INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    published_at TEXT DEFAULT NULL,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Create the designer table if it doesn't exist
+CREATE TABLE IF NOT EXISTS designer (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    status TEXT DEFAULT 'active',
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Insert a default designer if it doesn't exist
+INSERT OR IGNORE INTO designer (username, email, password_hash) VALUES
+    ('default', 'designer@smallbusiness.lan', '$2b$12$LP3Fcmc7AnXMozTXGCixp.rGSwt6L.z3KlN0Kc6AptBPyRz4r5Pva');
+
+-- Insert an example design associated with the default designer if it doesn't exist
+INSERT OR IGNORE INTO design (designer_id, main_name, summary, description, license_key, is_ready, is_published) VALUES
+    (1, 'Example Design', 'Short summary of the design.', 'This is a detailed description of the example design.', 'SDFL', 0, 0);
+
+-- Create the design_asset table if it doesn't exist
+CREATE TABLE IF NOT EXISTS design_asset (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    design_id INTEGER NOT NULL,
+    designer_id INTEGER NOT NULL,
+    file_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    file_ext TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Insert an example design asset associated with the example design if it doesn't exist
+INSERT OR IGNORE INTO design_asset (design_id, designer_id, file_name, file_path, file_ext) VALUES
+    (1, 1, 'example_design.stl', '/assets/example_design.stl', 'stl'),
+    (1, 1, 'example_image.png', '/assets/example_image.png', 'png');
+
+-- Insert an example design tag associated with the example design if it doesn't exist
+INSERT OR IGNORE INTO design_tag (design_id, tag, platform_id) VALUES
+    (1, 'tag1', 1),
+    (1, 'tag2', 1),
+    (1, 'tag3', 1);
+
+-- Insert an example design category associated with the example design if it doesn't exist
+INSERT OR IGNORE INTO design_category (design_id, category_id) VALUES
+    (1, 1);

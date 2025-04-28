@@ -1,10 +1,7 @@
-import { cookies } from "next/headers";
-
 export async function UserBanner() {
-    const cookieJar = await cookies();
-    const username = cookieJar.get('username')?.value;
+    const username = "default"; // TODO: get from session
     let banner = "";
-    if (username) {
+    if (username && username !== "default") {
         banner = `Hello ${username}!`;
     } else {
         banner = "Hello there!";

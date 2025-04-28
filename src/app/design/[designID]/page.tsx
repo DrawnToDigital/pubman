@@ -2,23 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Input } from "@/src/app/components/ui/input";
 import { Button } from "@/src/app/components/ui/button";
-import {fetchDesign, removeFile, uploadFile} from "@/src/app/actions/design";
-import {DesignSchema} from "@/src/app/components/design/types";
+import { fetchDesign } from "@/src/app/actions/design";
+import { addFile, removeFile } from "@/src/app/actions/file";
+import { DesignSchema } from "@/src/app/components/design/types";
 
 const DesignDetailsPage = () => {
-  const { designKey } = useParams();
+  const { designID } = useParams<{ designID: string }>();
   const [design, setDesign] = useState<DesignSchema | null>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch design details
     const fetch = async () => {
       try {
-        if (!designKey) throw new Error("Design key is required");
-        const design = await fetchDesign (designKey.toString());
+        if (!designID) throw new Error("Design ID is required");
+        const design = await fetchDesign(designID);
         setDesign(design);
       } catch (error) {
         console.error(error);
@@ -27,16 +25,27 @@ const DesignDetailsPage = () => {
     };
 
     fetch();
-  }, [designKey]);
+  }, [designID]);
 
-  const handleFileUpload = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!file || !designKey) return;
+  const handleFileAdd = async () => {
+    if (!designID) return;
 
     try {
-      await uploadFile(designKey.toString(), file);
-      setFile(null); // Clear the file input
-      const updatedDesign = await fetchDesign(designKey.toString());
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      const result = await window.electron.dialog.showOpenDialog({ properties: ['openFile'] });
+      if (result.canceled) {
+        console.log("No file selected!");
+        return;
+      }
+
+      const filePath = result.filePaths[0];
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      const appDataPath = await window.electron.getAppDataPath();
+      await addFile(filePath, appDataPath, designID);
+
+      const updatedDesign = await fetchDesign(designID.toString());
       setDesign(updatedDesign);
     } catch (error) {
       console.error(error);
@@ -44,12 +53,12 @@ const DesignDetailsPage = () => {
     }
   };
 
-  const handleFileRemove = async (fileKey: string) => {
-    if (!designKey) return;
+  const handleFileRemove = async (assetID: string) => {
+    if (!designID) return;
 
     try {
-      await removeFile(designKey.toString(), fileKey);
-      const updatedDesign = await fetchDesign(designKey.toString());
+      await removeFile(designID, assetID);
+      const updatedDesign = await fetchDesign(designID.toString());
       setDesign(updatedDesign);
     } catch (error) {
       console.error(error);
@@ -68,13 +77,13 @@ const DesignDetailsPage = () => {
       {design.assets.length > 0 ? (
         <ul>
           {design.assets.map((file) => (
-            <li key={file.asset_key} className="flex justify-between items-center">
+            <li key={file.id} className="flex justify-between items-center">
               <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-blue-500">
                 {file.file_name}
               </a>
               <Button
                 variant="destructive"
-                onClick={() => handleFileRemove(file.asset_key)}
+                onClick={() => handleFileRemove(file.id)}
               >
                 Remove
               </Button>
@@ -85,15 +94,7 @@ const DesignDetailsPage = () => {
         <p>No files uploaded yet.</p>
       )}
 
-      <form onSubmit={handleFileUpload} className="mt-4">
-        <Input
-          type="file"
-          multiple={false}
-          onChange={(e) => e.target.files && setFile(e.target.files[0])}
-          className="mb-4"
-        />
-        <Button type="submit">Upload Files</Button>
-      </form>
+      <Button onClick={handleFileAdd}>Add File</Button>
 
       {errorMessage && <div className="text-red-500 text-sm">{errorMessage}</div>}
     </div>

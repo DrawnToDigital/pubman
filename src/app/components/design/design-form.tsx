@@ -29,8 +29,8 @@ const DesignForm = () => {
     setErrorMessage(null); // Clear previous errors
     try {
       const response = await createDesign(data);
-      if (response && response.design_key) {
-        router.push(`/design/${response.design_key}`);
+      if (response && response.id) {
+        router.push(`/design/${response.id}`);
       } else {
         console.error("Unexpected response:", response);
         setErrorMessage("Failed to create design. Please try again.");

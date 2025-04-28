@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -8,10 +9,16 @@ const nextConfig: NextConfig = {
   /* config options here */
   experimental: {
     serverActions: {
-      allowedOrigins: ['http://localhost:3000', 'http://pubman.lan:3000'],
+      allowedOrigins: ['http://localhost:3000'],
       bodySizeLimit: '50mb'
     }
-  }
+  },
+  // webpack: (config, { isServer }) => {
+  //   if (isServer) {
+  //     config.resolve.alias['better-sqlite3-darwin'] = 'node_modules/better-sqlite3/build/Release/better_sqlite3.node';
+  //   }
+  //   return config;
+  // }
 };
 
 export default nextConfig;

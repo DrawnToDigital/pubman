@@ -9,25 +9,27 @@
   "scripts": {
     "next:dev": "next dev",
     "next:build": "next build",
-    "next:start": "next start",
-    "next:lint": "next lint",
     "format": "dprint fmt",
-    "postinstall": "electron-builder install-app-deps",
     "electron:dist": "electron-builder --dir",
     "electron:dist:deb": "electron-builder --linux deb",
     "electron:build": "tsup",
     "build": "run-s next:build electron:build",
     "dist": "run-s next:build electron:dist",
-    "dev": "npm-run-all --parallel electron:dev next:dev",
+    "dev": "export NODE_ENV=development && npm-run-all --parallel electron:dev next:dev",
     "electron:build_watch": "tsup --watch",
     "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
-    "electron:watch": "cross-env NODE_ENV='development' nodemon"
+    "electron:watch": "wait-on http://localhost:3000 && nodemon --watch build/main.js --exec 'electron .'",
+    "postinstall": "run-s postinstall:appdeps postinstall:dev postinstall:darwin",
+    "postinstall:appdeps": "npx electron-builder install-app-deps",
+    "postinstall:dev": "npm rebuild better-sqlite3",
+    "postinstall:darwin": "npx electron-rebuild -f -o better-sqlite3-darwin --runtime=darwin --arch=arm64 --build-from-source"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-label": "^2.1.4",
     "@radix-ui/react-slot": "^1.2.0",
+    "better-sqlite3": "^11.9.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "electron-serve": "^2.1.1",
@@ -44,9 +46,11 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.1.4",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.17.30",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "better-sqlite3-darwin": "npm:better-sqlite3@^11.9.1",
     "cross-env": "^7.0.3",
     "electron": "^35.2.1",
     "electron-builder": "^26.0.12",
@@ -56,6 +60,7 @@
     "npm-run-all": "^4.1.5",
     "tailwindcss": "^4.1.4",
     "tsup": "^8.4.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "wait-on": "^8.0.3"
   }
 }
