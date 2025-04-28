@@ -19,7 +19,10 @@
     "electron:build_watch": "tsup --watch",
     "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
     "electron:watch": "wait-on http://localhost:3000 && nodemon --watch build/main.js --exec 'electron .'",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "run-s postinstall:appdeps postinstall:dev postinstall:darwin",
+    "postinstall:appdeps": "npx electron-builder install-app-deps",
+    "postinstall:dev": "npm rebuild better-sqlite3",
+    "postinstall:darwin": "npx electron-rebuild -f -o better-sqlite3-darwin --runtime=darwin --arch=arm64 --build-from-source"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
