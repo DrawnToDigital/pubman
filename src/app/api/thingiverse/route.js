@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ThingiverseAPI } from './lib';
+import { ThingiverseAPI } from './thingiverse-lib';
 
 export async function GET(request) {
   try {
@@ -22,24 +22,6 @@ export async function GET(request) {
     }
   } catch (error) {
     console.error('Thingiverse API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-export async function POST(request) {
-  try {
-    const accessToken = request.headers.get('x-thingiverse-token');
-    if (!accessToken) {
-      return NextResponse.json({ error: 'Missing Thingiverse access token' }, { status: 401 });
-    }
-
-    const api = new ThingiverseAPI(accessToken);
-    const thingData = await request.json();
-
-    const newThing = await api.createThing(thingData);
-    return NextResponse.json(newThing, { status: 201 });
-  } catch (error) {
-    console.error('Failed to create Thingiverse thing:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

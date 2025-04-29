@@ -1,7 +1,7 @@
 import { GET, POST } from './route';
-import { ThingiverseAPI } from '../../lib';
+import { ThingiverseAPI } from '../../thingiverse-lib';
 
-jest.mock('../../lib', () => ({
+jest.mock('../../thingiverse-lib', () => ({
   ThingiverseAPI: jest.fn().mockImplementation(() => ({
     getFilesForThing: jest.fn(),
     uploadFile: jest.fn(),

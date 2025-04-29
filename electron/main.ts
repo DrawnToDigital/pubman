@@ -78,8 +78,8 @@ async function initializeAppData() {
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
     title: "PubMan",
-    width: 900,
-    height: 670,
+    width: 1350,
+    height: 1005,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       nodeIntegration: true,

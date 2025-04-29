@@ -1,8 +1,8 @@
 // In src/app/api/thingiverse/[thingId]/thingId-PATCH.test.js
 import { PATCH } from './route';  // Fix the import path
-import { ThingiverseAPI } from '../lib';
+import { ThingiverseAPI } from '../thingiverse-lib';
 
-jest.mock('../lib', () => ({
+jest.mock('../thingiverse-lib', () => ({
   ThingiverseAPI: jest.fn().mockImplementation(() => ({
     updateThing: jest.fn(),
   })),

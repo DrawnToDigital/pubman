@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { ThingiverseAPI } from '../../lib';
+import { ThingiverseAPI } from '../../thingiverse-lib';
 
 export async function POST(request, { params }) {
   try {
-    const { thingId } = params;
+    const { thingId } = await params;
     const accessToken = request.headers.get('x-thingiverse-token');
     if (!accessToken) {
       return NextResponse.json({ error: 'Missing Thingiverse access token' }, { status: 401 });

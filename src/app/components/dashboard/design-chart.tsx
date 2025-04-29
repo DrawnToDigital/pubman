@@ -1,25 +1,44 @@
-'use server';
+'use client';
 
+import {useEffect, useState} from 'react';
 import { designSchema, DesignSchema } from "@/src/app/components/design/types";
 import Link from "next/link";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+export default function DesignsChart() {
+  const [designs, setDesigns] = useState<DesignSchema[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export default async function DesignsChart() {
-  let designs: DesignSchema[] = [];
-  try {
-    const response = await fetch(`${API_URL}/api/design`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Failed to fetch designs");
+  useEffect(() => {
+    async function fetchDesigns() {
+      try {
+        const response = await fetch(`/api/design`, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch designs");
+        }
+        const data = await response.json();
+        setDesigns(designSchema.array().parse(data));
+        setLoading(false);
+      } catch (error) {
+        console.error(error);
+        setError("Failed to load designs.");
+        setLoading(false);
+      }
     }
-    designs = designSchema.array().parse(await response.json());
-  } catch (error) {
-    console.error(error);
-    return <p className="mt-4 text-gray-400">Failed to load designs.</p>;
+
+    fetchDesigns();
+  }, []);
+
+  if (loading) {
+    return <p className="mt-4 text-gray-400">Loading designs...</p>;
+  }
+
+  if (error) {
+    return <p className="mt-4 text-gray-400">{error}</p>;
   }
 
   if (!designs || designs.length === 0) {

@@ -1,13 +1,13 @@
-import { POST } from './route';
-import { ThingiverseAPI } from './lib';
+import { POST } from 'route';
+import { ThingiverseAPI } from '../thingiverse-lib';
 
-jest.mock('./lib', () => ({
+jest.mock('../thingiverse-lib', () => ({
   ThingiverseAPI: jest.fn().mockImplementation(() => ({
     createThing: jest.fn(),
   })),
 }));
 
-describe('POST /api/thingiverse', () => {
+describe('POST /api/thingiverse/things', () => {
   it('should return 201 and create a new thing successfully', async () => {
     const mockCreateThing = jest.fn().mockResolvedValue({ id: 1, name: 'New Thing' });
     ThingiverseAPI.mockImplementation(() => ({ createThing: mockCreateThing }));

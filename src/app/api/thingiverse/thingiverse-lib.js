@@ -1,5 +1,3 @@
-import { FormData } from 'formdata-node';
-
 export class ThingiverseAPI {
   constructor(accessToken = '') {
     this.baseUrl = 'https://www.thingiverse.com';
