@@ -21,7 +21,7 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
-    const { thingId } = await await params;
+    const { thingId } = await params;
     const accessToken = request.headers.get('x-thingiverse-token');
     if (!accessToken) {
       return NextResponse.json({ error: 'Missing Thingiverse access token' }, { status: 401 });
