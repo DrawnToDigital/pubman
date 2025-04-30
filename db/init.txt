@@ -1,3 +1,19 @@
+-- Create platform table
+CREATE TABLE IF NOT EXISTS platform (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    api_endpoint TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert platforms if they don't exist (including Thingiverse)
+INSERT OR IGNORE INTO platform (id, name, description, api_endpoint) VALUES
+    (1, 'PubMan', 'PubMan Local Platform', 'http://pubman.lan'),
+    (2, 'Dummy', 'Dummy Platform', 'https://pubman-dummy.lan'),
+    (3, 'Thingiverse', 'Thingiverse Platform', 'https://api.thingiverse.com');
+
 -- Create the license table if it doesn't exist
 CREATE TABLE IF NOT EXISTS license (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,3 +164,32 @@ INSERT OR IGNORE INTO design_tag (design_id, tag, platform_id) VALUES
 -- Insert an example design category associated with the example design if it doesn't exist
 INSERT OR IGNORE INTO design_category (design_id, category_id) VALUES
     (1, 1);
+
+-- Create the auth_tokens table if it doesn't exist
+CREATE TABLE IF NOT EXISTS auth_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider TEXT NOT NULL,
+    token TEXT NOT NULL,
+    designer_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(provider, designer_id)
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_provider ON auth_tokens(provider);
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_designer_id ON auth_tokens(designer_id);
+
+-- Create designer_platform table to link designers with platform accounts
+CREATE TABLE IF NOT EXISTS designer_platform (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    designer_id INTEGER NOT NULL,
+    platform_id INTEGER NOT NULL,
+    platform_username TEXT,
+    platform_user_id TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(designer_id, platform_id),
+    FOREIGN KEY(designer_id) REFERENCES designer(id),
+    FOREIGN KEY(platform_id) REFERENCES platform(id)
+);
