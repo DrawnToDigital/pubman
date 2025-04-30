@@ -1,4 +1,4 @@
-import { POST } from 'route';
+import { POST } from './route';
 import { ThingiverseAPI } from '../thingiverse-lib';
 
 jest.mock('../thingiverse-lib', () => ({

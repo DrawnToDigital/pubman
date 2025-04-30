@@ -54,7 +54,7 @@ export interface ThingiverseThing {
   ancestors_url?: string;
   derivatives_url?: string;
   tags_url?: string;
-  tags?: Array<any>;
+  tags?: Array<{name?: string, url?: string, count?: number, things_url?: string, absolute_url?: string}>;
   categories_url?: string;
   file_count?: number;
   is_purchased?: number;

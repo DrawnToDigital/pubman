@@ -8,8 +8,63 @@ jest.mock('../../thingiverse-lib', () => ({
   })),
 }));
 
+
 describe('GET /api/thingiverse/[thingId]/files', () => {
-  // GET tests remain unchanged
+  it('should return 200 and the list of files', async () => {
+    const mockGetFilesForThing = jest.fn().mockResolvedValue([
+      { id: 1, name: 'file1.stl' },
+      { id: 2, name: 'file2.stl' }
+    ]);
+    ThingiverseAPI.mockImplementation(() => ({ getFilesForThing: mockGetFilesForThing }));
+
+    const request = {
+      headers: {
+        get: jest.fn().mockReturnValue('mock-access-token'),
+      }
+    };
+
+    const response = await GET(request, { params: { thingId: '12345' } });
+
+    expect(mockGetFilesForThing).toHaveBeenCalledWith('12345');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([
+      { id: 1, name: 'file1.stl' },
+      { id: 2, name: 'file2.stl' }
+    ]);
+  });
+
+  it('should return 401 if access token is missing', async () => {
+    const request = {
+      headers: {
+        get: jest.fn().mockReturnValue(null),
+      }
+    };
+
+    const response = await GET(request, { params: { thingId: '12345' } });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: 'Missing Thingiverse access token' });
+  });
+
+  it('should return 500 on internal server error', async () => {
+    const mockGetFilesForThing = jest.fn().mockRejectedValue(new Error('Internal error'));
+    ThingiverseAPI.mockImplementation(() => ({ getFilesForThing: mockGetFilesForThing }));
+
+    const request = {
+      headers: {
+        get: jest.fn().mockReturnValue('mock-access-token'),
+      }
+    };
+
+    const response = await GET(request, { params: { thingId: '12345' } });
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: 'Internal server error' });
+    expect(console.error).toHaveBeenCalledWith(
+      'Failed to get Thingiverse files:',
+      expect.any(Error)
+    );
+  });
 });
 
 describe('POST /api/thingiverse/[thingId]/files', () => {
@@ -51,6 +106,7 @@ describe('POST /api/thingiverse/[thingId]/files', () => {
   it('should return 400 if no file is provided', async () => {
     // Fix this test to properly simulate a missing file
     const mockFormData = {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       get: jest.fn((key) => null) // Return null for any key including 'file'
     };
 

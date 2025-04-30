@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import {z} from "zod";
 import { getDatabase } from "../../../../lib/betterSqlite3";
 
-import os from "node:os";
-console.log(`ROUTE.js ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron} ${process?.versions?.node}`);
+// import os from "node:os";
+// console.log(`ROUTE.js ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron} ${process?.versions?.node}`);
 
 export async function GET(request, context) {
   const { designID } = await context.params; // Await params
