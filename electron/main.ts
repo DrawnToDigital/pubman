@@ -30,14 +30,6 @@ const sampleAssetsPath =
     ? path.join(process.resourcesPath, "sample_assets")
     : path.resolve("sample_assets"); // Dev Mode
 
-// console.log("Main.ts");
-// console.log(`node_env: ${process.env.NODE_ENV}`);
-// console.log(`appDataPath: ${appDataPath}`);
-// console.log(`dbPath: ${dbPath}`);
-// console.log(`assetsDir: ${assetsDir}`);
-// console.log(`dbInitFilePath: ${dbInitFilePath}`);
-// console.log(`sampleAssetsPath: ${sampleAssetsPath}`);
-
 async function initializeAppData() {
   console.log(`MAIN.ts ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron}  ${process?.versions?.node}`);
   if (existsSync(dbPath) && existsSync(assetsDir)) {
@@ -83,6 +75,7 @@ const createWindow = () => {
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       nodeIntegration: true,
+      contextIsolation: false,
     },
   });
 

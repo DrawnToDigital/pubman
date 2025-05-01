@@ -10,7 +10,7 @@
     "next:dev": "next dev",
     "next:build": "next build",
     "format": "dprint fmt",
-    "electron:dist": "electron-builder --dir",
+    "electron:dist": "electron-builder --mac",
     "electron:dist:deb": "electron-builder --linux deb",
     "electron:build": "tsup",
     "build": "run-s next:build electron:build",

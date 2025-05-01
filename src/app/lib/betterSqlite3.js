@@ -1,10 +1,6 @@
 import path from "node:path";
 
 export default function getBetterSqlite3() {
-  if (process.platform === "darwin" && process.arch === 'arm64') {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('better-sqlite3-darwin');
-  }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return require('better-sqlite3');
 }
@@ -12,14 +8,12 @@ export default function getBetterSqlite3() {
 export function getDatabase() {
   let dbPath = "";
   try {
-    const appGetPath = () => "appdata";
-
-    if (appGetPath && process.env.NODE_ENV === 'production') {
-      // Production in Electron
-      const userDataPath = appGetPath('userData');
+    if (process.env.NEXT_PUBLIC_APP_DATA_PATH) {
+      console.log("getDatabase using process.env.NEXT_PUBLIC_APP_DATA_PATH");
+      const userDataPath = process.env.NEXT_PUBLIC_APP_DATA_PATH;
       dbPath = path.join(userDataPath, 'db', 'pubman.db');
     } else {
-      // Local development or non-main Electron process
+      console.log("getDatabase using process.cwd()");
       const repoRoot = process.cwd();
       dbPath = path.join(repoRoot, 'appdata', 'db', 'pubman.db');
     }
@@ -32,9 +26,8 @@ export function getDatabase() {
     const Database = getBetterSqlite3();
     const options = {
       verbose: console.log,
-      nativeBinding: path.resolve('node_modules/better-sqlite3/build/Release/better_sqlite3.node')
     }
-    if (process.platform === "darwin" && process.arch === 'arm64') {
+    if (process.env.NODE_ENV === "development" && process.platform === "darwin" && process.arch === 'arm64') {
       options.nativeBinding = path.resolve('node_modules/better-sqlite3-darwin/build/Release/better_sqlite3.node');
     }
     return new Database(dbPath, options);

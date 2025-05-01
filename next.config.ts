@@ -1,24 +1,27 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
   output: "standalone",
   images: {
     unoptimized: true
   },
+  eslint: {
+    ignoreDuringBuilds: true
+  },
   /* config options here */
   experimental: {
     serverActions: {
-      allowedOrigins: ['http://localhost:3000'],
       bodySizeLimit: '50mb'
-    }
+    },
   },
-  // webpack: (config, { isServer }) => {
-  //   if (isServer) {
-  //     config.resolve.alias['better-sqlite3-darwin'] = 'node_modules/better-sqlite3/build/Release/better_sqlite3.node';
-  //   }
-  //   return config;
-  // }
+  webpack: (config, { isServer, dev }) => {
+    if (isServer && dev) {
+      if (process.platform === "darwin" && process.arch === 'arm64') {
+        config.resolve.alias['better-sqlite3'] = 'better-sqlite3-darwin';
+      }
+    }
+    return config;
+  }
 };
 
 export default nextConfig;
