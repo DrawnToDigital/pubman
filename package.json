@@ -14,7 +14,7 @@
     "electron:dist:deb": "electron-builder --linux deb",
     "electron:build": "tsup",
     "build": "run-s next:build electron:build",
-    "dist": "run-s next:build electron:dist",
+    "dist": "run-s next:build electron:build electron:dist",
     "dev": "export NODE_ENV=development && npm-run-all --parallel electron:dev next:dev",
     "electron:build_watch": "tsup --watch",
     "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",

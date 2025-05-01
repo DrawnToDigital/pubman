@@ -75,7 +75,6 @@ const createWindow = () => {
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       nodeIntegration: true,
-      contextIsolation: false,
     },
   });
 
@@ -171,8 +170,7 @@ app.whenReady().then(() => {
   protocol.handle("local", async (req) => {
     try {
       const reqURL = new URL(req.url);
-      let filePath = path.normalize(reqURL.pathname);
-      console.log(filePath, assetsDir)
+      let filePath = path.normalize(decodeURI(reqURL.pathname));
       if (filePath.startsWith("/assets/")){
         filePath = path.join(assetsDir, "..", filePath);
       }
