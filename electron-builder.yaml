@@ -35,13 +35,14 @@ linux:
 mac:
   target:
     - target: dmg
-      arch: arm64
-#      arch: universal
-  identity: null  # Skip code signing
+      arch: [arm64, x64]
   mergeASARs: false
   icon: "./public/icons/icon.icns"
-  hardenedRuntime: false
+  hardenedRuntime: true
   gatekeeperAssess: false
+  category: "public.app-category.utilities"
+  entitlements: "entitlements.mac.plist"
+  entitlementsInherit: "entitlements.mac.plist"
 dmg:
   icon: "./public/icons/icon.icns"
   writeUpdateInfo: false
