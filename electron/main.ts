@@ -30,14 +30,6 @@ const sampleAssetsPath =
     ? path.join(process.resourcesPath, "sample_assets")
     : path.resolve("sample_assets"); // Dev Mode
 
-// console.log("Main.ts");
-// console.log(`node_env: ${process.env.NODE_ENV}`);
-// console.log(`appDataPath: ${appDataPath}`);
-// console.log(`dbPath: ${dbPath}`);
-// console.log(`assetsDir: ${assetsDir}`);
-// console.log(`dbInitFilePath: ${dbInitFilePath}`);
-// console.log(`sampleAssetsPath: ${sampleAssetsPath}`);
-
 async function initializeAppData() {
   console.log(`MAIN.ts ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron}  ${process?.versions?.node}`);
   if (existsSync(dbPath) && existsSync(assetsDir)) {
@@ -178,8 +170,7 @@ app.whenReady().then(() => {
   protocol.handle("local", async (req) => {
     try {
       const reqURL = new URL(req.url);
-      let filePath = path.normalize(reqURL.pathname);
-      console.log(filePath, assetsDir)
+      let filePath = path.normalize(decodeURI(reqURL.pathname));
       if (filePath.startsWith("/assets/")){
         filePath = path.join(assetsDir, "..", filePath);
       }
