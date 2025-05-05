@@ -57,6 +57,16 @@ export const designSchema = z.object({
             created_at: z.string().datetime({ offset: false }),
         }),
     ),
+    platforms: z.array(
+        z.object({
+            platform: platforms,
+            platform_design_id: z.string().nullable(),
+            published_status: z.number(),
+            created_at: z.string().datetime({ offset: false }),
+            updated_at: z.string().datetime({ offset: false }),
+            published_at: z.string().datetime({ offset: false }).nullable(),
+        }),
+    ),
 })
 
 export type DesignSchema = z.infer<typeof designSchema>

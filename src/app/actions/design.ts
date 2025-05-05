@@ -1,6 +1,6 @@
 'use server';
 
-import { DesignCreateSchema } from "@/src/app/components/design/types";
+import {DesignCreateSchema, designSchema} from "@/src/app/components/design/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -50,7 +50,7 @@ export async function fetchDesign(designID: string) {
       throw new Error("Failed to fetch design");
     }
 
-    return await response.json();
+    return designSchema.parse(await response.json());
   } catch (error) {
     console.error(error);
     throw new Error("Error fetching design");

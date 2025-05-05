@@ -1,5 +1,5 @@
 import { is } from "@electron-toolkit/utils";
-import { app, BrowserWindow, ipcMain, dialog, protocol, net } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, protocol, net, shell } from "electron";
 import { getPort } from "get-port-please";
 import { startServer } from "next/dist/server/lib/start-server";
 import path, { join } from "path";
@@ -76,6 +76,13 @@ const createWindow = () => {
       preload: join(__dirname, "preload.js"),
       nodeIntegration: true,
     },
+  });
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.includes("localhost")) {
+      return { action: "allow" };
+    }
+    shell.openExternal(url);
+    return { action: 'deny' };
   });
 
   mainWindow.on('page-title-updated', function(e) {

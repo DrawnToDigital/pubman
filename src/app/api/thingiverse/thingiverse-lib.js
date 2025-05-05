@@ -1,3 +1,21 @@
+export const defaultThingiverseLicense = 'cc-nc-nd';
+export const licenseToThingiverseMap = {
+  'CC': 'cc',
+  'CC0': 'pd0',
+  'CC-BY': 'cc',
+  'CC-BY-SA': 'cc-sa',
+  'CC-BY-ND': 'cc-nd',
+  'CC-BY-NC': 'cc-nc',
+  'CC-BY-NC-SA': 'cc-nc-sa',
+  'CC-BY-NC-ND': 'cc-nc-nd',
+  'GPL-2.0': 'gpl',
+  'GPL-3.0': 'gpl',
+  'LGPL': 'lgpl',
+  'BSD': 'bsd',
+  // Default to standard Creative Commons license for unknown types
+  'SDFL': defaultThingiverseLicense
+};
+
 export class ThingiverseAPI {
   constructor(accessToken = '') {
     this.baseUrl = 'https://www.thingiverse.com';
@@ -23,7 +41,7 @@ export class ThingiverseAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Thingiverse API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Thingiverse API error: ${url} ${JSON.stringify(options)} ${response.status} ${response.statusText}`);
     }
 
     return response.json();
@@ -85,7 +103,7 @@ export class ThingiverseAPI {
       description: thing.description,
       instructions: thing.instructions,
       is_wip: thing.is_wip,
-      license: thing.license,
+      license: licenseToThingiverseMap[thing.license] || defaultThingiverseLicense,
     };
 
     return this.fetch(url, {
@@ -96,6 +114,9 @@ export class ThingiverseAPI {
 
   async updateThing(thingId, updates) {
     const url = `${this.apiUrl}/things/${thingId}`;
+    if ('license' in updates) {
+      updates.license = licenseToThingiverseMap[updates.license] || defaultThingiverseLicense;
+    }
     return this.fetch(url, {
       method: 'PATCH',
       body: JSON.stringify(updates),
@@ -110,6 +131,25 @@ export class ThingiverseAPI {
   async getFilesForThing(thingId) {
     const url = `${this.apiUrl}/things/${thingId}/files`;
     return this.fetch(url);
+  }
+
+  async deleteFile(thingId, fileId) {
+    const url = `${this.apiUrl}/things/${thingId}/files/${fileId}`;
+    return this.fetch(url, {
+      method: 'DELETE',
+    });
+  }
+
+  async getImagesForThing(thingId) {
+    const url = `${this.apiUrl}/things/${thingId}/images`;
+    return this.fetch(url);
+  }
+
+  async deleteImage(thingId, imageId) {
+    const url = `${this.apiUrl}/things/${thingId}/images/${imageId}`;
+    return this.fetch(url, {
+      method: 'DELETE',
+    });
   }
 
   async uploadFile(thingId, fileName, fileBuffer) {
@@ -129,6 +169,7 @@ export class ThingiverseAPI {
     }
     formData.append('file', new Blob([fileBuffer]));
 
+    // note: fetch without any auth or special headers
     const uploadResponse = await fetch(prepareResponse.action, {
       method: 'POST',
       body: formData,
@@ -139,19 +180,10 @@ export class ThingiverseAPI {
     }
 
     // Step 3: Finalize the upload
-    const finalizeResponse = await fetch(prepareResponse.fields.success_action_redirect, {
+    return await this.fetch(prepareResponse.fields.success_action_redirect, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
       body: new URLSearchParams(prepareResponse.fields),
     });
-
-    if (!finalizeResponse.ok) {
-      throw new Error(`File finalization error: ${finalizeResponse.status} ${finalizeResponse.statusText}`);
-    }
-
-    return finalizeResponse.json();
   }
 
   async publishThing(thingId) {

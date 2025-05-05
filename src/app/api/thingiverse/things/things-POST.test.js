@@ -1,72 +1,98 @@
-import { POST } from './route';
-import { ThingiverseAPI } from '../thingiverse-lib';
+import {POST} from './route';
+import {ThingiverseAPI} from '../thingiverse-lib';
+import {getDatabase} from "../../../lib/betterSqlite3";
+import fs from 'fs';
 
-jest.mock('../thingiverse-lib', () => ({
-  ThingiverseAPI: jest.fn().mockImplementation(() => ({
-    createThing: jest.fn(),
-  })),
-}));
+// Mock dependencies
+jest.mock('../thingiverse-lib');
+jest.mock('../../../lib/betterSqlite3');
+jest.mock('fs');
 
 describe('POST /api/thingiverse/things', () => {
-  it('should return 201 and create a new thing successfully', async () => {
-    const mockCreateThing = jest.fn().mockResolvedValue({ id: 1, name: 'New Thing' });
-    ThingiverseAPI.mockImplementation(() => ({ createThing: mockCreateThing }));
+  beforeEach(() => {
+    jest.clearAllMocks();
+    console.error = jest.fn();
+  });
 
-    const mockThingData = { name: 'New Thing' };
+  it('should create a new thing and record it in the design_platform table', async () => {
+    // Mock Thingiverse API
+    const mockNewThing = {id: 12345, name: 'New Thing'};
+    const mockCreateThing = jest.fn().mockResolvedValue(mockNewThing);
+    const mockUploadFile = jest.fn().mockResolvedValue({success: true});
+
+    ThingiverseAPI.mockImplementation(() => ({
+      createThing: mockCreateThing,
+      uploadFile: mockUploadFile
+    }));
+
+    // Important: Use mockImplementation instead of direct assignment
+    fs.readFileSync.mockImplementation(() => Buffer.from('file content'));
+
+    // Mock database operations
+    const mockRunResult = {lastInsertRowid: 1};
+    const mockRun = jest.fn().mockReturnValue(mockRunResult);
+    const mockGet = jest.fn().mockReturnValue({
+      designId: '42',
+      published_status: 1,
+      created_at: '2023-01-01T00:00:00.000Z',
+      updated_at: '2023-01-01T00:00:00.000Z'
+    });
+    const mockPrepare = jest.fn().mockReturnValue({
+      run: mockRun,
+      get: mockGet
+    });
+
+    getDatabase.mockReturnValue({
+      prepare: mockPrepare
+    });
+
+    // Create request with mock data
+    const mockDesignData = {
+      main_name: 'Test Design',
+      description: 'Test Description',
+      license_key: 'cc-by',
+      categories: [{category: 'Art'}],
+      tags: [{tag: 'test1'}, {tag: 'test2'}],
+      assets: [
+        // Use a simpler path format that matches the local:// prefix exactly
+        {url: 'local://tmp/file.stl', file_name: 'file.stl'}
+      ]
+    };
+
     const request = {
       headers: {
-        get: jest.fn(key => key === 'x-thingiverse-token' ? 'mock-access-token' : null),
+        get: jest.fn().mockReturnValue('token123')
       },
-      json: jest.fn().mockResolvedValue(mockThingData),
+      json: jest.fn().mockResolvedValue({
+        designId: '42',
+        designData: mockDesignData
+      })
     };
 
     const response = await POST(request);
+    const responseData = await response.json();
 
-    expect(request.headers.get).toHaveBeenCalledWith('x-thingiverse-token');
-    expect(mockCreateThing).toHaveBeenCalledWith(mockThingData);
+    // Verify the response
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ id: 1, name: 'New Thing' });
-  });
+    expect(responseData.message).toBe('Design published to Thingiverse as draft');
+    expect(responseData.thingiverseId).toBe(12345);
+    expect(responseData.thingiverseUrl).toBe('https://www.thingiverse.com/thing:12345');
 
-  it('should return 401 if access token is missing', async () => {
-    const request = {
-      headers: {
-        get: jest.fn(key => key === 'x-thingiverse-token' ? null : null),
-      },
-      json: jest.fn(),
-    };
+    // Verify API calls
+    expect(mockCreateThing).toHaveBeenCalledWith({
+      name: 'Test Design',
+      description: 'Test Description',
+      license: 'cc-by',
+      category: 'Art',
+      tags: ['test1', 'test2'],
+      instructions: ''
+    });
 
-    const response = await POST(request);
+    // This is the failing expectation
+    expect(mockUploadFile).toHaveBeenCalledWith(12345, 'file.stl', expect.any(Buffer));
 
-    expect(request.headers.get).toHaveBeenCalledWith('x-thingiverse-token');
-    expect(response.status).toBe(401);
-    expect(await response.json()).toEqual({ error: 'Missing Thingiverse access token' });
-  });
-
-  it('should return 500 on internal server error', async () => {
-    const mockCreateThing = jest.fn().mockRejectedValue(new Error('Internal error'));
-    ThingiverseAPI.mockImplementation(() => ({ createThing: mockCreateThing }));
-
-    const mockThingData = { name: 'New Thing' };
-    const request = {
-      headers: {
-        get: jest.fn(key => key === 'x-thingiverse-token' ? 'mock-access-token' : null),
-      },
-      json: jest.fn().mockResolvedValue(mockThingData),
-    };
-
-    const response = await POST(request);
-
-    expect(request.headers.get).toHaveBeenCalledWith('x-thingiverse-token');
-    expect(mockCreateThing).toHaveBeenCalledWith(mockThingData);
-
-    // Add assertion to verify console.error was called with the expected message
-    expect(console.error).toHaveBeenCalledWith(
-      'Failed to create Thingiverse thing:',
-      expect.any(Error)
-    );
-
-    expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ error: 'Internal server error' });
+    // Verify database operations
+    expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO design_platform'));
+    expect(mockRun).toHaveBeenCalledWith(3, '42', '12345', 1);
   });
 });

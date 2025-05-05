@@ -19,7 +19,7 @@ let restoreConsole;
 
 // Mock console.error and console.warn before all tests
 beforeAll(() => {
-  restoreConsole = mockConsole(['error', 'warn']);
+  restoreConsole = mockConsole(['error', 'warn', 'log']);
 });
 
 // Clear all mocks before each test globally

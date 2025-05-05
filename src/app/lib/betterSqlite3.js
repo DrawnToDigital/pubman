@@ -1,6 +1,10 @@
 import path from "node:path";
 
 export default function getBetterSqlite3() {
+  if (process.env.NODE_ENV !== "production" && process.platform === "darwin" && process.arch === 'arm64') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('better-sqlite3-darwin');
+  }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return require('better-sqlite3');
 }

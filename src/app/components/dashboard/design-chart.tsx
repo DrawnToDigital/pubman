@@ -4,6 +4,29 @@ import {useEffect, useState} from 'react';
 import { designSchema, DesignSchema } from "@/src/app/components/design/types";
 import Link from "next/link";
 
+// Helper to render publishing status with appropriate styling
+function PublishStatus({ status }: { status: number }) {
+  let statusText = "Not Published";
+  let bgColor = "bg-gray-200";
+  let textColor = "text-gray-700";
+
+  if (status === 1) {
+    statusText = "Draft";
+    bgColor = "bg-yellow-100";
+    textColor = "text-yellow-800";
+  } else if (status === 2) {
+    statusText = "Published";
+    bgColor = "bg-green-100";
+    textColor = "text-green-800";
+  }
+
+  return (
+    <span className={`${bgColor} ${textColor} text-xs px-2 py-1 rounded-full font-medium`}>
+      {statusText}
+    </span>
+  );
+}
+
 export default function DesignsChart() {
   const [designs, setDesigns] = useState<DesignSchema[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +84,45 @@ export default function DesignsChart() {
               {design.id}
               </Link>)</h2>
             <p className="text-sm text-gray-600">{design.summary}</p>
-            <p className="text-sm text-gray-600">{design.description}</p>
+
+            {/* Platform Publishing Status */}
+            <div className="mt-3 mb-3">
+              <h3 className="text-sm font-semibold mb-1">Publishing Status:</h3>
+              <div className="flex flex-col gap-1">
+                {design.platforms && design.platforms.length > 0 ? (
+                  design.platforms.map((platform) => (
+                    <div key={platform.platform} className="flex justify-between items-center">
+                      <span className="text-xs font-medium">{
+                        platform.platform === "PUBMAN"
+                          ? "Pubman"
+                          : platform.platform === "DUMMY"
+                          ? "Dummy"
+                          : platform.platform === "THINGIVERSE"
+                          ? "Thingiverse"
+                          : platform.platform
+                      }:</span>
+                      <div className="flex items-center gap-2">
+                        <PublishStatus status={platform.published_status} />
+                        {platform.platform_design_id && platform.published_status > 0 && (
+                          <Link
+                            href={platform.platform === "THINGIVERSE"
+                              ? `https://www.thingiverse.com/thing:${platform.platform_design_id}`
+                              : `#`}
+                            target="_blank"
+                            className="text-xs text-blue-500 hover:underline"
+                          >
+                            View
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-xs text-gray-500">Not published on any platform</span>
+                )}
+              </div>
+            </div>
+
             <p className="text-sm text-gray-600">
               Tags:{" "}
               {pubmanTags.map((tag) => (

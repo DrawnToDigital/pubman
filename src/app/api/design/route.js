@@ -67,6 +67,18 @@ export async function GET(request) {
         )
         .all(design.id);
 
+      // Fetch platform publishing information
+      const platforms = db
+        .prepare(
+          `SELECT platform_id, platform_design_id, published_status,
+                  strftime('%Y-%m-%dT%H:%M:%fZ', created_at) as created_at,
+                  strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) as updated_at,
+                  strftime('%Y-%m-%dT%H:%M:%fZ', published_at) as published_at
+           FROM design_platform
+           WHERE design_id = ? AND deleted_at IS NULL`
+        )
+        .all(design.id);
+
       return {
         id: design.id.toString(),
         main_name: design.main_name,
@@ -91,6 +103,14 @@ export async function GET(request) {
           file_ext: asset.file_ext,
           url: `local://${asset.file_path}`,
           created_at: asset.created_at,
+        })),
+        platforms: platforms.map((platform) => ({
+          platform: platformMap[platform.platform_id] || 'UNKNOWN',
+          platform_design_id: platform.platform_design_id,
+          published_status: platform.published_status,
+          created_at: platform.created_at,
+          updated_at: platform.updated_at,
+          published_at: platform.published_at,
         })),
       };
     });

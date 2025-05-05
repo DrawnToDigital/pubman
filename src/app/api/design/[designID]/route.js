@@ -1,90 +1,116 @@
-import { NextResponse } from 'next/server';
-import { getDatabase } from "../../../lib/betterSqlite3";
+import {NextResponse} from 'next/server';
+import {getDatabase} from "../../../lib/betterSqlite3";
 
 // TODO: Move this to a shared location
+// Map platform IDs to readable names
 const platformMap = {
   1: 'PUBMAN',
   2: 'DUMMY',
   3: 'THINGIVERSE'
 }
 
-export async function GET(request, context) {
-  const { designID } = await context.params; // Await params
-  const db = getDatabase();
+export async function GET(request, {params}) {
+  try {
+    const {designID} = await params;
+    const db = getDatabase();
 
-  const username = request.headers.get('x-username') || 'default';
+    // Fetch the basic design information
+    const design = db.prepare(`
+        SELECT id,
+               designer_id,
+               main_name,
+               summary,
+               description,
+               license_key,
+               is_ready,
+               is_published,
+               strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at,
+               strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) AS updated_at
+        FROM design
+        WHERE id = ?
+          AND deleted_at IS NULL
+    `).get(designID);
 
-  const designer = db.prepare(`
-    SELECT * FROM designer
-    WHERE username = ? AND deleted_at IS NULL AND status = 'active'
-  `).get(username);
+    if (!design) {
+      return NextResponse.json({error: 'Design not found'}, {status: 404});
+    }
 
-  if (!designer) {
-    return NextResponse.json({ error: 'Designer not found' }, { status: 404 });
+    // Fetch tags
+    const tags = db.prepare(`
+        SELECT tag, platform_id
+        FROM design_tag
+        WHERE design_id = ?
+          AND deleted_at IS NULL
+    `).all(design.id);
+
+    // Fetch categories
+    const categories = db.prepare(`
+          SELECT c.category, c.platform_id
+          FROM design_category dc
+          JOIN category c ON dc.category_id = c.id
+          WHERE dc.design_id = ? AND dc.deleted_at IS NULL
+        `).all(design.id);
+
+    // Fetch assets
+    const assets = db.prepare(`
+          SELECT id, file_name, file_ext, file_path,
+                 strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
+          FROM design_asset 
+          WHERE design_id = ? AND deleted_at IS NULL
+        `).all(design.id);
+
+    // Fetch platform publishing information
+    const platforms = db.prepare(`
+          SELECT platform_id, design_id, platform_design_id, published_status,
+                 strftime('%Y-%m-%dT%H:%M:%fZ', created_at) as created_at,
+                 strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) as updated_at,
+                 strftime('%Y-%m-%dT%H:%M:%fZ', published_at) as published_at
+          FROM design_platform
+          WHERE design_id = ? AND deleted_at IS NULL
+        `).all(design.id);
+
+    // Format the complete design response
+    const fullDesign = {
+      id: design.id.toString(),
+      designer_id: design.designer_id,
+      main_name: design.main_name,
+      summary: design.summary,
+      description: design.description,
+      license_key: design.license_key,
+      is_ready: Boolean(design.is_ready),
+      is_published: Boolean(design.is_published),
+      created_at: design.created_at,
+      updated_at: design.updated_at,
+      tags: tags.map((tag) => ({
+        tag: tag.tag,
+        platform: platformMap[tag.platform_id] || 'UNKNOWN',
+      })),
+      categories: categories.map((category) => ({
+        category: category.category,
+        platform: platformMap[category.platform_id] || 'UNKNOWN',
+      })),
+      assets: assets.map((asset) => ({
+        id: asset.id.toString(),
+        file_name: asset.file_name,
+        file_ext: asset.file_ext,
+        url: `local://${asset.file_path}`,
+        created_at: asset.created_at,
+      })),
+      platforms: platforms.map((platform) => ({
+        platform: platformMap[platform.platform_id] || 'UNKNOWN',
+        platform_design_id: platform.platform_design_id,
+        published_status: platform.published_status,
+        created_at: platform.created_at,
+        updated_at: platform.updated_at,
+        published_at: platform.published_at,
+      }))
+    };
+
+    return NextResponse.json(fullDesign, {status: 200});
+  } catch (error) {
+    console.error('Failed to retrieve design:', error);
+    return NextResponse.json({error: 'Internal server error'}, {status: 500});
   }
-
-  const design = db.prepare(`
-    SELECT id, main_name, summary, description, license_key, is_ready, is_published,
-           strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at,
-           strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) AS updated_at
-    FROM design
-    WHERE id = ? AND deleted_at IS NULL`
-  ).get(designID);
-  if (!design) {
-    return NextResponse.json({ error: 'Design not found' }, { status: 404 });
-  }
-
-  // Fetch tags
-  const tags = db.prepare(`
-    SELECT tag, platform_id FROM design_tag
-    WHERE design_id = ? AND deleted_at IS NULL
-  `).all(designID);
-
-  // Fetch categories
-  const categories = db.prepare(`
-    SELECT c.category, c.platform_id
-    FROM design_category dc
-    JOIN category c ON dc.category_id = c.id
-    WHERE dc.design_id = ? AND dc.deleted_at IS NULL
-  `).all(designID);
-
-  // Fetch assets
-  const assets = db.prepare(`
-    SELECT id, file_name, file_ext, file_path,
-           strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
-    FROM design_asset
-    WHERE design_id = ? AND deleted_at IS NULL
-  `).all(designID);
-
-  // Construct the full design schema
-  const fullDesign = {
-    id: design.id.toString(),
-    main_name: design.main_name,
-    summary: design.summary,
-    description: design.description,
-    license_key: design.license_key,
-    is_ready: Boolean(design.is_ready),
-    is_published: Boolean(design.is_published),
-    created_at: design.created_at,
-    updated_at: design.updated_at,
-    tags: tags.map((tag) => ({
-      tag: tag.tag,
-      platform: platformMap[tag.platform_id] || 'UNKNOWN',
-    })),
-    categories: categories.map((category) => ({
-      category: category.category,
-      platform: platformMap[category.platform_id] || 'UNKNOWN',
-    })),
-    assets: assets.map((asset) => ({
-      id: asset.id.toString(),
-      file_name: asset.file_name,
-      file_ext: asset.file_ext,
-      url: `local://${asset.file_path}`,
-      created_at: asset.created_at,
-    })),
-  };
-
-  return NextResponse.json(fullDesign, { status: 200 });
 }
 
 export async function PUT(request, context) {
