@@ -44,5 +44,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm install --ignore-scripts
+          echo THINGIVERSE_CLIENT_ID=${{ secrets.THINGIVERSE_CLIENT_ID }} > .env
           npm run build
           npx electron-builder --publish always

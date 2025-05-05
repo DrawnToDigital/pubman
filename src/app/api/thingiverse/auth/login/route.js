@@ -6,7 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export async function GET() {
   const redirectUri = API_URL + '/api/thingiverse/auth/callback'
-  const authUrl = `https://www.thingiverse.com/login/oauth/authorize?client_id=${THINGIVERSE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  const authUrl = `https://www.thingiverse.com/login/oauth/authorize?client_id=${THINGIVERSE_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
   return NextResponse.redirect(authUrl);
 }
