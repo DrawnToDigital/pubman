@@ -1,7 +1,7 @@
 {
   "name": "pubman-ui",
   "productName": "PubMan",
-  "version": "2025.5.2",
+  "version": "2025.5.3",
   "private": true,
   "main": "build/main.js",
   "author": "DrawnToDigital <contact@drawnto.digital>",
