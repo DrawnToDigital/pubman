@@ -1,19 +1,29 @@
-export const defaultThingiverseLicense = 'cc-nc-nd';
+export const thingiverseLicenses = [
+  'cc',       // Creative Commons - Attribution
+  'cc-sa',    // Creative Commons - Attribution - Share Alike
+  'cc-nd',    // Creative Commons - Attribution - No Derivatives
+  'cc-nc',    // Creative Commons - Attribution - Non-Commercial
+  'cc-nc-sa', // Creative Commons - Attribution - Non-Commercial - Share Alike
+  'cc-nc-nd', // Creative Commons - Attribution - Non-Commercial - No Derivatives
+  'pd0',      // Creative Commons - Public Domain Dedication
+  'gpl',      // GNU - GPL
+  'lgpl',     // GNU - LGPL
+  'bsd',      // BSD License
+];
 export const licenseToThingiverseMap = {
-  'CC': 'cc',
-  'CC0': 'pd0',
-  'CC-BY': 'cc',
-  'CC-BY-SA': 'cc-sa',
-  'CC-BY-ND': 'cc-nd',
-  'CC-BY-NC': 'cc-nc',
-  'CC-BY-NC-SA': 'cc-nc-sa',
-  'CC-BY-NC-ND': 'cc-nc-nd',
-  'GPL-2.0': 'gpl',
-  'GPL-3.0': 'gpl',
-  'LGPL': 'lgpl',
-  'BSD': 'bsd',
-  // Default to standard Creative Commons license for unknown types
-  'SDFL': defaultThingiverseLicense
+  'CC-BY': 'cc',             // Creative Commons - Attribution
+  'CC-BY-SA': 'cc-sa',       // Creative Commons - Attribution - Share Alike
+  'CC-BY-ND': 'cc-nd',       // Creative Commons - Attribution - No Derivatives
+  'CC-BY-NC': 'cc-nc',       // Creative Commons - Attribution - Non-Commercial
+  'CC-BY-NC-SA': 'cc-nc-sa', // Creative Commons - Attribution - Non-Commercial - Share Alike
+  'CC-BY-NC-ND': 'cc-nc-nd', // Creative Commons - Attribution - Non-Commercial - No Derivatives
+  'CC': 'pd0',               // Creative Commons - Public Domain Dedication aka CC Zero
+  'CC0': 'pd0',              // Creative Commons - Public Domain Dedication aka CC Zero
+  'GPL-2.0': 'gpl',          // GNU General Public License v2.0 -> GNU - GPL
+  'GPL-3.0': 'gpl',          // GNU General Public License v3.0 -> GNU - GPL
+  'LGPL': 'lgpl',            // GNU Lesser General Public License -> GNU - LGPL
+  'BSD': 'bsd',              // BSD License
+  'SDFL': 'INVALID'          // Standard Design File License (not supported by Thingiverse)
 };
 
 export class ThingiverseAPI {
@@ -103,8 +113,12 @@ export class ThingiverseAPI {
       description: thing.description,
       instructions: thing.instructions,
       is_wip: thing.is_wip,
-      license: licenseToThingiverseMap[thing.license] || defaultThingiverseLicense,
+      license: licenseToThingiverseMap[thing.license],
     };
+
+    if (!thingiverseLicenses.includes(thing.license)) {
+      throw new Error(`Invalid license: ${thing.license}`);
+    }
 
     return this.fetch(url, {
       method: 'POST',
@@ -115,7 +129,11 @@ export class ThingiverseAPI {
   async updateThing(thingId, updates) {
     const url = `${this.apiUrl}/things/${thingId}`;
     if ('license' in updates) {
-      updates.license = licenseToThingiverseMap[updates.license] || defaultThingiverseLicense;
+      const thingiverseLicense = licenseToThingiverseMap[updates.license];
+      if (!thingiverseLicenses.includes(updates.license)) {
+        throw new Error(`Invalid license: ${updates.license}`);
+      }
+      updates.license = thingiverseLicense;
     }
     return this.fetch(url, {
       method: 'PATCH',

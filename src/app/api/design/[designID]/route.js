@@ -1,5 +1,6 @@
 import {NextResponse} from 'next/server';
 import {getDatabase} from "../../../lib/betterSqlite3";
+import {designUpdateSchema} from "../../../components/design/types";
 
 // TODO: Move this to a shared location
 // Map platform IDs to readable names
@@ -8,6 +9,8 @@ const platformMap = {
   2: 'DUMMY',
   3: 'THINGIVERSE'
 }
+
+const PLATFORM_PUBMAN = 1;
 
 export async function GET(request, {params}) {
   try {
@@ -137,15 +140,56 @@ export async function PUT(request, context) {
     return NextResponse.json({ error: 'Design not found' }, { status: 404 });
   }
 
-  const data = await request.json();
-  const { mainName, summary, description, licenseKey } = data;
+  const data = designUpdateSchema.parse(await request.json());
+  const { main_name, summary, description, license_key, tags: tagsRaw, category: categoryRaw } = data;
 
   try {
     db.prepare(`
       UPDATE design
       SET main_name = ?, summary = ?, description = ?, license_key = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).run(mainName, summary, description, licenseKey, design.id);
+    `).run(main_name, summary, description, license_key, design.id);
+
+    if (typeof categoryRaw !== "undefined" && categoryRaw !== null) {
+      const category = db
+        .prepare(
+          `SELECT * FROM category WHERE platform_id = ? AND category = ?`
+        )
+        .get(PLATFORM_PUBMAN, categoryRaw);
+
+      if (!category) {
+        return NextResponse.json({ error: 'Invalid category' }, { status: 404 });
+      }
+
+      db.prepare(`
+        UPDATE design_category SET deleted_at = datetime('now')
+        WHERE design_id = ? AND deleted_at IS NULL
+      `).run(design.id);
+
+
+      // Insert category
+      const insertCategory = db.prepare(`
+        INSERT INTO design_category (design_id, category_id, created_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+      `);
+      insertCategory.run(design.id, category.id);
+    }
+
+    if (typeof tagsRaw !== 'undefined' && tagsRaw !== null) {
+      db.prepare(`
+        UPDATE design_tag SET deleted_at = datetime('now')
+        WHERE design_id = ? AND deleted_at IS NULL
+      `).run(design.id);
+
+      const insertTag = db.prepare(`
+        INSERT INTO design_tag (design_id, tag, platform_id, created_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      `);
+      const uniqueTags = [... new Set(tagsRaw.split(',').map(tag => tag.trim()))];
+      uniqueTags.forEach((tag) => {
+        insertTag.run(design.id, tag.trim(), PLATFORM_PUBMAN);
+      });
+    }
 
     return NextResponse.json({ message: 'Design updated successfully' }, { status: 200 });
   } catch (error) {

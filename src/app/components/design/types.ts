@@ -81,3 +81,14 @@ export const designCreateSchema = z.object({
 })
 
 export type DesignCreateSchema = z.infer<typeof designCreateSchema>
+
+export const designUpdateSchema = z.object({
+    main_name: z.string().nullish(),
+    summary: z.string().nullish(),
+    description: z.string().nullish(),
+    license_key: licenses.nullish(),
+    tags: z.string().nullish(),
+    category: pubmanCategories.nullish(),
+})
+
+export type DesignUpdateSchema = z.infer<typeof designUpdateSchema>

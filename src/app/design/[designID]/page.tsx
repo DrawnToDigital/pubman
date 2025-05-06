@@ -3,11 +3,33 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/src/app/components/ui/button";
-import { fetchDesign } from "@/src/app/actions/design";
-import { DesignSchema } from "@/src/app/components/design/types";
+import { fetchDesign, updateDesign } from "@/src/app/actions/design";
+import {DesignSchema, pubmanCategories} from "@/src/app/components/design/types";
+import {FieldValues, useForm} from 'react-hook-form';
 import { useThingiverseAuth } from "@/src/app/contexts/ThingiverseAuthContext";
 import Link from "next/link";
 import {addFile, removeFile} from "@/src/app/actions/file";
+import {Input} from "@/src/app/components/ui/input";
+
+const getLicenseName = (licenseKey: string): string => {
+  const licenseMap: Record<string, string> = {
+    'CC': 'Creative Commons',
+    'CC0': 'Creative Commons — Public Domain',
+    'CC-BY': 'Creative Commons — Attribution',
+    'CC-BY-SA': 'Creative Commons — Attribution — Share Alike',
+    'CC-BY-ND': 'Creative Commons — Attribution — NoDerivatives',
+    'CC-BY-NC': 'Creative Commons — Attribution — Noncommercial',
+    'CC-BY-NC-SA': 'Creative Commons — Attribution — Noncommercial — Share Alike',
+    'CC-BY-NC-ND': 'Creative Commons — Attribution — Noncommercial — NoDerivatives',
+    'GPL-2.0': 'GNU General Public License v2.0',
+    'GPL-3.0': 'GNU General Public License v3.0',
+    'LGPL': 'GNU Lesser General Public License',
+    'BSD': 'BSD License',
+    'SDFL': 'Standard Digital File License'
+  };
+
+  return licenseMap[licenseKey] || licenseKey;
+};
 
 const DesignDetailsPage = () => {
   const { designID } = useParams<{ designID: string }>();
@@ -15,7 +37,9 @@ const DesignDetailsPage = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const { isAuthenticated, accessToken } = useThingiverseAuth();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   // Thingiverse publication status
   const [thingiverseStatus, setThingiverseStatus] = useState<{
@@ -59,6 +83,28 @@ const DesignDetailsPage = () => {
 
     fetch();
   }, [designID]);
+
+  const onSubmit = async (data: FieldValues) => {
+    if (!design) return;
+
+    try {
+      await updateDesign(designID, data);
+      const updatedDesign = await fetchDesign(designID);
+      setDesign(updatedDesign);
+      reset({
+        main_name: updatedDesign.main_name,
+        summary: updatedDesign.summary,
+        description: updatedDesign.description,
+        license_key: updatedDesign.license_key,
+        tags: updatedDesign.tags.map(tag => tag.tag).join(', '),
+        category: updatedDesign.categories.map(cat => cat.category)[0] || 'Other',
+      });
+      setEditMode(false);
+    } catch (error) {
+      console.error('Failed to update design:', error);
+      setErrorMessage('Failed to update design. Please try again.');
+    }
+  };
 
   const publishToDraft = async () => {
     if (!design || !accessToken) return;
@@ -274,9 +320,7 @@ const DesignDetailsPage = () => {
   if (!design) return <div>Loading...</div>;
 
   return (
-    <div className="space-y-6 bg-white p-6 rounded-md shadow-md max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold">{design.main_name}</h1>
-
+    <div className="space-y-6 bg-white p-6 rounded-md shadow-md max-w-3xl mx-auto">
       {errorMessage && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
           {errorMessage}
@@ -289,22 +333,165 @@ const DesignDetailsPage = () => {
         </div>
       )}
 
-      <p>{design.description}</p>
-
-      <div className="mt-4">
-        <h2 className="text-xl font-bold">Details</h2>
-        <p><strong>License:</strong> {design.license_key}</p>
-        <p><strong>Created:</strong> {new Date(design.created_at).toLocaleDateString()}</p>
-        <p><strong>Updated:</strong> {new Date(design.updated_at).toLocaleDateString()}</p>
-
-        {design.tags && design.tags.length > 0 && (
-          <p><strong>Tags:</strong> {design.tags.map(tag => tag.tag).join(', ')}</p>
-        )}
-
-        {design.categories && design.categories.length > 0 && (
-          <p><strong>Categories:</strong> {design.categories.map(cat => cat.category).join(', ')}</p>
-        )}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">{editMode ? 'Edit Design' : design.main_name}</h1>
+        <Button
+          onClick={() => {
+            if (editMode) {
+              reset({
+                main_name: design.main_name,
+                summary: design.summary,
+                description: design.description,
+                license_key: design.license_key,
+                tags: design.tags.map(tag => tag.tag).join(', '),
+                category: design.categories.map(cat => cat.category)[0] || 'Other',
+              });
+            }
+            setEditMode(!editMode);
+          }}
+          variant="outline"
+        >
+          {editMode ? 'Cancel' : 'Edit'}
+        </Button>
       </div>
+
+      {editMode ? (
+        /* Edit Form */
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Name</label>
+            <Input
+              {...register('main_name', { required: true })}
+              defaultValue={design.main_name}
+              className="w-full"
+            />
+            {errors.main_name && <p className="text-red-500 text-sm">Name is required</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Summary</label>
+            <textarea
+              {...register('summary', { required: true })}
+              defaultValue={design.summary}
+              className="w-full border rounded-md p-2"
+              rows={2}
+            />
+            {errors.summary && <p className="text-red-500 text-sm">Summary is required</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Description</label>
+            <textarea
+              {...register('description', { required: true })}
+              defaultValue={design.description}
+              className="w-full border rounded-md p-2"
+              rows={6}
+            />
+            {errors.description && <p className="text-red-500 text-sm">Description is required</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Tags</label>
+            <Input
+              {...register('tags', { required: true })}
+              defaultValue={design.tags.map(tag => tag.tag).join(', ')}
+              className="w-full"
+            />
+            {errors.tags && <p className="text-red-500 text-sm">Tags are required</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Categories</label>
+            <select
+              {...register('category', { required: true })}
+              defaultValue={design.categories.length > 0 ? design.categories[0].category : 'Other'}
+              required
+              className="border border-gray-300 rounded-md p-2"
+            >
+              <option value="" disabled>
+                Select a category
+              </option>
+              {pubmanCategories.options.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            {errors.category && <p className="text-red-500 text-sm">Category is required</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">License</label>
+            <select
+              {...register('license_key', { required: true })}
+              defaultValue={design.license_key}
+              className="w-full border rounded-md p-2"
+            >
+              <option value="CC">Creative Commons</option>
+              <option value="CC0">Creative Commons — Public Domain</option>
+              <option value="CC-BY">Creative Commons — Attribution</option>
+              <option value="CC-BY-SA">Creative Commons — Attribution — Share Alike</option>
+              <option value="CC-BY-ND">Creative Commons — Attribution — NoDerivatives</option>
+              <option value="CC-BY-NC">Creative Commons — Attribution — Noncommercial</option>
+              <option value="CC-BY-NC-SA">Creative Commons — Attribution — Noncommercial — Share Alike</option>
+              <option value="CC-BY-NC-ND">Creative Commons — Attribution — Noncommercial — NoDerivatives</option>
+              <option value="GPL-2.0">GNU General Public License v2.0</option>
+              <option value="GPL-3.0">GNU General Public License v3.0</option>
+              <option value="LGPL">GNU Lesser General Public License</option>
+              <option value="BSD">BSD License</option>
+              <option value="SDFL">Standard Digital File License</option>
+            </select>
+          </div>
+
+          <div className="flex space-x-4">
+            <Button type="submit">Save Changes</Button>
+            <Button variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
+          </div>
+        </form>
+      ) : (
+        /* Display View */
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Summary</h2>
+            <p className="text-gray-700">{design.summary}</p>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Description</h2>
+            <div className="text-gray-700 whitespace-pre-wrap">{design.description}</div>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Details</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">License</p>
+                <p>{getLicenseName(design.license_key)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Created</p>
+                <p>{new Date(design.created_at).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Last Updated</p>
+                <p>{new Date(design.updated_at).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Status</p>
+                <p>{design.is_published ? 'Published' : 'Draft'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Tags</p>
+                <p>{design.tags.map(tag => tag.tag).join(', ')}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Categories</p>
+                <p>{design.categories.map(cat => cat.category).join(', ')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Thingiverse Publishing Section */}
       <div className="mt-6 p-4 border border-gray-200 rounded-md">

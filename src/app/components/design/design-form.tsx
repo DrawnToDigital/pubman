@@ -9,6 +9,22 @@ import { createDesign } from "@/src/app/actions/design";
 import { FormControl, FormField, FormItem } from "@/src/app/components/ui/form";
 import { Input } from "@/src/app/components/ui/input";
 
+const licenseMap: Record<string, string> = {
+  'CC': 'Creative Commons',
+  'CC0': 'Creative Commons — Public Domain',
+  'CC-BY': 'Creative Commons — Attribution',
+  'CC-BY-SA': 'Creative Commons — Attribution — Share Alike',
+  'CC-BY-ND': 'Creative Commons — Attribution — NoDerivatives',
+  'CC-BY-NC': 'Creative Commons — Attribution — Noncommercial',
+  'CC-BY-NC-SA': 'Creative Commons — Attribution — Noncommercial — Share Alike',
+  'CC-BY-NC-ND': 'Creative Commons — Attribution — Noncommercial — NoDerivatives',
+  'GPL-2.0': 'GNU General Public License v2.0',
+  'GPL-3.0': 'GNU General Public License v3.0',
+  'LGPL': 'GNU Lesser General Public License',
+  'BSD': 'BSD License',
+  'SDFL': 'Standard Digital File License'
+};
+
 const DesignForm = () => {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -156,6 +172,35 @@ const DesignForm = () => {
                   {pubmanCategories.options.map((category) => (
                     <option key={category} value={category}>
                       {category}
+                    </option>
+                  ))}
+                </select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="license_key"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <label htmlFor="license_key" className="text-sm font-medium mb-1">
+                License Key
+              </label>
+              <FormControl>
+                <select
+                  id="license_key"
+                  {...field}
+                  required
+                  className="border border-gray-300 rounded-md p-2"
+                >
+                  <option value="" disabled>
+                    Select a license key
+                  </option>
+                  {Object.entries(licenseMap).map(([key, value]) => (
+                    <option key={key} value={key}>
+                      {value}
                     </option>
                   ))}
                 </select>
