@@ -257,6 +257,20 @@ const DesignDetailsPage = () => {
     }
   };
 
+  const needsSync = () => {
+    if (!design || !thingiverseStatus.thingId) return false;
+
+    // Find Thingiverse platform entry
+    const thingiversePlatform = design.platforms.find(p => p.platform === "THINGIVERSE");
+    if (!thingiversePlatform) return false;
+
+    // Compare timestamps - if design was updated after the platform record was updated
+    const designUpdated = new Date(design.updated_at);
+    const platformUpdated = new Date(thingiversePlatform.updated_at);
+
+    return designUpdated > platformUpdated;
+  };
+
   if (!design) return <div>Loading...</div>;
 
   return (
@@ -320,6 +334,13 @@ const DesignDetailsPage = () => {
                     </Link>
                   )}
                 </div>
+
+                {thingiverseStatus.thingId && needsSync() && (
+                  <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 my-4" role="alert">
+                    <p className="font-bold">Design Changed</p>
+                    <p>This design has been modified since it was last synced with Thingiverse. Click "Update Draft" to sync your changes.</p>
+                  </div>
+                )}
 
                 <div className="flex space-x-2">
                   <Button

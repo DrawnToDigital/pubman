@@ -78,6 +78,10 @@ export async function POST(request, context) {
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(designID, designer.id, fileName, fileExt, filePath);
 
+    db.prepare(
+      `UPDATE design SET updated_at = datetime('now') WHERE id = ? AND designer_id = ?`
+    ).run(designID, designer.id)
+
     return NextResponse.json({ message: 'File metadata added successfully' }, { status: 200 });
   } catch (error) {
     console.error('Failed to add file metadata:', error);

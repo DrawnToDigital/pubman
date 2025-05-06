@@ -74,6 +74,10 @@ export async function DELETE(request, context) {
       WHERE id = ?
     `).run(asset.id);
 
+    db.prepare(
+      `UPDATE design SET updated_at = datetime('now') WHERE id = ? AND designer_id = ?`
+    ).run(designID, designer.id)
+
     return NextResponse.json({ message: 'Asset deleted successfully' }, { status: 200 });
   } catch (error) {
     console.error('Failed to delete design:', error);
