@@ -10,6 +10,7 @@ import { useThingiverseAuth } from "@/src/app/contexts/ThingiverseAuthContext";
 import Link from "next/link";
 import {addFile, removeFile} from "@/src/app/actions/file";
 import {Input} from "@/src/app/components/ui/input";
+import {isPubmanLicenseSupported, licenseToThingiverseMap} from "@/src/app/api/thingiverse/thingiverse-lib";
 
 const getLicenseName = (licenseKey: string): string => {
   const licenseMap: Record<string, string> = {
@@ -84,6 +85,22 @@ const DesignDetailsPage = () => {
     fetch();
   }, [designID]);
 
+  function isValidForThingiverse(design: DesignSchema) {
+    // Check if we have assets - required for Thingiverse
+    if (!design.assets || design.assets.length === 0) {
+      setErrorMessage("You need to add at least one file before publishing to Thingiverse");
+      return false;
+    }
+
+    // Check if selected license is supported
+    if (!isPubmanLicenseSupported(design.license_key)) {
+      setErrorMessage("The selected license is not supported for Thingiverse.");
+      return false;
+    }
+    return true;
+  }
+
+
   const onSubmit = async (data: FieldValues) => {
     if (!design) return;
 
@@ -108,18 +125,13 @@ const DesignDetailsPage = () => {
 
   const publishToDraft = async () => {
     if (!design || !accessToken) return;
+    if (!isValidForThingiverse(design)) return;
 
     setIsPublishing(true);
     setErrorMessage(null);
     setSuccessMessage(null);
 
     try {
-      // Check if we have assets - required for Thingiverse
-      if (!design.assets || design.assets.length === 0) {
-        setErrorMessage("You need to add at least one file before publishing to Thingiverse");
-        return;
-      }
-
       const response = await fetch('/api/thingiverse/things', {
         method: 'POST',
         headers: {
@@ -160,6 +172,7 @@ const DesignDetailsPage = () => {
 
   const updateDraft = async () => {
   if (!design || !accessToken || !thingiverseStatus.thingId) return;
+  if (!isValidForThingiverse(design)) return;
 
   setIsPublishing(true);
   setErrorMessage(null);
@@ -524,8 +537,7 @@ const DesignDetailsPage = () => {
 
                 {thingiverseStatus.thingId && needsSync() && (
                   <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 my-4" role="alert">
-                    <p className="font-bold">Design Changed</p>
-                    <p>This design has been modified since it was last synced with Thingiverse. Click "Update Draft" to sync your changes.</p>
+                    <span className="font-bold">Design Modified:</span> Click <i>Update Draft</i> to sync your changes with Thingiverse
                   </div>
                 )}
 

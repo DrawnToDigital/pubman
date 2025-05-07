@@ -26,6 +26,11 @@ export const licenseToThingiverseMap = {
   'SDFL': 'INVALID'          // Standard Design File License (not supported by Thingiverse)
 };
 
+export function isPubmanLicenseSupported(pubmanLicense) {
+  const license = licenseToThingiverseMap[pubmanLicense];
+  return thingiverseLicenses.includes(license);
+}
+
 export class ThingiverseAPI {
   constructor(accessToken = '') {
     this.baseUrl = 'https://www.thingiverse.com';
