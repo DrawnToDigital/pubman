@@ -113,12 +113,14 @@ export class ThingiverseAPI {
       description: thing.description,
       instructions: thing.instructions,
       is_wip: thing.is_wip,
-      license: licenseToThingiverseMap[thing.license],
+      license: thing.license,
     };
 
-    if (!thingiverseLicenses.includes(thing.license)) {
+    const thingiverseLicense = licenseToThingiverseMap[thing.license];
+    if (!thingiverseLicenses.includes(thingiverseLicense)) {
       throw new Error(`Invalid license: ${thing.license}`);
     }
+    payload.license = thingiverseLicense;
 
     return this.fetch(url, {
       method: 'POST',
@@ -130,7 +132,7 @@ export class ThingiverseAPI {
     const url = `${this.apiUrl}/things/${thingId}`;
     if ('license' in updates) {
       const thingiverseLicense = licenseToThingiverseMap[updates.license];
-      if (!thingiverseLicenses.includes(updates.license)) {
+      if (!thingiverseLicenses.includes(thingiverseLicense)) {
         throw new Error(`Invalid license: ${updates.license}`);
       }
       updates.license = thingiverseLicense;
