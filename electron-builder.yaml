@@ -47,3 +47,7 @@ dmg:
   icon: "./public/icons/icon.icns"
   writeUpdateInfo: false
   sign: false
+publish:
+  - provider: github
+    publishAutoUpdate: false
+    vPrefixedTagName: true
