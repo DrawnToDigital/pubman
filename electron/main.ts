@@ -4,7 +4,6 @@ import { getPort } from "get-port-please";
 import { startServer } from "next/dist/server/lib/start-server";
 import path, { join } from "path";
 import nodeUrl from "node:url";
-import * as process from "node:process";
 import fs from "fs/promises";
 import { existsSync } from "node:fs";
 import getBetterSqlite3 from "@/src/app/lib/betterSqlite3";
@@ -161,6 +160,9 @@ const startNextJSServer = async () => {
       allowRetry: false,
       keepAliveTimeout: 5000,
       minimalMode: true,
+    }).then(() => {
+      // Override the "next-server (v1.2.3)" process title
+      process.title = app.getName();
     });
 
     return nextJSPort;
