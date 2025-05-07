@@ -202,6 +202,16 @@ app.whenReady().then(() => {
       throw new Error("Failed to load resource");
     }
   });
+
+  app.setAboutPanelOptions({
+      applicationName: "PubMan",
+      applicationVersion: app.getVersion(),
+      version: "",
+      credits: "DrawnToDigital",
+      copyright: "Copyright 2025",
+      website: "https://drawnto.digital/pubman",
+      iconPath: "./public/icons/icon.png"
+  });
 });
 
 app.on("window-all-closed", () => {

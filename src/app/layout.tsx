@@ -16,7 +16,6 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "PubMan Dashboard",
-  description: "Facilitates interactions with PubMan API",
 };
 
 export default function RootLayout({
