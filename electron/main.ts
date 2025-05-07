@@ -11,6 +11,20 @@ import getBetterSqlite3 from "@/src/app/lib/betterSqlite3";
 import os from "node:os";
 const Database = getBetterSqlite3();
 
+let mainWindow: BrowserWindow | null = null
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    // Someone tried to run a second instance, we should focus our window.
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+}
+
 const isProd = !process.env.NODE_ENV || process.env.NODE_ENV === "production";
 const appDataPath =
   isProd
@@ -68,7 +82,7 @@ async function initializeAppData() {
 
 
 const createWindow = () => {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     title: "PubMan",
     width: 1350,
     height: 1005,
@@ -89,7 +103,7 @@ const createWindow = () => {
     e.preventDefault()
   });
 
-  mainWindow.on("ready-to-show", () => mainWindow.show());
+  mainWindow.on("ready-to-show", () => mainWindow?.show());
 
   const loadURL = async () => {
     const maxRetries = 2; // Maximum number of retries
@@ -115,7 +129,7 @@ const createWindow = () => {
 
     while (attempt < maxRetries) {
       if (await isServerReady()) {
-        mainWindow.loadURL(url);
+        mainWindow?.loadURL(url);
         return;
       }
       attempt++;
@@ -124,7 +138,7 @@ const createWindow = () => {
     }
 
     console.error("Failed to connect to the server after maximum retries.");
-    await mainWindow.loadFile("path/to/fallback.html"); // Optional: Load a fallback page
+    await mainWindow?.loadFile("path/to/fallback.html"); // Optional: Load a fallback page
   };
 
   loadURL();
