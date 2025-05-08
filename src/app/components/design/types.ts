@@ -4,6 +4,8 @@ export const platforms = z.enum([
     "PUBMAN",
     "DUMMY",
     "THINGIVERSE",
+    "PRINTABLES",
+    "MAKERWORLD",
 ])
 
 export const licenses = z.enum([
@@ -48,6 +50,7 @@ export const designSchema = z.object({
     updated_at: z.string().datetime({ offset: false }),
     tags: z.array(z.object({ tag: z.string(), platform: platforms })),
     categories: z.array(z.object({ category: pubmanCategories, platform: platforms })),
+    thumbnail: z.string().nullish(),
     assets: z.array(
         z.object({
             id: z.string(),

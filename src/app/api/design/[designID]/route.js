@@ -92,6 +92,7 @@ export async function GET(request, {params}) {
         category: category.category,
         platform: platformMap[category.platform_id] || 'UNKNOWN',
       })),
+      thumbnail: assets.filter((asset) => ["jpg", "jpeg", "png"].includes(asset.file_ext.toLowerCase())).map(asset => `local://${asset.file_path}`)[0] || null,
       assets: assets.map((asset) => ({
         id: asset.id.toString(),
         file_name: asset.file_name,

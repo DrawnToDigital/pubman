@@ -9,16 +9,14 @@ import { ThingiverseAuth } from "../components/dashboard/thingiverse-auth";
 export default function Page({}) {
     return (
         <main>
-            <div className="inline-flex">
+            <div className="inline-flex justify-between w-full">
                 <UserBanner />
                 <Link href="/design/create-design">
                     <Button className="m-4" variant="outline">
                         Create New Design
                     </Button>
                 </Link>
-                <Button className="m-4" variant="outline">
-                    Import Design
-                </Button>
+                <div className="flex-1"></div>
                 <ThingiverseAuth />
             </div>
             <Suspense fallback={<DesignsChartSkeleton />}>

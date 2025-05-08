@@ -10,7 +10,8 @@ import { useThingiverseAuth } from "@/src/app/contexts/ThingiverseAuthContext";
 import Link from "next/link";
 import {addFile, removeFile} from "@/src/app/actions/file";
 import {Input} from "@/src/app/components/ui/input";
-import {isPubmanLicenseSupported, licenseToThingiverseMap} from "@/src/app/api/thingiverse/thingiverse-lib";
+import {isPubmanLicenseSupported} from "@/src/app/api/thingiverse/thingiverse-lib";
+import {useRouter} from "next/navigation";
 
 const getLicenseName = (licenseKey: string): string => {
   const licenseMap: Record<string, string> = {
@@ -41,6 +42,7 @@ const DesignDetailsPage = () => {
   const [editMode, setEditMode] = useState(false);
   const { isAuthenticated, accessToken } = useThingiverseAuth();
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const router = useRouter();
 
   // Thingiverse publication status
   const [thingiverseStatus, setThingiverseStatus] = useState<{
@@ -236,7 +238,7 @@ const DesignDetailsPage = () => {
   }
 };
 
-  const publishFinal = async () => {
+  const publishToPublic = async () => {
     if (!thingiverseStatus.thingId || !accessToken) return;
 
     setIsPublishing(true);
@@ -313,6 +315,29 @@ const DesignDetailsPage = () => {
     } catch (error) {
       console.error(error);
       setErrorMessage("Failed to remove file.");
+    }
+  };
+
+  const handleDeleteDesign = async (designId: string) => {
+    const response = await  window.electron.dialog.showMessageBoxSync({
+      type: 'warning',
+      title: 'Delete Design',
+      message: 'Are you sure you want to delete this design? This action cannot be undone.',
+      buttons: ['Cancel', 'Delete'],
+    })
+    if (response === 1) {
+      try {
+        await fetch(`/api/design/${designId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        router.push('/dashboard');
+      } catch (error) {
+        console.error("Failed to delete design:", error);
+        setErrorMessage("Failed to delete design. Please try again.");
+      }
     }
   };
 
@@ -552,25 +577,51 @@ const DesignDetailsPage = () => {
                   </Button>
 
                   <Button
-                    onClick={publishFinal}
+                    onClick={publishToPublic}
                     disabled={isPublishing}
                     className="flex-1"
                   >
-                    {isPublishing ? 'Publishing...' : 'Publish Final'}
+                    {isPublishing ? 'Publishing...' : 'Publish'}
                   </Button>
                 </div>
               </>
             )}
 
             {thingiverseStatus.status === 'published' && (
-              <div className="flex items-center justify-between">
-                <span>Status: Published</span>
-                {thingiverseStatus.url && (
-                  <Link href={thingiverseStatus.url} target="_blank" className="text-blue-500 hover:underline">
-                    View on Thingiverse
-                  </Link>
+              <>
+                <div className="flex items-center justify-between">
+                  <span>Status: Published</span>
+                  {thingiverseStatus.url && (
+                    <Link href={thingiverseStatus.url} target="_blank" className="text-blue-500 hover:underline">
+                      View on Thingiverse
+                    </Link>
+                  )}
+                </div>
+
+                {thingiverseStatus.thingId && needsSync() && (
+                  <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 my-4" role="alert">
+                    <span className="font-bold">Design Modified:</span> Click <i>Update Published</i> to sync your changes with Thingiverse
+                  </div>
                 )}
-              </div>
+
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={updateDraft}
+                    disabled={isPublishing}
+                    className="flex-1"
+                    variant="outline"
+                  >
+                    {isPublishing ? 'Updating...' : 'Update Published'}
+                  </Button>
+
+                  <Button
+                    disabled={true}
+                    className="flex-1"
+                  >
+                    Already Published
+                  </Button>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -593,6 +644,9 @@ const DesignDetailsPage = () => {
       </div>
 
       <Button onClick={handleFileAdd}>Add File</Button>
+
+      <h2 className="text-xl font-bold">Danger Zone</h2>
+      <Button variant="destructive" onClick={() => {handleDeleteDesign(design.id)}}>Delete</Button>
     </div>
   );
 };

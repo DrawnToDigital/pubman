@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("electron", {
   dialog: {
     showOpenDialog: (options: Electron.OpenDialogOptions) =>
       ipcRenderer.invoke("dialog:openFile", options),
+    showMessageBoxSync: (options: Electron.MessageBoxSyncOptions) =>
+      ipcRenderer.invoke("dialog:showMessageBoxSync", options),
   },
   getDBPath: () => ipcRenderer.invoke("get-db-path"),
   getAppDataPath: () => ipcRenderer.invoke("get-app-data-path"),

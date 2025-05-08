@@ -12,7 +12,18 @@ export async function POST(request, { params }) {
 
     // Call Thingiverse API to publish the thing
     const api = new ThingiverseAPI(accessToken);
-    const publishResult = await api.publishThing(thingId);
+
+    const thingData = await api.getThingById(thingId);
+    let publishResult;
+    if (thingData?.is_published === 0) {
+      publishResult = await api.publishThing(thingId);
+    } else if (thingData?.is_published === 1) {
+      publishResult = {"message": "Thing is already published"};
+    } else {
+      publishResult = {"error": "Thing is not in a publishable state"};
+      console.error(`Thing ${thingId} is not in a publishable state:`, thingData);
+      return NextResponse.json(publishResult, { status: 400 });
+    }
 
     // Update our database to reflect the published status
     const db = getDatabase();
@@ -24,12 +35,9 @@ export async function POST(request, { params }) {
 
     // Find the design_platform record for this Thingiverse thing
     const designPlatform = db.prepare(`
-      SELECT design_id FROM design_platform 
-      WHERE platform_id = ? AND design_id IN (
-        SELECT design_id FROM design_platform
-        WHERE platform_id = ? AND published_status = 1
-      )
-    `).get(THINGIVERSE_PLATFORM_ID, THINGIVERSE_PLATFORM_ID);
+      SELECT id FROM design_platform 
+      WHERE platform_id = ? AND platform_design_id = ? AND deleted_at IS NULL 
+    `).get(THINGIVERSE_PLATFORM_ID, thingId);
 
     if (!designPlatform) {
       return NextResponse.json({
@@ -44,8 +52,8 @@ export async function POST(request, { params }) {
       SET published_status = ?, 
           published_at = datetime('now'),
           updated_at = datetime('now')
-      WHERE platform_id = ? AND design_id = ?
-    `).run(PUBLISHED_STATUS, THINGIVERSE_PLATFORM_ID, designPlatform.design_id);
+      WHERE id = ?
+    `).run(PUBLISHED_STATUS, designPlatform.id);
 
     // Get the updated record
     const updatedRecord = db.prepare(`
@@ -56,8 +64,8 @@ export async function POST(request, { params }) {
         strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) as updated_at,
         strftime('%Y-%m-%dT%H:%M:%fZ', published_at) as published_at
       FROM design_platform
-      WHERE platform_id = ? AND design_id = ?
-    `).get(THINGIVERSE_PLATFORM_ID, designPlatform.design_id);
+      WHERE id = ?
+    `).get(designPlatform.id);
 
     return NextResponse.json({
       message: 'Thing published successfully',

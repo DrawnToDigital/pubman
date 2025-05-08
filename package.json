@@ -30,8 +30,10 @@
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
     "@hookform/resolvers": "^5.0.1",
+    "@radix-ui/react-dropdown-menu": "^2.1.14",
     "@radix-ui/react-label": "^2.1.4",
     "@radix-ui/react-slot": "^1.2.0",
+    "@radix-ui/react-tooltip": "^1.2.6",
     "better-sqlite3": "^11.9.1",
     "better-sqlite3-darwin": "npm:better-sqlite3@^11.9.1",
     "class-variance-authority": "^0.7.1",

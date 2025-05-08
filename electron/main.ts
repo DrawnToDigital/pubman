@@ -187,6 +187,9 @@ app.whenReady().then(() => {
   ipcMain.handle("dialog:openFile", (event, args) => {
     return dialog.showOpenDialog(args[0]);
   });
+  ipcMain.handle("dialog:showMessageBoxSync", (event, args) => {
+    return dialog.showMessageBoxSync(args);
+  });
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
