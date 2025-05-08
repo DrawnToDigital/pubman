@@ -4,7 +4,7 @@ import {getDatabase} from "../../../../lib/betterSqlite3";
 export async function GET() {
   try {
     const db = getDatabase();
-    const row = await db.prepare('SELECT token FROM auth_tokens WHERE provider = ?').get('thingiverse');
+    const row = await db.prepare('SELECT token FROM auth_tokens WHERE provider = ? ORDER BY updated_at DESC, created_at DESC').get('thingiverse');
 
     if (row) {
       return NextResponse.json({ token: row.token });
