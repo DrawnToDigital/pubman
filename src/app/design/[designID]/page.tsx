@@ -319,6 +319,8 @@ const DesignDetailsPage = () => {
   };
 
   const handleDeleteDesign = async (designId: string) => {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     const response = await  window.electron.dialog.showMessageBoxSync({
       type: 'warning',
       title: 'Delete Design',
