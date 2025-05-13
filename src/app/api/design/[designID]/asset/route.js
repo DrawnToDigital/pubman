@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import {z} from "zod";
 import { getDatabase } from "../../../../lib/betterSqlite3";
-
-// import os from "node:os";
-// console.log(`ROUTE.js ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron} ${process?.versions?.node}`);
+import log from "electron-log/renderer"
 
 export async function GET(request, context) {
   const { designID } = await context.params; // Await params
@@ -84,7 +82,7 @@ export async function POST(request, context) {
 
     return NextResponse.json({ message: 'File metadata added successfully' }, { status: 200 });
   } catch (error) {
-    console.error('Failed to add file metadata:', error);
+    log.error('Failed to add file metadata:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { designCreateSchema } from '@/src/app/components/design/types';
 import { getDatabase } from "../../lib/betterSqlite3"
+import log from "electron-log/renderer";
 
 // TODO: Move this to a shared location
 const platformMap = {
@@ -118,7 +119,7 @@ export async function GET(request) {
 
     return NextResponse.json(fullDesigns, { status: 200 });
   } catch (error) {
-    console.error('Failed to retrieve designs:', error);
+    log.error('Failed to retrieve designs:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -196,7 +197,7 @@ export async function POST(request) {
 
     return NextResponse.json(createdDesign, { status: 201 });
   } catch (error) {
-    console.error('Failed to create design:', error);
+    log.error('Failed to create design:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

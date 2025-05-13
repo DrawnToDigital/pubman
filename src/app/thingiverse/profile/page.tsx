@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
+import log from 'electron-log/renderer';
 
 export default function ThingiverseProfilePage() {
   const { isAuthenticated, user, accessToken } = useThingiverseAuth();
@@ -29,7 +30,7 @@ export default function ThingiverseProfilePage() {
           setThings(data);
         }
       } catch (error) {
-        console.error('Failed to fetch things:', error);
+        log.error('Failed to fetch things:', error);
       } finally {
         setLoading(false);
       }

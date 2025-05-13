@@ -1,6 +1,7 @@
 import {NextResponse} from 'next/server';
 import {getDatabase} from "../../../lib/betterSqlite3";
 import {designUpdateSchema} from "../../../components/design/types";
+import log from "electron-log/renderer";
 
 // TODO: Move this to a shared location
 // Map platform IDs to readable names
@@ -112,7 +113,7 @@ export async function GET(request, {params}) {
 
     return NextResponse.json(fullDesign, {status: 200});
   } catch (error) {
-    console.error('Failed to retrieve design:', error);
+    log.error('Failed to retrieve design:', error);
     return NextResponse.json({error: 'Internal server error'}, {status: 500});
   }
 }
@@ -194,7 +195,7 @@ export async function PUT(request, context) {
 
     return NextResponse.json({ message: 'Design updated successfully' }, { status: 200 });
   } catch (error) {
-    console.error('Failed to update design:', error);
+    log.error('Failed to update design:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -232,7 +233,7 @@ export async function DELETE(request, context) {
 
     return NextResponse.json({ message: 'Design deleted successfully' }, { status: 200 });
   } catch (error) {
-    console.error('Failed to delete design:', error);
+    log.error('Failed to delete design:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

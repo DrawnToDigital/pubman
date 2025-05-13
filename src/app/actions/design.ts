@@ -6,9 +6,9 @@ import {
   designSchema,
   designUpdateSchema, designCreateSchema
 } from "@/src/app/components/design/types";
+import log from "electron-log/renderer";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-
 
 export async function createDesign(formData: DesignCreateSchema) {
   try {
@@ -22,13 +22,13 @@ export async function createDesign(formData: DesignCreateSchema) {
     });
 
     if (!response.ok) {
-      console.error(response);
+      log.error(response);
       throw new Error("Failed to create design");
     }
 
     return await response.json();
   } catch (error) {
-    console.error(error);
+    log.error(error);
     throw new Error("Error creating design");
   }
 }
@@ -45,13 +45,13 @@ export async function updateDesign(designID: string, formData: DesignUpdateSchem
     });
 
     if (!response.ok) {
-      console.error(response);
+      log.error(response);
       throw new Error("Failed to update design");
     }
 
     return await response.json();
   } catch (error) {
-    console.error(error);
+    log.error(error);
     throw new Error("Error updating design");
   }
 }
@@ -67,13 +67,13 @@ export async function fetchDesign(designID: string) {
     });
 
     if (!response.ok) {
-      console.error(response);
+      log.error(response);
       throw new Error("Failed to fetch design");
     }
 
     return designSchema.parse(await response.json());
   } catch (error) {
-    console.error(error);
+    log.error(error);
     throw new Error("Error fetching design");
   }
 }

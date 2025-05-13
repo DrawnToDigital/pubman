@@ -3,6 +3,7 @@ import {ThingiverseAPI} from "../thingiverse-lib";
 import {getDatabase} from "../../../lib/betterSqlite3";
 import fs from "fs";
 import path from "path";
+import log from "electron-log/renderer";
 
 // Thingiverse platform ID is 3 according to the schema
 const THINGIVERSE_PLATFORM_ID = 3;
@@ -25,7 +26,7 @@ export async function GET(request) {
     const things = await api.getThingsByUsername(username);
     return NextResponse.json(things, { status: 200 });
   } catch (error) {
-    console.error('Failed to get Thingiverse things:', error);
+    log.error('Failed to get Thingiverse things:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -90,14 +91,14 @@ export async function POST(request) {
       for (const image of existingImages) {
         try {
           const deleteResult = await api.deleteImage(thingResponse.id, image.id);
-          console.log(`Deleted image: ${image.id} ${image.name}`, deleteResult);
+          log.info(`Deleted image: ${image.id} ${image.name}`, deleteResult);
           fileResults.push({
             action: 'delete',
             name: image.name,
             result: deleteResult
           });
         } catch (error) {
-          console.error(`Failed to delete image ${image.id} ${image.name}:`, error);
+          log.error(`Failed to delete image ${image.id} ${image.name}:`, error);
           hasFileErrors = true;
           fileResults.push({
             action: 'delete',
@@ -113,14 +114,14 @@ export async function POST(request) {
       for (const file of existingFiles) {
         try {
           const deleteResult = await api.deleteFile(thingResponse.id, file.id);
-          console.log(`Deleted file: ${file.id} ${file.name}`, deleteResult);
+          log.info(`Deleted file: ${file.id} ${file.name}`, deleteResult);
           fileResults.push({
             action: 'delete',
             name: file.name,
             result: deleteResult
           });
         } catch (error) {
-          console.error(`Failed to delete file ${file.id} ${file.name}:`, error);
+          log.error(`Failed to delete file ${file.id} ${file.name}:`, error);
           hasFileErrors = true;
           fileResults.push({
             action: 'delete',
@@ -142,14 +143,14 @@ export async function POST(request) {
           }
           const fileBuffer = fs.readFileSync(filePath);
           const uploadResult = await api.uploadFile(thingResponse.id, asset.file_name, fileBuffer);
-          console.log(`Uploaded file: ${asset.file_name}`, uploadResult);
+          log.info(`Uploaded file: ${asset.file_name}`, uploadResult);
           fileResults.push({
             action: 'upload',
             name: asset.file_name,
             result: uploadResult
           });
         } catch (error) {
-          console.error(`Failed to upload file ${asset.file_name}:`, error);
+          log.error(`Failed to upload file ${asset.file_name}:`, error);
           hasFileErrors = true;
           fileResults.push({
             action: 'upload',
@@ -190,7 +191,7 @@ export async function POST(request) {
       designPlatform: designPlatform
     }, { status: thingId ? 200 : 201 });
   } catch (error) {
-    console.error('Failed to create Thingiverse thing:', error);
+    log.error('Failed to create Thingiverse thing:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

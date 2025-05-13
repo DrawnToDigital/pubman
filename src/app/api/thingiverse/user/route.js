@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ThingiverseAPI } from '../thingiverse-lib';
+import log from "electron-log/renderer";
 
 export async function GET(request) {
   try {
@@ -13,7 +14,7 @@ export async function GET(request) {
 
     return NextResponse.json(userData, { status: 200 });
   } catch (error) {
-    console.error('Failed to get Thingiverse user info:', error);
+    log.error('Failed to get Thingiverse user info:', error);
 
     // Check if the error is due to an invalid token
     if (error.message && error.message.includes('401')) {

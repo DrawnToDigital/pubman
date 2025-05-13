@@ -8,6 +8,16 @@ import fs from "fs/promises";
 import { existsSync } from "node:fs";
 import getBetterSqlite3 from "@/src/app/lib/betterSqlite3";
 import os from "node:os";
+import log from 'electron-log/main';
+
+// Prevent GetVSyncParametersIfAvailable() failures on Ubuntu
+if (process.platform === "linux") {
+  app.disableHardwareAcceleration();
+}
+
+// Use main logger
+log.initialize();
+
 const Database = getBetterSqlite3();
 
 let mainWindow: BrowserWindow | null = null
@@ -44,25 +54,26 @@ const sampleAssetsPath =
     : path.resolve("sample_assets"); // Dev Mode
 
 async function initializeAppData() {
-  console.log(`MAIN.ts ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron}  ${process?.versions?.node}`);
+  log.info(`MAIN.ts ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron}  ${process?.versions?.node}`);
+  log.info(`Initializing app data dir ${appDataPath}`);
   if (existsSync(dbPath) && existsSync(assetsDir)) {
+    log.info("App data already initialized.");
     return;
   }
   try {
-    console.log(`Initializing app data dir ${appDataPath}`);
     // Ensure appDataPath and db directory exist
     const dbDir = path.dirname(dbPath);
     await fs.mkdir(dbDir, { recursive: true });
 
     // Create or open the SQLite database
     const db = new Database(dbPath);
-    console.log(`DB init script ${dbInitFilePath}`);
+    log.info(`DB init script ${dbInitFilePath}`);
 
     // Read and execute SQL commands from init.txt
     const initSQL = await fs.readFile(dbInitFilePath, "utf-8");
     db.exec(initSQL);
 
-    console.log("Database initialized successfully.");
+    log.info("Database initialized successfully.");
 
     // Add sample assets
     await fs.mkdir(assetsDir, { recursive: true });
@@ -73,9 +84,9 @@ async function initializeAppData() {
     const sampleDesignDest = path.join(assetsDir, "example_design.stl");
     await fs.copyFile(sampleDesignSource, sampleDesignDest);
 
-    console.log("Sample assets added successfully.");
+    log.info("Sample assets added successfully.");
   } catch (error) {
-    console.error("Failed to initialize app data:", error);
+    log.error("Failed to initialize app data:", error);
   }
 }
 
@@ -132,11 +143,11 @@ const createWindow = () => {
         return;
       }
       attempt++;
-      console.log(`Retrying to connect to server... (${attempt}/${maxRetries})`);
+      log.info(`Retrying to connect to server... (${attempt}/${maxRetries})`);
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
 
-    console.error("Failed to connect to the server after maximum retries.");
+    log.error("Failed to connect to the server after maximum retries.");
     await mainWindow?.loadFile("path/to/fallback.html"); // Optional: Load a fallback page
   };
 
@@ -145,6 +156,7 @@ const createWindow = () => {
 };
 
 const startNextJSServer = async () => {
+  log.info("Starting Next.js server...");
   try {
     const nextJSPort = await getPort({ portRange: [30_011, 50_000] });
     const webDir = join(app.getAppPath(), "app");
@@ -165,9 +177,10 @@ const startNextJSServer = async () => {
       process.title = app.getName();
     });
 
+    log.info(`Next.js server started on port ${nextJSPort}`);
     return nextJSPort;
   } catch (error) {
-    console.error("Error starting Next.js server:", error);
+    log.error("Error starting Next.js server:", error);
     throw error;
   }
 };
@@ -177,7 +190,7 @@ app.whenReady().then(() => {
     createWindow();
   });
 
-  ipcMain.on("ping", () => console.log("pong"));
+  ipcMain.on("ping", () => log.info("pong"));
   ipcMain.handle("get-db-path", () => {
     return dbPath;
   })
@@ -203,7 +216,7 @@ app.whenReady().then(() => {
       const fileURL = nodeUrl.pathToFileURL(filePath).toString();
       return net.fetch(fileURL);
     } catch (error) {
-      console.error("Failed to handle local protocol:", error);
+      log.error("Failed to handle local protocol:", error);
       throw new Error("Failed to load resource");
     }
   });

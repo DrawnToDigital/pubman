@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import log from 'electron-log/renderer';
 
 export interface ThingiverseUser {
   name: string;
@@ -127,12 +128,12 @@ export function ThingiverseAuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const userData = await response.json();
-        console.log('>>> UserData raw: {}', userData);
+        log.info('>>> UserData raw: {}', userData);
         setUser(userData);
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error('Failed to check auth status:', error);
+      log.error('Failed to check auth status:', error);
     }
   };
 
@@ -159,7 +160,7 @@ export function ThingiverseAuthProvider({ children }: { children: ReactNode }) {
       }, { once: true });
 
     } catch (error) {
-      console.error('Login failed:', error);
+      log.error('Login failed:', error);
       throw error;
     }
   };
@@ -170,7 +171,7 @@ export function ThingiverseAuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
-      console.error('Logout failed:', error);
+      log.error('Logout failed:', error);
     }
   };
 
@@ -180,11 +181,11 @@ export function ThingiverseAuthProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         await checkAuth();
       } else {
-        console.error('Failed to refresh token:', response.text(), response.statusText);
+        log.error('Failed to refresh token:', response.text(), response.statusText);
         throw new Error('Failed to refresh token');
       }
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      log.error('Token refresh failed:', error);
       throw error;
     }
   };

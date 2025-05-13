@@ -3,6 +3,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { customAlphabet } from 'nanoid';
+import log from "electron-log/renderer";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -38,7 +39,7 @@ export async function addFile(filePath: string, storagePath: string, designID: s
       throw new Error('Failed to add file metadata');
     }
   } catch (error) {
-    console.error('Error adding file:', error);
+    log.error('Error adding file:', error);
     throw new Error('Failed to add file');
   }
 }
@@ -52,7 +53,7 @@ export async function removeFile(designID: string, assetID: string) {
       throw new Error('Failed to remove file metadata');
     }
   } catch (error) {
-    console.error('Error removing file:', error);
+    log.error('Error removing file:', error);
     throw new Error('Failed to remove file');
   }
 }

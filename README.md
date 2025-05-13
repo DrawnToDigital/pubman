@@ -4,6 +4,7 @@ Electron+NextJS Desktop application
 - [NextJS](https://nextjs.org/)
 - [Tailwind](https://tailwindcss.com/)
 - [shadcn](https://ui.shadcn.com/)
+- [zod](https://zod.dev/)
 
 ## Getting Started
 

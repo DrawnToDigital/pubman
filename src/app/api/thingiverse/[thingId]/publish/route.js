@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ThingiverseAPI } from '../../thingiverse-lib';
 import {getDatabase} from "../../../../lib/betterSqlite3";
+import log from "electron-log/renderer";
 
 export async function POST(request, { params }) {
   try {
@@ -21,7 +22,7 @@ export async function POST(request, { params }) {
       publishResult = {"message": "Thing is already published"};
     } else {
       publishResult = {"error": "Thing is not in a publishable state"};
-      console.error(`Thing ${thingId} is not in a publishable state:`, thingData);
+      log.error(`Thing ${thingId} is not in a publishable state:`, thingData);
       return NextResponse.json(publishResult, { status: 400 });
     }
 
@@ -76,7 +77,7 @@ export async function POST(request, { params }) {
       }
     }, { status: 200 });
   } catch (error) {
-    console.error('Failed to publish Thingiverse thing:', error);
+    log.error('Failed to publish Thingiverse thing:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

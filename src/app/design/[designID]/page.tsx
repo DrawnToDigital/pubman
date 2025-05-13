@@ -10,6 +10,7 @@ import {addFile, removeFile} from "@/src/app/actions/file";
 import {Input} from "@/src/app/components/ui/input";
 import {useRouter} from "next/navigation";
 import { ThingiversePublishing } from "@/src/app/components/design/thingiverse-publishing";
+import log from 'electron-log/renderer';
 
 const getLicenseName = (licenseKey: string): string => {
   const licenseMap: Record<string, string> = {
@@ -48,7 +49,7 @@ const DesignDetailsPage = () => {
           setDesign(designData);
         }
       } catch (error) {
-        console.error("Failed to fetch design:", error);
+        log.error("Failed to fetch design:", error);
         setErrorMessage("Failed to load design details.");
       }
     };
@@ -73,7 +74,7 @@ const DesignDetailsPage = () => {
       });
       setEditMode(false);
     } catch (error) {
-      console.error('Failed to update design:', error);
+      log.error('Failed to update design:', error);
       setErrorMessage('Failed to update design. Please try again.');
     }
   };
@@ -86,7 +87,7 @@ const DesignDetailsPage = () => {
       // @ts-expect-error
       const result = await window.electron.dialog.showOpenDialog({ properties: ['openFile'] });
       if (result.canceled) {
-        console.log("No file selected!");
+        log.info("No file selected!");
         return;
       }
 
@@ -99,7 +100,7 @@ const DesignDetailsPage = () => {
       const updatedDesign = await fetchDesign(designID.toString());
       setDesign(updatedDesign);
     } catch (error) {
-      console.error(error);
+      log.error(error);
       setErrorMessage("Failed to upload files.");
     }
   };
@@ -112,7 +113,7 @@ const DesignDetailsPage = () => {
       const updatedDesign = await fetchDesign(designID.toString());
       setDesign(updatedDesign);
     } catch (error) {
-      console.error(error);
+      log.error(error);
       setErrorMessage("Failed to remove file.");
     }
   };
@@ -136,7 +137,7 @@ const DesignDetailsPage = () => {
         });
         router.push('/dashboard');
       } catch (error) {
-        console.error("Failed to delete design:", error);
+        log.error("Failed to delete design:", error);
         setErrorMessage("Failed to delete design. Please try again.");
       }
     }

@@ -8,6 +8,7 @@ import { designCreateSchema, DesignCreateSchema, pubmanCategories } from "./type
 import { createDesign } from "@/src/app/actions/design";
 import { FormControl, FormField, FormItem } from "@/src/app/components/ui/form";
 import { Input } from "@/src/app/components/ui/input";
+import log from 'electron-log/renderer';
 
 const licenseMap: Record<string, string> = {
   'CC': 'Creative Commons',
@@ -48,11 +49,11 @@ const DesignForm = () => {
       if (response && response.id) {
         router.push(`/design/${response.id}`);
       } else {
-        console.error("Unexpected response:", response);
+        log.error("Unexpected response:", response);
         setErrorMessage("Failed to create design. Please try again.");
       }
     } catch (error) {
-      console.error("Failed to create design:", error);
+      log.error("Failed to create design:", error);
       setErrorMessage("Failed to create design. Please try again.");
     }
   };

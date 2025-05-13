@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from "../../../../../lib/betterSqlite3";
+import log from "electron-log/renderer";
 
 export async function GET(request, context) {
   const { designID, assetID } = await context.params; // Await params
@@ -80,7 +81,7 @@ export async function DELETE(request, context) {
 
     return NextResponse.json({ message: 'Asset deleted successfully' }, { status: 200 });
   } catch (error) {
-    console.error('Failed to delete design:', error);
+    log.error('Failed to delete asset:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

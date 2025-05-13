@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ThingiverseAPI } from '../../thingiverse-lib';
+import log from "electron-log/renderer";
 
 export async function GET(request, { params }) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(files, { status: 200 });
   } catch (error) {
-    console.error('Failed to get Thingiverse files:', error);
+    log.error('Failed to get Thingiverse files:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -42,7 +43,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error('Failed to upload file to Thingiverse:', error);
+    log.error('Failed to upload file to Thingiverse:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

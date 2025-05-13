@@ -12,6 +12,7 @@ import {
 } from "../ui/tooltip";
 import { Edit, Trash2, Construction, CircleSlash, FileCheck, ChevronUp, ChevronDown } from "lucide-react";
 import Image from "next/image";
+import log from 'electron-log/renderer';
 
 type SortField = "main_name" | "created_at" | "category" | "updated_at";
 type SortOrder = "asc" | "desc";
@@ -39,7 +40,7 @@ export default function DesignsChart() {
         const data = await response.json();
         setDesigns(designSchema.array().parse(data));
       } catch (error) {
-        console.error("Failed to fetch designs:", error);
+        log.error("Failed to fetch designs:", error);
         setErrorMessage("Failed to load designs.");
       } finally {
         setIsLoading(false);
@@ -150,7 +151,7 @@ export default function DesignsChart() {
         });
         setDesigns(designs.filter(design => design.id !== designId));
       } catch (error) {
-        console.error("Failed to delete design:", error);
+        log.error("Failed to delete design:", error);
         setErrorMessage("Failed to delete design. Please try again.");
       }
     }
