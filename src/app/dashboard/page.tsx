@@ -5,6 +5,7 @@ import DesignsChart from "@/src/app/components/dashboard/design-chart";
 import { Button } from "../components/ui/button";
 import { UserBanner } from "../components/dashboard/user-banner";
 import { ThingiverseAuth } from "../components/dashboard/thingiverse-auth";
+import { PrintablesAuth } from "../components/dashboard/printables-auth";
 
 export default function Page({}) {
     return (
@@ -18,6 +19,7 @@ export default function Page({}) {
                 </Link>
                 <div className="flex-1"></div>
                 <ThingiverseAuth />
+                <PrintablesAuth />
             </div>
             <Suspense fallback={<DesignsChartSkeleton />}>
                 <DesignsChart></DesignsChart>

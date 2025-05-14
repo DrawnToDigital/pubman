@@ -179,8 +179,8 @@ export async function POST(request) {
         strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) as updated_at,
         strftime('%Y-%m-%dT%H:%M:%fZ', published_at) as published_at
       FROM design_platform
-      WHERE platform_id = 3 AND design_id = ?
-    `).get(designId);
+      WHERE platform_id = ? AND design_id = ?
+    `).get(THINGIVERSE_PLATFORM_ID, designId);
 
     return NextResponse.json({
       message: thingId ? `Design updated ${hasFileErrors ? 'with errors ': ''}on Thingiverse` : `Design published ${hasFileErrors ? 'with errors ': ''}to Thingiverse as draft`,

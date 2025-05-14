@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS platform (
 INSERT OR IGNORE INTO platform (id, name, description, api_endpoint) VALUES
     (1, 'PubMan', 'PubMan Local Platform', 'http://pubman.lan'),
     (2, 'Dummy', 'Dummy Platform', 'https://pubman-dummy.lan'),
-    (3, 'Thingiverse', 'Thingiverse Platform', 'https://api.thingiverse.com');
+    (3, 'Thingiverse', 'Thingiverse Platform', 'https://api.thingiverse.com'),
+    (4, 'Printables', 'Printables Platform', 'https://api.printables.com');
 
 -- Create the license table if it doesn't exist
 CREATE TABLE IF NOT EXISTS license (

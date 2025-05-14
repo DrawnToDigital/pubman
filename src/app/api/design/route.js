@@ -7,7 +7,8 @@ import log from "electron-log/renderer";
 const platformMap = {
   1: 'PUBMAN',
   2: 'DUMMY',
-  3: 'THINGIVERSE'
+  3: 'THINGIVERSE',
+  4: 'PRINTABLES',
 }
 
 const PLATFORM_PUBMAN = 1;

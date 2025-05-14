@@ -1,3 +1,5 @@
+import log from 'electron-log/renderer';
+
 const printablesCategories = {
   '3D Printers': {'id': '1', 'path': ['3D Printers'], 'pathIds': ['1']},
   'Prusa Parts & Upgrades': {'id': '134', 'path': ['3D Printers', 'Prusa Parts & Upgrades'], 'pathIds': ['1', '134']},
@@ -827,59 +829,167 @@ fragment SimpleImage on PrintImageType {
 }`;
 
 const mutationPrepareUpload = `
-    mutation UploadModel($fileName: String!, $folder: String!, $unzip: Boolean!, $imageHash: String, $imageHeight: Int, $imageWidth: Int) {
-      upload: printFileUpload2(
-        fileName: $fileName
-        folder: $folder
-        unzip: $unzip
-        imageHash: $imageHash
-        imageHeight: $imageHeight
-        imageWidth: $imageWidth
-      ) {
-        ok
-        errors {
-          ...Error
-          __typename
-        }
-        uploadData {
-          url
-          fields
-          __typename
-        }
-        fileUpload {
-          id
-          __typename
-        }
-        __typename
-      }
-    }
-    fragment Error on ErrorType {
-      field
-      messages
+mutation UploadModel($fileName: String!, $folder: String!, $unzip: Boolean!, $imageHash: String, $imageHeight: Int, $imageWidth: Int) {
+  upload: printFileUpload2(
+    fileName: $fileName
+    folder: $folder
+    unzip: $unzip
+    imageHash: $imageHash
+    imageHeight: $imageHeight
+    imageWidth: $imageWidth
+  ) {
+    ok
+    errors {
+      ...Error
       __typename
-    }`;
+    }
+    uploadData {
+      url
+      fields
+      __typename
+    }
+    fileUpload {
+      id
+      __typename
+    }
+    __typename
+  }
+}
+fragment Error on ErrorType {
+  field
+  messages
+  __typename
+}`;
 
 const mutationFinalizeUpload = `
-    mutation UploadModelFinished($fileUploadId: ID!) {
-      uploadFinished: printFileUploadFinished(fileUploadId: $fileUploadId) {
-        ok
-        errors {
-          ...Error
-          __typename
-        }
-        output {
-          id
-          filePath
-          __typename
-        }
-        __typename
-      }
-    }
-    fragment Error on ErrorType {
-      field
-      messages
+mutation UploadModelFinished($fileUploadId: ID!) {
+  uploadFinished: printFileUploadFinished(fileUploadId: $fileUploadId) {
+    ok
+    errors {
+      ...Error
       __typename
-    }`;
+    }
+    output {
+      id
+      filePath
+      __typename
+    }
+    __typename
+  }
+}
+fragment Error on ErrorType {
+  field
+  messages
+  __typename
+}`;
+
+const queryPollFileUploads = `
+query PollFileUploads($ids: [ID!]!) {
+  fileUploads: modelFileUploads(ids: $ids) {
+    id
+    notInspectedFiles
+    isUploadFinished
+    isProcessed
+    gcodes {
+      ...GcodeDetail
+      __typename
+    }
+    stls {
+      ...StlDetail
+      __typename
+    }
+    slas {
+      ...SlaDetail
+      __typename
+    }
+    otherFiles {
+      ...OtherFileDetail
+      __typename
+    }
+    images {
+      ...ModelImage
+      order
+      __typename
+    }
+    __typename
+  }
+}
+fragment GcodeDetail on GCodeType {
+  id
+  created
+  name
+  folder
+  note
+  printer {
+    id
+    name
+    __typename
+  }
+  excludeFromTotalSum
+  printDuration
+  layerHeight
+  nozzleDiameter
+  material {
+    id
+    name
+    __typename
+  }
+  weight
+  fileSize
+  filePreviewPath
+  rawDataPrinter
+  order
+  __typename
+}
+fragment ModelImage on PrintImageType {
+  id
+  filePath
+  rotation
+  __typename
+}
+fragment OtherFileDetail on OtherFileType {
+  id
+  created
+  name
+  folder
+  note
+  fileSize
+  filePreviewPath
+  order
+  __typename
+}
+fragment SlaDetail on SLAType {
+  id
+  created
+  name
+  folder
+  note
+  expTime
+  firstExpTime
+  printer {
+    id
+    name
+    __typename
+  }
+  printDuration
+  layerHeight
+  usedMaterial
+  fileSize
+  filePreviewPath
+  order
+  __typename
+}
+fragment StlDetail on STLType {
+  id
+  created
+  name
+  folder
+  note
+  fileSize
+  filePreviewPath
+  order
+  __typename
+}`;
 
 export class PrintablesAPI {
   constructor(accessToken = '') {
@@ -897,6 +1007,7 @@ export class PrintablesAPI {
   }
 
   async graphql(query, variables = {}) {
+    log.info(`PrintablesAPI: GraphQL request: ${query.substring(0, 40)} ${JSON.stringify(variables)}`);
     const url = `${this.apiUrl}/graphql/`
     const response = await fetch(url, {
       method: 'POST',
@@ -927,7 +1038,7 @@ export class PrintablesAPI {
 
   async getModelById(modelId) {
     const response = await this.graphql(queryModelDetail, {
-      "id": JSON.stringify(modelId),
+      "id": modelId,
       "loadPurchase": false
     });
     if (!response || !response.data || !response.data.model) {
@@ -991,14 +1102,14 @@ export class PrintablesAPI {
     };
 
     const response = await this.graphql(mutationCreateOrUpdateModel, variables);
-    if (!response || !response.data || !response.data.modelUpdate) {
+    if (!response) {
       throw new Error('Failed to create model');
     }
-    if (response.errors.length > 0) {
-      throw new Error(`Failed to create model: ${response.errors.map(e => e.messages).join(', ')}`);
+    if (response.errors?.length > 0) {
+      throw new Error(`Failed to create model: ${JSON.stringify(response.errors)}`);
     }
-    if (!response.data.modelUpdate.ok) {
-      throw new Error(`Failed to create model: ${response.data.modelUpdate.errors.map(e => e.messages).join(', ')}`);
+    if (!response.data?.modelUpdate?.ok) {
+      throw new Error(`Failed to create model: ${JSON.stringify(response)}`);
     }
     return response.data.modelUpdate.output;
   }
@@ -1016,7 +1127,7 @@ export class PrintablesAPI {
       category: printablesCategories[rawCategory]?.id || current.category?.id,
       license: printablesLicenses[rawLicense]?.id || current.license?.id,
       name: name || current.name,
-      draft: rawDraft === false ? false : rawDraft === true ? true : current.draft,
+      draft: rawDraft === false ? false : rawDraft === true ? true : current.datePublished === null,
       summary: summary || current.summary,
       slas: slas || current.slas,
       gcodes: gcodes || current.gcodes,
@@ -1038,14 +1149,14 @@ export class PrintablesAPI {
     };
 
     const response = await this.graphql(mutationCreateOrUpdateModel, updatedModel);
-    if (!response || !response.data || !response.data.modelUpdate) {
+    if (!response) {
       throw new Error('Failed to update model');
     }
-    if (response.errors.length > 0) {
-      throw new Error(`Failed to update model: ${response.errors.map(e => e.messages).join(', ')}`);
+    if (response.errors?.length > 0) {
+      throw new Error(`Failed to update model: ${JSON.stringify(response.errors)}`);
     }
-    if (!response.data.modelUpdate.ok) {
-      throw new Error(`Failed to update model: ${response.data.modelUpdate.errors.map(e => e.messages).join(', ')}`);
+    if (!response.data?.modelUpdate?.ok) {
+      throw new Error(`Failed to update model: ${JSON.stringify(response)}`);
     }
     return response.data.modelUpdate.output;
   }
@@ -1066,22 +1177,19 @@ export class PrintablesAPI {
       "unzip": true
     }
     const prepareResponse = await this.graphql(mutationPrepareUpload, prepareVariables);
-    if (!prepareResponse || !prepareResponse.data || !prepareResponse.data.upload) {
+    if (!prepareResponse) {
       throw new Error('Failed to prepare image upload');
     }
-    if (prepareResponse.errors.length > 0) {
-      throw new Error(`Failed to prepare image upload: ${prepareResponse.errors.map(e => e.messages).join(', ')}`);
+    if (prepareResponse.errors?.length > 0) {
+      throw new Error(`Failed to prepare image upload: ${JSON.stringify(prepareResponse.errors)}`);
     }
-    if (!prepareResponse.data.upload.ok) {
-      throw new Error(`Failed to prepare image upload: ${prepareResponse.data.upload.errors.map(e => e.messages).join(', ')}`);
+    if (!prepareResponse.data?.upload?.ok) {
+      throw new Error(`Failed to prepare image upload: ${JSON.stringify(prepareResponse)}`);
     }
     const uploadData = prepareResponse.data.upload.uploadData;
 
     // Step 2: Upload the file to the storage provider
     const formData = new FormData();
-    for (const [key, value] of Object.entries(prepareResponse.fields)) {
-      formData.append(key, value);
-    }
     formData.append('file', new Blob([fileBuffer]));
 
     // note: fetch without any auth or special headers
@@ -1099,16 +1207,30 @@ export class PrintablesAPI {
       "fileUploadId": prepareResponse.data.upload.fileUpload.id,
     }
     const finalizeResponse = await this.graphql(mutationFinalizeUpload, finalizeVariables);
-    if (!finalizeResponse || !finalizeResponse.data || !finalizeResponse.data.uploadFinished) {
+    if (!finalizeResponse) {
       throw new Error('Failed to finalize image upload');
     }
-    if (finalizeResponse.errors.length > 0) {
-      throw new Error(`Failed to finalize image upload: ${finalizeResponse.errors.map(e => e.messages).join(', ')}`);
+    if (finalizeResponse.errors?.length > 0) {
+      throw new Error(`Failed to finalize image upload: ${JSON.stringify(finalizeResponse.errors)}`);
     }
-    if (!finalizeResponse.data.uploadFinished.ok) {
-      throw new Error(`Failed to finalize image upload: ${finalizeResponse.data.uploadFinished.errors.map(e => e.messages).join(', ')}`);
+    if (!finalizeResponse.data?.uploadFinished?.ok) {
+      throw new Error(`Failed to finalize image upload: ${JSON.stringify(finalizeResponse)}`);
     }
     return finalizeResponse.data.uploadFinished.output;
+  }
+
+  async pollFileUploads(ids) {
+    const response = await this.graphql(queryPollFileUploads, {ids: ids});
+    if (!response) {
+      throw new Error('Failed to poll file uploads');
+    }
+    if (response.errors?.length > 0) {
+      throw new Error(`Failed to poll file uploads: ${JSON.stringify(response.errors)}`);
+    }
+    if (!response.data?.fileUploads) {
+      throw new Error('Failed to poll file uploads: no data');
+    }
+    return response.data.fileUploads;
   }
 
   // Note: Published is just `draft` set to false, use `updateModel`

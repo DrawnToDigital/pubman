@@ -10,6 +10,7 @@ import {addFile, removeFile} from "@/src/app/actions/file";
 import {Input} from "@/src/app/components/ui/input";
 import {useRouter} from "next/navigation";
 import { ThingiversePublishing } from "@/src/app/components/design/thingiverse-publishing";
+import { PrintablesPublishing } from "@/src/app/components/design/printables-publishing";
 import log from 'electron-log/renderer';
 
 const getLicenseName = (licenseKey: string): string => {
@@ -327,6 +328,17 @@ const DesignDetailsPage = () => {
           setErrorMessage={setErrorMessage}
           setSuccessMessage={setSuccessMessage}
           onDesignUpdated={(updatedDesign) => setDesign(updatedDesign)}
+        />
+      )}
+
+      {/* Printables Publishing Section */}
+      {design && (
+        <PrintablesPublishing
+          design={design}
+          designID={designID.toString()}
+          setErrorMessage={setErrorMessage}
+          setSuccessMessage={setSuccessMessage}
+          onDesignUpdated={(updateDesign) => setDesign(updateDesign)}
         />
       )}
 
