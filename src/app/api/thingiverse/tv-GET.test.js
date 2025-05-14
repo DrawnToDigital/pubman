@@ -1,5 +1,6 @@
 import { GET } from './route';
 import { ThingiverseAPI } from './thingiverse-lib';
+import log from 'electron-log/renderer';
 
 jest.mock('./thingiverse-lib', () => ({
   ThingiverseAPI: jest.fn().mockImplementation(() => ({
@@ -90,7 +91,7 @@ describe('GET /api/thingiverse', () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: 'Internal server error' });
-    expect(console.error).toHaveBeenCalledWith(
+    expect(log.error).toHaveBeenCalledWith(
       'Thingiverse API error:',
       expect.any(Error)
     );

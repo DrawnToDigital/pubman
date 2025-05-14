@@ -11,7 +11,6 @@ jest.mock('fs');
 describe('POST /api/thingiverse/things', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    console.error = jest.fn();
   });
 
   it('should create a new thing and record it in the design_platform table', async () => {

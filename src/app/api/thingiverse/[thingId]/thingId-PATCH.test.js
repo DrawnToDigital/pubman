@@ -1,6 +1,7 @@
 // In src/app/api/thingiverse/[thingId]/thingId-PATCH.test.js
 import { PATCH } from './route';  // Fix the import path
 import { ThingiverseAPI } from '../thingiverse-lib';
+import log from 'electron-log/renderer';
 
 jest.mock('../thingiverse-lib', () => ({
   ThingiverseAPI: jest.fn().mockImplementation(() => ({
@@ -53,10 +54,9 @@ describe('PATCH /api/thingiverse/[thingId]', () => {
     };
 
     const response = await PATCH(request, { params: { thingId: '12345' } });
-
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: 'Internal server error' });
-    expect(console.error).toHaveBeenCalledWith(
+    expect(log.error).toHaveBeenCalledWith(
       'Failed to update Thingiverse thing:',
       expect.any(Error)
     );

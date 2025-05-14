@@ -1,5 +1,6 @@
 import { GET, POST } from './route';
 import { ThingiverseAPI } from '../../thingiverse-lib';
+import log from 'electron-log/renderer';
 
 jest.mock('../../thingiverse-lib', () => ({
   ThingiverseAPI: jest.fn().mockImplementation(() => ({
@@ -60,7 +61,7 @@ describe('GET /api/thingiverse/[thingId]/files', () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: 'Internal server error' });
-    expect(console.error).toHaveBeenCalledWith(
+    expect(log.error).toHaveBeenCalledWith(
       'Failed to get Thingiverse files:',
       expect.any(Error)
     );
@@ -159,7 +160,7 @@ describe('POST /api/thingiverse/[thingId]/files', () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: 'Internal server error' });
-    expect(console.error).toHaveBeenCalledWith(
+    expect(log.error).toHaveBeenCalledWith(
       'Failed to upload file to Thingiverse:',
       expect.any(Error)
     );

@@ -1,6 +1,7 @@
 import {POST} from './route';
 import {ThingiverseAPI} from '../../thingiverse-lib';
 import {getDatabase} from "../../../../lib/betterSqlite3";
+import log from 'electron-log/renderer';
 
 // Mock dependencies
 jest.mock('../../thingiverse-lib');
@@ -9,7 +10,6 @@ jest.mock('../../../../lib/betterSqlite3');
 describe('POST /api/thingiverse/[thingId]/publish', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    console.error = jest.fn(); // Mock console.error
   });
 
   it('should return 401 if access token is missing', async () => {
@@ -147,6 +147,6 @@ describe('POST /api/thingiverse/[thingId]/publish', () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({error: 'Internal server error'});
-    expect(console.error).toHaveBeenCalledWith('Failed to publish Thingiverse thing:', mockError);
+    expect(log.error).toHaveBeenCalledWith('Failed to publish Thingiverse thing:', mockError);
   });
 });

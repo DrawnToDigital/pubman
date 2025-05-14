@@ -7,6 +7,7 @@ import Link from "next/link";
 import { isPubmanLicenseSupported as thingiverseIsLicenseSupported } from "@/src/app/api/thingiverse/thingiverse-lib";
 import { fetchDesign } from "@/src/app/actions/design";
 import {useThingiverseAuth} from "@/src/app/contexts/ThingiverseAuthContext";
+import log from "electron-log/renderer";
 
 interface ThingiversePublishingProps {
   design: DesignSchema;
@@ -108,7 +109,7 @@ export function ThingiversePublishing({
       onDesignUpdated(updatedDesign);
 
     } catch (error) {
-      console.error("Failed to publish to Thingiverse:", error);
+      log.error("Failed to publish to Thingiverse:", error);
       setErrorMessage("Failed to publish to Thingiverse. Please try again.");
     } finally {
       setIsPublishing(false);
@@ -174,7 +175,7 @@ export function ThingiversePublishing({
       const updatedDesign = await fetchDesign(designID.toString());
       onDesignUpdated(updatedDesign);
     } catch (error) {
-      console.error("Failed to update Thingiverse draft:", error);
+      log.error("Failed to update Thingiverse draft:", error);
       setErrorMessage("Failed to update Thingiverse draft. Please try again.");
     } finally {
       setIsPublishing(false);
@@ -216,7 +217,7 @@ export function ThingiversePublishing({
       onDesignUpdated(updatedDesign);
 
     } catch (error) {
-      console.error("Failed to publish to Thingiverse:", error);
+      log.error("Failed to publish to Thingiverse:", error);
       setErrorMessage("Failed to publish to Thingiverse. Please try again.");
     } finally {
       setIsPublishing(false);
