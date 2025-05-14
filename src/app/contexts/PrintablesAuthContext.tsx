@@ -4,9 +4,14 @@ import {createContext, ReactNode, useContext, useEffect, useState} from "react";
 import log from "electron-log/renderer";
 
 export interface PrintablesUser {
-  id: number;
-  username: string;
-  displayUsername: string;
+  id: string;
+  email: string;
+  user: {
+    id: string;
+    handle: string;
+    publicUsername: string;
+    avatarFilePath: string;
+  }
 }
 
 interface PrintablesAuthContextType {
