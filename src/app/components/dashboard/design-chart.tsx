@@ -164,7 +164,7 @@ export default function DesignsChart() {
   return (
     <div className="container mx-auto px-4">
       <div className="text-red-500 text-lg pb-4 text-center w-full">{errorMessage}</div>
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

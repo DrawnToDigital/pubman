@@ -5,6 +5,7 @@ Electron+NextJS Desktop application
 - [Tailwind](https://tailwindcss.com/)
 - [shadcn](https://ui.shadcn.com/)
 - [zod](https://zod.dev/)
+- [Tiptap](https://tiptap.dev/docs/editor/getting-started/overview)
 
 ## Getting Started
 

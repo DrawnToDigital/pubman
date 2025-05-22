@@ -12,6 +12,7 @@ import {useRouter} from "next/navigation";
 import { ThingiversePublishing } from "@/src/app/components/design/thingiverse-publishing";
 import { PrintablesPublishing } from "@/src/app/components/design/printables-publishing";
 import log from 'electron-log/renderer';
+import TextEditor from "../../components/text-editor/editor";
 
 const getLicenseName = (licenseKey: string): string => {
   const licenseMap: Record<string, string> = {
@@ -36,6 +37,7 @@ const getLicenseName = (licenseKey: string): string => {
 const DesignDetailsPage = () => {
   const { designID } = useParams<{ designID: string }>();
   const [design, setDesign] = useState<DesignSchema | null>(null);
+  const [description, setDescription] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -62,6 +64,7 @@ const DesignDetailsPage = () => {
     if (!design) return;
 
     try {
+      data.description = description;
       await updateDesign(designID, data);
       const updatedDesign = await fetchDesign(designID);
       setDesign(updatedDesign);
@@ -205,15 +208,15 @@ const DesignDetailsPage = () => {
             />
             {errors.summary && <p className="text-red-500 text-sm">Summary is required</p>}
           </div>
-
+          
           <div>
             <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              {...register('description', { required: true })}
-              defaultValue={design.description}
-              className="w-full border rounded-md p-2"
-              rows={6}
-            />
+            <div className="w-full">
+              <TextEditor
+                onContentChange={setDescription}
+                content={design.description}
+              />
+            </div>
             {errors.description && <p className="text-red-500 text-sm">Description is required</p>}
           </div>
 
@@ -285,7 +288,10 @@ const DesignDetailsPage = () => {
 
           <div>
             <h2 className="text-lg font-semibold mb-2">Description</h2>
-            <div className="text-gray-700 whitespace-pre-wrap">{design.description}</div>
+            <div
+              className="prose text-gray-700 whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ __html: design.description }}
+            />
           </div>
 
           <div>

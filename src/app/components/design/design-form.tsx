@@ -9,6 +9,7 @@ import { createDesign } from "@/src/app/actions/design";
 import { FormControl, FormField, FormItem } from "@/src/app/components/ui/form";
 import { Input } from "@/src/app/components/ui/input";
 import log from 'electron-log/renderer';
+import TextEditor from "@/src/app/components/text-editor/editor";
 
 const licenseMap: Record<string, string> = {
   'CC': 'Creative Commons',
@@ -28,6 +29,7 @@ const licenseMap: Record<string, string> = {
 
 const DesignForm = () => {
   const router = useRouter();
+  const [description, setDescription] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const form = useForm<DesignCreateSchema>({
@@ -45,6 +47,7 @@ const DesignForm = () => {
   const onSubmit = async (data: DesignCreateSchema) => {
     setErrorMessage(null); // Clear previous errors
     try {
+      data.description = description;
       const response = await createDesign(data);
       if (response && response.id) {
         router.push(`/design/${response.id}`);
@@ -113,19 +116,13 @@ const DesignForm = () => {
         <FormField
           control={form.control}
           name="description"
-          render={({ field }) => (
+          render={() => (
             <FormItem className="flex flex-col">
               <label htmlFor="description" className="text-sm font-medium mb-1">
                 Description
               </label>
               <FormControl>
-                <textarea
-                  id="description"
-                  placeholder="Enter description"
-                  {...field}
-                  required
-                  className="border border-gray-300 rounded-md p-2"
-                />
+                <TextEditor onContentChange={setDescription} />
               </FormControl>
             </FormItem>
           )}
