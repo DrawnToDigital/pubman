@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
-import { Edit, Trash2, Construction, CircleSlash, FileCheck, ChevronUp, ChevronDown } from "lucide-react";
+import {Edit, Trash2, Construction, CircleSlash, FileCheck, ChevronUp, ChevronDown, PlusIcon, SettingsIcon} from "lucide-react";
 import Image from "next/image";
 import log from 'electron-log/renderer';
 
@@ -25,6 +25,24 @@ export default function DesignsChart() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("updated_at");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const filterTabs = [
+    { id: "all", label: "All" },
+    { id: "published", label: "Published" },
+    { id: "draft", label: "Drafts" },
+    { id: "local", label: "Local" }
+  ];
+  const [manageColumnsIsOpen, setManageColumnsIsOpen] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState({
+    thingiverse: true,
+    printables: true,
+    makerworld: true,
+  });
+  const toggleColumnVisibility = (column: keyof typeof visibleColumns) => {
+    setVisibleColumns((prevState: typeof visibleColumns) => ({
+      ...prevState,
+      [column]: !prevState[column],
+    }));
+  };
 
   useEffect(() => {
     async function fetchDesigns() {
@@ -163,7 +181,84 @@ export default function DesignsChart() {
 
   return (
     <div className="container mx-auto px-4">
-      <div className="text-red-500 text-lg pb-4 text-center w-full">{errorMessage}</div>
+      <div className="flex justify-between items-center mb-4">
+        <nav className="flex space-x-8">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id)}
+              className={`
+                py-2 px-1 font-medium text-sm whitespace-nowrap border-b-2
+                ${filter === tab.id 
+                  ? "border-b-2 border-gray-500 text-gray-600" 
+                  : "border-transparent text-gray-500 hover:border-gray-300"}
+                transition-colors duration-200
+              `}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+        <div className="text-red-500 font-bold">{errorMessage}</div>
+        <div className="flex space-x-4">
+          <Link href="/design/create-design">
+            <Button className="ml-auto" variant="default">
+              <PlusIcon/> Add New Design
+            </Button>
+          </Link>
+          <div className="relative">
+            <Button className="ml-auto" variant="outline"
+            onClick={() => setManageColumnsIsOpen(!manageColumnsIsOpen)}>
+              <SettingsIcon/> Manage Columns
+            </Button>
+            {manageColumnsIsOpen && (
+              <div className="grid gap-4 absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-10 p-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none">Visible Platforms</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Select which platforms to display.
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox"
+                      id="thingiverse"
+                      checked={visibleColumns.thingiverse}
+                      onChange={() => toggleColumnVisibility('thingiverse')}
+                    />
+                    <label htmlFor="thingiverse" className="flex items-center">
+                      <Image src="/thingiverse.png" alt="Thingiverse" width="20" height="20" className="mr-2" />
+                      Thingiverse
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox"
+                      id="printables"
+                      checked={visibleColumns.printables}
+                      onChange={() => toggleColumnVisibility('printables')}
+                    />
+                    <label htmlFor="printables" className="flex items-center">
+                      <Image src="/printables.png" alt="Printables" width="20" height="20" className="mr-2" />
+                      Printables
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox"
+                      id="makerworld"
+                      checked={visibleColumns.makerworld}
+                      onChange={() => toggleColumnVisibility('makerworld')}
+                    />
+                    <label htmlFor="makerworld" className="flex items-center">
+                      <Image src="/makerworld.png" alt="Makerworld" width="20" height="20" className="mr-2" />
+                      Makerworld
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       <div className="bg-white shadow rounded-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -191,15 +286,21 @@ export default function DesignsChart() {
                   <div className="text-xs text-gray-500 uppercase">Created {renderSortIndicator("created_at")}</div>
                   <div className="text-xs text-gray-500">Updated</div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <Image src="/thingiverse.png" alt="Thingiverse" width="30" height="30" />
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <Image src="/printables.png" alt="Printables" width="30" height="30" />
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <Image src="/makerworld.png" alt="Makerworld" width="30" height="30" />
-                </th>
+                {visibleColumns.thingiverse && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <Image src="/thingiverse.png" alt="Thingiverse" width="30" height="30" />
+                  </th>
+                )}
+                {visibleColumns.printables && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <Image src="/printables.png" alt="Printables" width="30" height="30" />
+                  </th>
+                )}
+                {visibleColumns.makerworld && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <Image src="/makerworld.png" alt="Makerworld" width="30" height="30" />
+                  </th>
+                )}
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
@@ -275,66 +376,72 @@ export default function DesignsChart() {
                         {design.updated_at && formatDate(design.updated_at)}
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <div className="inline-flex items-center justify-center h-8 w-8">
-                              {getPlatformStatusIcon(design, "THINGIVERSE")}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>
-                              Thingiverse: {getPlatformStatus(design, "THINGIVERSE") === "published"
-                                ? `Published on ${formatDate(design.platforms.find(p => p.platform === "THINGIVERSE")?.published_at || '')}`
-                                : getPlatformStatus(design, "THINGIVERSE") === "draft"
-                                  ? "Draft (not published)"
-                                  : "Not on Thingiverse"}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <div className="inline-flex items-center justify-center h-8 w-8">
-                              {getPlatformStatusIcon(design, "PRINTABLES")}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>
-                              Printables: {getPlatformStatus(design, "PRINTABLES") === "published"
-                                ? `Published on ${formatDate(design.platforms.find(p => p.platform === "PRINTABLES")?.published_at || '')}`
-                                : getPlatformStatus(design, "PRINTABLES") === "draft"
-                                  ? "Draft (not published)"
-                                  : "Not on Printables"}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <div className="inline-flex items-center justify-center h-8 w-8">
-                              {getPlatformStatusIcon(design, "MAKERWORLD")}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>
-                              Makerworld: {getPlatformStatus(design, "MAKERWORLD") === "published"
-                                ? `Published on ${formatDate(design.platforms.find(p => p.platform === "MAKERWORLD")?.published_at || '')}`
-                                : getPlatformStatus(design, "MAKERWORLD") === "draft"
-                                  ? "Draft (not published)"
-                                  : "Not on Makerworld"}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </td>
+                    {visibleColumns.thingiverse && (
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <div className="inline-flex items-center justify-center h-8 w-8">
+                                {getPlatformStatusIcon(design, "THINGIVERSE")}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                Thingiverse: {getPlatformStatus(design, "THINGIVERSE") === "published"
+                                  ? `Published on ${formatDate(design.platforms.find(p => p.platform === "THINGIVERSE")?.published_at || '')}`
+                                  : getPlatformStatus(design, "THINGIVERSE") === "draft"
+                                    ? "Draft (not published)"
+                                    : "Not on Thingiverse"}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </td>
+                    )}
+                    {visibleColumns.printables && (
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <div className="inline-flex items-center justify-center h-8 w-8">
+                                {getPlatformStatusIcon(design, "PRINTABLES")}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                Printables: {getPlatformStatus(design, "PRINTABLES") === "published"
+                                  ? `Published on ${formatDate(design.platforms.find(p => p.platform === "PRINTABLES")?.published_at || '')}`
+                                  : getPlatformStatus(design, "PRINTABLES") === "draft"
+                                    ? "Draft (not published)"
+                                    : "Not on Printables"}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </td>
+                    )}
+                    {visibleColumns.makerworld && (
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <div className="inline-flex items-center justify-center h-8 w-8">
+                                {getPlatformStatusIcon(design, "MAKERWORLD")}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                Makerworld: {getPlatformStatus(design, "MAKERWORLD") === "published"
+                                  ? `Published on ${formatDate(design.platforms.find(p => p.platform === "MAKERWORLD")?.published_at || '')}`
+                                  : getPlatformStatus(design, "MAKERWORLD") === "draft"
+                                    ? "Draft (not published)"
+                                    : "Not on Makerworld"}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </td>
+                    )}
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex space-x-2">
                         <TooltipProvider>
@@ -371,34 +478,6 @@ export default function DesignsChart() {
               )}
             </tbody>
           </table>
-        </div>
-      </div>
-      <div className="flex justify-end items-center mt-8">
-        <div className="flex gap-2">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            onClick={() => setFilter("all")}
-          >
-            All
-          </Button>
-          <Button
-            variant={filter === "published" ? "default" : "outline"}
-            onClick={() => setFilter("published")}
-          >
-            Published
-          </Button>
-          <Button
-            variant={filter === "draft" ? "default" : "outline"}
-            onClick={() => setFilter("draft")}
-          >
-            Drafts
-          </Button>
-          <Button
-            variant={filter === "local" ? "default" : "outline"}
-            onClick={() => setFilter("local")}
-          >
-            Local
-          </Button>
         </div>
       </div>
     </div>

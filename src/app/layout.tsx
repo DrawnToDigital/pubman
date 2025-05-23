@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PubMan Dashboard",
+  title: "PubMan",
 };
 
 export default function RootLayout({
@@ -30,10 +30,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThingiverseAuthProvider><PrintablesAuthProvider>
-          <div className="flex w-screen flex-row md:flex-row md:overflow-hidden">
+          <div className="flex w-screen flex-row md:flex-row">
               <SiteHeader />
           </div>
-          <div className="flex-grow p-6 md:overflow-y-auto md:p-12">{children}</div>
+          <div className="flex-grow p-6 md:px-12">{children}</div>
         </PrintablesAuthProvider></ThingiverseAuthProvider>
       </body>
     </html>

@@ -86,7 +86,7 @@ export function ThingiverseAuth() {
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-10 py-1">
+        <div className="absolute top-15 right-2 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-10 py-1">
           <Link
             href="/thingiverse/profile"
             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
