@@ -21,7 +21,7 @@ files:
   - from: public
     to: app/public
 extraResources:
-  - from: ./db/*.txt
+  - from: ./db
     to: ./db
   - from: ./sample_assets
     to: ./sample_assets
