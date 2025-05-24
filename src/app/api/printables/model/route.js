@@ -100,8 +100,7 @@ export async function POST(request) {
       description: designData.description,
       summary: designData.summary,
       tags: designData.tags ? designData.tags.map(tag => tag.tag) : [],
-      category: designData.categories && designData.categories.length > 0
-        ? designData.categories[0].category : null,
+      category: designData.printables_category,
       license: designData.license_key,
       draft: null,
       gcodes: null,

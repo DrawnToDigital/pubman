@@ -90,7 +90,9 @@ export default function DesignsChart() {
         case "updated_at":
           return sortModifier * (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
         case "category":
-          return sortModifier * (a.categories[0]?.category || "").localeCompare(b.categories[0]?.category || "");
+          const catA = a.thingiverse_category || a.printables_category || "";
+          const catB = b.thingiverse_category || b.printables_category || "";
+          return sortModifier * catA.localeCompare(catB);
         default:
           return 0;
       }
@@ -365,7 +367,9 @@ export default function DesignsChart() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="text-sm text-gray-900">
-                        {design.categories.length > 0 ? design.categories[0].category : "Uncategorized"}
+                        {design.thingiverse_category && <div className="text-xs">T: {design.thingiverse_category}</div>}
+                        {design.printables_category && <div className="text-xs">P: {design.printables_category}</div>}
+                        {!design.thingiverse_category && !design.printables_category && "Uncategorized"}
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">

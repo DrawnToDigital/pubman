@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/src/app/components/ui/button";
 import { DesignSchema } from "@/src/app/components/design/types";
 import Link from "next/link";
-import { printablesIsLicenseSupported, printablesIsCategorySupported } from "@/src/app/api/printables/printables-lib";
+import { printablesIsLicenseSupported } from "@/src/app/api/printables/printables-lib";
 import { fetchDesign } from "@/src/app/actions/design";
 import { usePrintablesAuth } from "@/src/app/contexts/PrintablesAuthContext";
 import log from "electron-log/renderer";
@@ -77,9 +77,8 @@ export function PrintablesPublishing({
     }
 
     // Check if selected category is supported
-    const category = design.categories[0]?.category || "Other";
-    if (!printablesIsCategorySupported(category)) {
-      setErrorMessage("The selected category is not supported for Printables.");
+    if (!design.printables_category) {
+      setErrorMessage("A Printables category must be selected.");
       return false;
     }
 
@@ -188,7 +187,7 @@ export function PrintablesPublishing({
         },
         body: JSON.stringify({
           designId: designID,
-          designData: {...design, draft: false},
+          designData: {...design, draft: false}, // draft: false signals to publish
           printablesId: printablesStatus.printablesId,
         })
       });

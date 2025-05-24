@@ -1,0 +1,7 @@
+ALTER TABLE `design` ADD `thingiverse_category` TEXT DEFAULT NULL;
+ALTER TABLE `design` ADD `printables_category` TEXT DEFAULT NULL;
+
+UPDATE `design` SET `thingiverse_category` = 'Other' WHERE `thingiverse_category` IS NULL;
+
+DROP TABLE IF EXISTS `design_category`;
+DROP TABLE IF EXISTS `category`;

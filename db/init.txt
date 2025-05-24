@@ -38,41 +38,6 @@ INSERT OR IGNORE INTO license (key, name) VALUES
     ('BSD', 'BSD License'),
     ('SDFL', 'Standard Digital File License');
 
--- Create the category table if it doesn't exist
-CREATE TABLE IF NOT EXISTS category (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category TEXT NOT NULL,
-    platform_id INTEGER NOT NULL
-);
-
--- Initial pubman categories
-INSERT OR IGNORE INTO category (category, platform_id) VALUES
-    ('3D Printing', 1),
-    ('Art', 1),
-    ('Fashion', 1),
-    ('Gadgets', 1),
-    ('Hobby', 1),
-    ('Household', 1),
-    ('Learning', 1),
-    ('Models', 1),
-    ('Tools', 1),
-    ('Toys & Games', 1),
-    ('Other', 1);
-
--- Initial thingiverse categories
-INSERT OR IGNORE INTO category (category, platform_id) VALUES
-    ('3D Printing', 3),
-    ('Art', 3),
-    ('Fashion', 3),
-    ('Gadgets', 3),
-    ('Hobby', 3),
-    ('Household', 3),
-    ('Learning', 3),
-    ('Models', 3),
-    ('Tools', 3),
-    ('Toys & Games', 3),
-    ('Other', 3);
-
 -- Create the design table if it doesn't exist
 CREATE TABLE IF NOT EXISTS design (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,6 +46,8 @@ CREATE TABLE IF NOT EXISTS design (
     summary TEXT,
     description TEXT,
     license_key TEXT NOT NULL,
+    thingiverse_category TEXT,
+    printables_category TEXT,
     is_ready INTEGER NOT NULL DEFAULT 0,
     is_published INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -94,15 +61,6 @@ CREATE TABLE IF NOT EXISTS design_tag (
     design_id INTEGER NOT NULL,
     tag TEXT NOT NULL,
     platform_id INTEGER NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TEXT DEFAULT NULL
-);
-
--- Create the design_category table if it doesn't exist
-CREATE TABLE IF NOT EXISTS design_category (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    design_id INTEGER NOT NULL,
-    category_id INTEGER NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TEXT DEFAULT NULL
 );
@@ -137,8 +95,8 @@ INSERT OR IGNORE INTO designer (username, email, password_hash) VALUES
     ('default', 'designer@smallbusiness.lan', '$2b$12$LP3Fcmc7AnXMozTXGCixp.rGSwt6L.z3KlN0Kc6AptBPyRz4r5Pva');
 
 -- Insert an example design associated with the default designer if it doesn't exist
-INSERT OR IGNORE INTO design (designer_id, main_name, summary, description, license_key, is_ready, is_published) VALUES
-    (1, 'Example Design', 'Short summary of the design.', 'This is a detailed description of the example design.', 'SDFL', 0, 0);
+INSERT OR IGNORE INTO design (designer_id, main_name, summary, description, license_key, thingiverse_category, printables_category, is_ready, is_published) VALUES
+    (1, 'Example Design', 'Short summary of the design.', 'This is a detailed description of the example design.', 'SDFL', 'Other', NULL, 0, 0);
 
 -- Create the design_asset table if it doesn't exist
 CREATE TABLE IF NOT EXISTS design_asset (
@@ -162,10 +120,6 @@ INSERT OR IGNORE INTO design_tag (design_id, tag, platform_id) VALUES
     (1, 'tag1', 1),
     (1, 'tag2', 1),
     (1, 'tag3', 1);
-
--- Insert an example design category associated with the example design if it doesn't exist
-INSERT OR IGNORE INTO design_category (design_id, category_id) VALUES
-    (1, 1);
 
 -- Create the auth_tokens table if it doesn't exist
 CREATE TABLE IF NOT EXISTS auth_tokens (

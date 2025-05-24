@@ -48,23 +48,59 @@ const dbInitFilePath =
   isProd
     ? path.join(process.resourcesPath, "db/init.txt")
     : path.resolve("db/init.txt"); // Dev Mode
+const migrationsDir =
+  isProd
+    ? path.join(process.resourcesPath, "db")
+    : path.resolve("db"); // Dev Mode
 const sampleAssetsPath =
   isProd
     ? path.join(process.resourcesPath, "sample_assets")
     : path.resolve("sample_assets"); // Dev Mode
 
+async function runMigrations(db: typeof Database) {
+  // Ensure migrations table exists
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS migrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Find all migration files
+  const migrationFiles = (await fs.readdir(migrationsDir))
+    .filter(f => /^migrations-\d+\.txt$/.test(f))
+    .sort();
+
+  // Get already applied migrations
+  const applied = db.prepare("SELECT name FROM migrations").all().map((row: {name: string}) => row.name);
+  const migrationFilesToApply = migrationFiles.filter(file => !applied.includes(file));
+  if (migrationFilesToApply.length === 0) {
+    log.info("No new migrations to apply.");
+    return;
+  } else {
+    log.info(`Found ${migrationFilesToApply.length} new migrations to apply.`);
+  }
+
+  for (const file of migrationFilesToApply) {
+    log.info(`Applying migration: ${file}`);
+    const migrationSQL = await fs.readFile(path.join(migrationsDir, file), "utf-8");
+    db.exec(migrationSQL);
+    db.prepare("INSERT INTO migrations (name) VALUES (?)").run(file);
+    log.info(`Migration applied: ${file}`);
+  }
+}
+
 async function initializeAppData() {
   log.info(`MAIN.ts ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron}  ${process?.versions?.node}`);
   log.info(`Initializing app data dir ${appDataPath}`);
-  if (existsSync(dbPath) && existsSync(assetsDir)) {
-    log.info("App data already initialized.");
-    return;
-  }
-  try {
-    // Ensure appDataPath and db directory exist
-    const dbDir = path.dirname(dbPath);
-    await fs.mkdir(dbDir, { recursive: true });
+  const dbDir = path.dirname(dbPath);
 
+  // Ensure appDataPath and db directory exist
+  await fs.mkdir(dbDir, { recursive: true });
+
+  let dbJustCreated = false;
+  if (!existsSync(dbPath)) {
     // Create or open the SQLite database
     const db = new Database(dbPath);
     log.info(`DB init script ${dbInitFilePath}`);
@@ -74,8 +110,20 @@ async function initializeAppData() {
     db.exec(initSQL);
 
     log.info("Database initialized successfully.");
+    dbJustCreated = true;
+    db.close();
+  }
 
-    // Add sample assets
+  // Open DB for migrations
+  const db = new Database(dbPath);
+
+  // Run migrations if any
+  await runMigrations(db);
+
+  db.close();
+
+  // Add sample assets if just created
+  if (dbJustCreated || !existsSync(assetsDir)) {
     await fs.mkdir(assetsDir, { recursive: true });
     const sampleImageSource = path.join(sampleAssetsPath, "example_image.png");
     const sampleImageDest = path.join(assetsDir, "example_image.png");
@@ -85,11 +133,8 @@ async function initializeAppData() {
     await fs.copyFile(sampleDesignSource, sampleDesignDest);
 
     log.info("Sample assets added successfully.");
-  } catch (error) {
-    log.error("Failed to initialize app data:", error);
   }
 }
-
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({

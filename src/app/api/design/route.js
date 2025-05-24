@@ -31,7 +31,7 @@ export async function GET(request) {
 
     // Fetch the designs
     const designs = db.prepare(`
-        SELECT id, main_name, summary, description, license_key, is_ready, is_published,
+        SELECT id, main_name, summary, description, license_key, thingiverse_category, printables_category, is_ready, is_published,
                strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at,
                strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) AS updated_at
         FROM design
@@ -46,16 +46,6 @@ export async function GET(request) {
         .prepare(
           `SELECT tag, platform_id FROM design_tag 
            WHERE design_id = ? AND deleted_at IS NULL`
-        )
-        .all(design.id);
-
-      // Fetch categories
-      const categories = db
-        .prepare(
-          `SELECT c.category, c.platform_id
-           FROM design_category dc
-           JOIN category c ON dc.category_id = c.id
-           WHERE dc.design_id = ? AND dc.deleted_at IS NULL`
         )
         .all(design.id);
 
@@ -87,6 +77,8 @@ export async function GET(request) {
         summary: design.summary,
         description: design.description,
         license_key: design.license_key,
+        thingiverse_category: design.thingiverse_category || null,
+        printables_category: design.printables_category || null,
         is_ready: Boolean(design.is_ready),
         is_published: Boolean(design.is_published),
         created_at: design.created_at,
@@ -94,10 +86,6 @@ export async function GET(request) {
         tags: tags.map((tag) => ({
           tag: tag.tag,
           platform: platformMap[tag.platform_id] || 'UNKNOWN',
-        })),
-        categories: categories.map((category) => ({
-          category: category.category,
-          platform: platformMap[category.platform_id] || 'UNKNOWN',
         })),
         thumbnail: assets.filter((asset) => ["jpg", "jpeg", "png"].includes(asset.file_ext.toLowerCase())).map(asset => `local://${asset.file_path}`)[0] || null,
         assets: assets.map((asset) => ({
@@ -146,28 +134,19 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Designer not found' }, { status: 404 });
     }
 
-    // Validate category or default to "Other"
-    const category = db
-      .prepare(
-        `SELECT * FROM category WHERE platform_id = ? AND category = ?`
-      )
-      .get(PLATFORM_PUBMAN, data.category || 'Other');
-
-    if (!category) {
-      return NextResponse.json({ error: 'Invalid category' }, { status: 404 });
-    }
-
     // Insert the new design
     const insertDesign = db.prepare(`
-      INSERT INTO design (designer_id, main_name, summary, description, license_key, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      INSERT INTO design (designer_id, main_name, summary, description, license_key, thingiverse_category, printables_category, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
     const result = insertDesign.run(
       designer.id,
       data.main_name,
       data.summary,
       data.description,
-      data.license_key || 'SDFL'
+      data.license_key || 'SDFL',
+      data.thingiverse_category || null,
+      data.printables_category || null
     );
 
     const designId = result.lastInsertRowid;
@@ -180,13 +159,6 @@ export async function POST(request) {
     data.tags.split(',').forEach((tag) => {
       insertTag.run(designId, tag.trim(), PLATFORM_PUBMAN);
     });
-
-    // Insert category
-    const insertCategory = db.prepare(`
-      INSERT INTO design_category (design_id, category_id, created_at)
-      VALUES (?, ?, CURRENT_TIMESTAMP)
-    `);
-    insertCategory.run(designId, category.id);
 
     // Fetch the created design
     const createdDesign = db

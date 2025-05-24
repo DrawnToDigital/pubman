@@ -4,12 +4,13 @@ import { useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { designCreateSchema, DesignCreateSchema, pubmanCategories } from "./types";
+import { designCreateSchema, DesignCreateSchema, thingiverseCategories } from "./types";
 import { createDesign } from "@/src/app/actions/design";
 import { FormControl, FormField, FormItem } from "@/src/app/components/ui/form";
 import { Input } from "@/src/app/components/ui/input";
 import log from 'electron-log/renderer';
 import TextEditor from "@/src/app/components/text-editor/editor";
+import {printablesCategories} from "@/src/app/api/printables/printables-lib";
 
 const licenseMap: Record<string, string> = {
   'CC': 'Creative Commons',
@@ -40,7 +41,8 @@ const DesignForm = () => {
       description: "",
       license_key: "SDFL",
       tags: "",
-      category: "Other",
+      thingiverse_category: null,
+      printables_category: null,
     },
   });
 
@@ -151,23 +153,22 @@ const DesignForm = () => {
 
         <FormField
           control={form.control}
-          name="category"
+          name="thingiverse_category"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <label htmlFor="category" className="text-sm font-medium mb-1">
-                Category
+              <label htmlFor="thingiverse_category" className="text-sm font-medium mb-1">
+                Thingiverse Category
               </label>
               <FormControl>
                 <select
-                  id="category"
-                  {...field}
-                  required
+                  id="thingiverse_category"
+                  {...field} value={field.value || ""}
                   className="border border-gray-300 rounded-md p-2"
                 >
-                  <option value="" disabled>
+                  <option value="">
                     Select a category
                   </option>
-                  {pubmanCategories.options.map((category) => (
+                  {thingiverseCategories.options.map((category) => (
                     <option key={category} value={category}>
                       {category}
                     </option>
@@ -180,11 +181,49 @@ const DesignForm = () => {
 
         <FormField
           control={form.control}
+          name="printables_category"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <label htmlFor="printables_category" className="text-sm font-medium mb-1">
+                Printables Category
+              </label>
+              <FormControl>
+                <select
+                  id="printables_category"
+                  {...field} value={field.value || ""}
+                  className="border border-gray-300 rounded-md p-2"
+                >
+                  <option value="">
+                    Select a category
+                  </option>
+                  {Object.entries(printablesCategories).map(([category, cat]) => {
+                    if ('disabled' in cat && cat.disabled) {
+                      return (
+                        <option key={category} value={category} disabled>
+                          {category}
+                        </option>
+                      );
+                    } else {
+                      return (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      );
+                    }
+                  })}
+                </select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="license_key"
           render={({ field }) => (
             <FormItem className="flex flex-col">
               <label htmlFor="license_key" className="text-sm font-medium mb-1">
-                License Key
+                License
               </label>
               <FormControl>
                 <select
@@ -194,7 +233,7 @@ const DesignForm = () => {
                   className="border border-gray-300 rounded-md p-2"
                 >
                   <option value="" disabled>
-                    Select a license key
+                    Select a license
                   </option>
                   {Object.entries(licenseMap).map(([key, value]) => (
                     <option key={key} value={key}>

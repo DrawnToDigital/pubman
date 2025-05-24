@@ -27,6 +27,8 @@ export async function GET(request, {params}) {
                summary,
                description,
                license_key,
+               thingiverse_category,
+               printables_category,
                is_ready,
                is_published,
                strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at,
@@ -47,14 +49,6 @@ export async function GET(request, {params}) {
         WHERE design_id = ?
           AND deleted_at IS NULL
     `).all(design.id);
-
-    // Fetch categories
-    const categories = db.prepare(`
-          SELECT c.category, c.platform_id
-          FROM design_category dc
-          JOIN category c ON dc.category_id = c.id
-          WHERE dc.design_id = ? AND dc.deleted_at IS NULL
-        `).all(design.id);
 
     // Fetch assets
     const assets = db.prepare(`
@@ -82,6 +76,8 @@ export async function GET(request, {params}) {
       summary: design.summary,
       description: design.description,
       license_key: design.license_key,
+      thingiverse_category: design.thingiverse_category || null,
+      printables_category: design.printables_category || null,
       is_ready: Boolean(design.is_ready),
       is_published: Boolean(design.is_published),
       created_at: design.created_at,
@@ -89,10 +85,6 @@ export async function GET(request, {params}) {
       tags: tags.map((tag) => ({
         tag: tag.tag,
         platform: platformMap[tag.platform_id] || 'UNKNOWN',
-      })),
-      categories: categories.map((category) => ({
-        category: category.category,
-        platform: platformMap[category.platform_id] || 'UNKNOWN',
       })),
       thumbnail: assets.filter((asset) => ["jpg", "jpeg", "png"].includes(asset.file_ext.toLowerCase())).map(asset => `local://${asset.file_path}`)[0] || null,
       assets: assets.map((asset) => ({
@@ -144,7 +136,7 @@ export async function PUT(request, context) {
   }
 
   const data = designUpdateSchema.parse(await request.json());
-  const { main_name, summary, description, license_key, tags: tagsRaw, category: categoryRaw } = data;
+  const { main_name, summary, description, license_key, thingiverse_category, printables_category, tags: tagsRaw } = data;
 
   try {
     db.prepare(`
@@ -153,29 +145,23 @@ export async function PUT(request, context) {
       WHERE id = ?
     `).run(main_name, summary, description, license_key, design.id);
 
-    if (typeof categoryRaw !== "undefined" && categoryRaw !== null) {
-      const category = db
-        .prepare(
-          `SELECT * FROM category WHERE platform_id = ? AND category = ?`
-        )
-        .get(PLATFORM_PUBMAN, categoryRaw);
-
-      if (!category) {
-        return NextResponse.json({ error: 'Invalid category' }, { status: 404 });
-      }
-
-      db.prepare(`
-        UPDATE design_category SET deleted_at = datetime('now')
-        WHERE design_id = ? AND deleted_at IS NULL
-      `).run(design.id);
-
-
-      // Insert category
-      const insertCategory = db.prepare(`
-        INSERT INTO design_category (design_id, category_id, created_at)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
+    if (typeof thingiverse_category !== "undefined" && thingiverse_category !== null) {
+      // Update thingiverse_category
+      const updateCategory = db.prepare(`
+        UPDATE design
+        SET thingiverse_category = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
       `);
-      insertCategory.run(design.id, category.id);
+      updateCategory.run(thingiverse_category, design.id);
+    }
+    if (typeof printables_category !== "undefined" && printables_category !== null) {
+      // Update printables_category
+      const updateCategory = db.prepare(`
+        UPDATE design
+        SET printables_category = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `);
+      updateCategory.run(printables_category, design.id);
     }
 
     if (typeof tagsRaw !== 'undefined' && tagsRaw !== null) {

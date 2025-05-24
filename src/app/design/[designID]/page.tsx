@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/src/app/components/ui/button";
 import { fetchDesign, updateDesign } from "@/src/app/actions/design";
-import {DesignSchema, pubmanCategories} from "@/src/app/components/design/types";
+import {DesignSchema, thingiverseCategories} from "@/src/app/components/design/types";
 import {FieldValues, useForm} from 'react-hook-form';
 import {addFile, removeFile} from "@/src/app/actions/file";
 import {Input} from "@/src/app/components/ui/input";
@@ -13,6 +13,7 @@ import { ThingiversePublishing } from "@/src/app/components/design/thingiverse-p
 import { PrintablesPublishing } from "@/src/app/components/design/printables-publishing";
 import log from 'electron-log/renderer';
 import TextEditor from "../../components/text-editor/editor";
+import {printablesCategories} from "@/src/app/api/printables/printables-lib";
 
 const getLicenseName = (licenseKey: string): string => {
   const licenseMap: Record<string, string> = {
@@ -43,6 +44,17 @@ const DesignDetailsPage = () => {
   const [editMode, setEditMode] = useState(false);
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
   const router = useRouter();
+  const resetForm = (design: DesignSchema) => {
+    reset({
+        main_name: design.main_name,
+        summary: design.summary,
+        description: design.description,
+        license_key: design.license_key,
+        tags: design.tags.map(tag => tag.tag).join(', '),
+        thingiverse_category: design.thingiverse_category || null,
+        printables_category: design.printables_category || null,
+      });
+  }
 
   useEffect(() => {
     const fetch = async () => {
@@ -65,17 +77,14 @@ const DesignDetailsPage = () => {
 
     try {
       data.description = description;
-      await updateDesign(designID, data);
+      const updatePayload: FieldValues = { ...data };
+      if (data.thingiverse_category === undefined || data.thingiverse_category === null || data.thingiverse_category === '') delete updatePayload.thingiverse_category;
+      if (data.printables_category === undefined || data.printables_category === null || data.printables_category === '') delete updatePayload.printables_category;
+
+      await updateDesign(designID, updatePayload);
       const updatedDesign = await fetchDesign(designID);
       setDesign(updatedDesign);
-      reset({
-        main_name: updatedDesign.main_name,
-        summary: updatedDesign.summary,
-        description: updatedDesign.description,
-        license_key: updatedDesign.license_key,
-        tags: updatedDesign.tags.map(tag => tag.tag).join(', '),
-        category: updatedDesign.categories.map(cat => cat.category)[0] || 'Other',
-      });
+      resetForm(updatedDesign);
       setEditMode(false);
     } catch (error) {
       log.error('Failed to update design:', error);
@@ -168,14 +177,7 @@ const DesignDetailsPage = () => {
         <Button
           onClick={() => {
             if (editMode) {
-              reset({
-                main_name: design.main_name,
-                summary: design.summary,
-                description: design.description,
-                license_key: design.license_key,
-                tags: design.tags.map(tag => tag.tag).join(', '),
-                category: design.categories.map(cat => cat.category)[0] || 'Other',
-              });
+              resetForm(design);
             }
             setEditMode(!editMode);
           }}
@@ -232,22 +234,54 @@ const DesignDetailsPage = () => {
 
           <div>
             <label className="block text-sm font-medium mb-1">Categories</label>
-            <select
-              {...register('category', { required: true })}
-              defaultValue={design.categories.length > 0 ? design.categories[0].category : 'Other'}
-              required
-              className="border border-gray-300 rounded-md p-2"
-            >
-              <option value="" disabled>
-                Select a category
-              </option>
-              {pubmanCategories.options.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-            {errors.category && <p className="text-red-500 text-sm">Category is required</p>}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="thingiverse_category" className="text-sm font-medium mb-1">Thingiverse Category</label>
+                <select
+                  id="thingiverse_category"
+                  {...register('thingiverse_category')}
+                  defaultValue={design.thingiverse_category || ""}
+                  className="border border-gray-300 rounded-md p-2 w-full"
+                >
+                  <option value="">
+                    Select a category
+                  </option>
+                  {thingiverseCategories.options.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="printables_category" className="text-sm font-medium mb-1">Printables Category</label>
+                <select
+                  id="printables_category"
+                  {...register('printables_category')}
+                  defaultValue={design.printables_category || ""}
+                  className="border border-gray-300 rounded-md p-2 w-full"
+                >
+                  <option value="">
+                    Select a category
+                  </option>
+                  {Object.entries(printablesCategories).map(([category, cat]) => {
+                    if ('disabled' in cat && cat.disabled) {
+                      return (
+                        <option key={category} value={category} disabled>
+                          {category}
+                        </option>
+                      );
+                    } else {
+                      return (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      );
+                    }
+                  })}
+                </select>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -257,6 +291,9 @@ const DesignDetailsPage = () => {
               defaultValue={design.license_key}
               className="w-full border rounded-md p-2"
             >
+              <option value="" disabled>
+                Select a license
+              </option>
               <option value="CC">Creative Commons</option>
               <option value="CC0">Creative Commons — Public Domain</option>
               <option value="CC-BY">Creative Commons — Attribution</option>
@@ -275,7 +312,10 @@ const DesignDetailsPage = () => {
 
           <div className="flex space-x-4">
             <Button type="submit">Save Changes</Button>
-            <Button variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => {
+              resetForm(design)
+              setEditMode(false)
+            }}>Cancel</Button>
           </div>
         </form>
       ) : (
@@ -319,7 +359,11 @@ const DesignDetailsPage = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Categories</p>
-                <p>{design.categories.map(cat => cat.category).join(', ')}</p>
+                <div className="text-sm">
+                  {design.thingiverse_category && <div>Thingiverse: {design.thingiverse_category}</div>}
+                  {design.printables_category && <div>Printables: {design.printables_category}</div>}
+                  {!design.thingiverse_category && !design.printables_category && <p>Uncategorized</p>}
+                </div>
               </div>
             </div>
           </div>

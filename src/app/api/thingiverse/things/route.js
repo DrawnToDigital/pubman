@@ -52,9 +52,7 @@ export async function POST(request) {
       description: designData.description,
       instructions: designData.instructions || '',
       license: designData.license_key,
-      category: designData.categories && designData.categories.length > 0
-        ? designData.categories[0].category
-        : 'Other',
+      category: designData.thingiverse_category,
       tags: designData.tags ? designData.tags.map(tag => tag.tag) : [],
     };
 

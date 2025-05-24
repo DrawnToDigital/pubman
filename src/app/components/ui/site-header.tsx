@@ -3,11 +3,15 @@
 import { redirect, usePathname } from "next/navigation";
 import {ThingiverseAuth} from "@/src/app/components/dashboard/thingiverse-auth";
 import {PrintablesAuth} from "@/src/app/components/dashboard/printables-auth";
+import {useEffect, useState} from "react";
 
 export function SiteHeader() {
     const pathname = usePathname();
+    const [showProfiles, setShowProfiles] = useState(false);
     const showDashboard = pathname.startsWith('/design');
-    const showProfiles = typeof window !== "undefined" && window.name === ''; // Hide in (named) popup windows
+    useEffect(() => {
+        setShowProfiles(window.name === '') // Hide in (named) popup windows
+    }, []);
 
     return (
         <header className="border-grid sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

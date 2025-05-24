@@ -66,6 +66,11 @@ export function ThingiversePublishing({
       setErrorMessage("The selected license is not supported for Thingiverse.");
       return false;
     }
+    // Check if a Thingiverse category is selected
+    if (!design.thingiverse_category) {
+      setErrorMessage("A Thingiverse category must be selected.");
+      return false;
+    }
     return true;
   }
 
@@ -137,9 +142,7 @@ export function ThingiversePublishing({
           description: design.description,
           // instructions: '',
           license: design.license_key || 'cc-by-sa',
-          category: design.categories && design.categories.length > 0
-            ? design.categories[0].category
-            : 'Other',
+          category: design.thingiverse_category,
           tags: design.tags ? design.tags.map(tag => tag.tag) : [],
         })
       });
