@@ -7,13 +7,17 @@ import { fetchDesign } from "@/src/app/actions/design";
 import log from "electron-log/renderer";
 import { DesignSchema } from "@/src/app/components/design/types";
 
+// Props that callers should provide
 export interface PlatformPublishingProps {
   design: DesignSchema;
   designID: string;
   setErrorMessage: (message: string | null) => void;
   setSuccessMessage: (message: string | null) => void;
   onDesignUpdated: (design: DesignSchema) => void;
-  // Platform-specific
+}
+
+// Internal props, including all platform-specific and implementation props
+export interface PlatformPublishingInternalProps extends PlatformPublishingProps {
   platformName: string;
   platformKey: string;
   isAuthenticated: boolean;
@@ -29,7 +33,7 @@ export interface PlatformPublishingProps {
   publishPublic: (args: { design?: DesignSchema; designID: string; accessToken: string; platformId: string }) => Promise<void>;
 }
 
-export function PlatformPublishing(props: PlatformPublishingProps) {
+export function PlatformPublishing(props: PlatformPublishingInternalProps) {
   const {
     design,
     designID,
