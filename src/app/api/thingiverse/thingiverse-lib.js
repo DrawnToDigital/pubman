@@ -56,7 +56,7 @@ export class ThingiverseAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Thingiverse API error: ${url} ${JSON.stringify(options)} ${response.status} ${response.statusText}`);
+      throw new Error(`Thingiverse API error: ${url} ${JSON.stringify(options)} ${response.status} ${response.statusText} ${await response.text()}`);
     }
 
     return response.json();
