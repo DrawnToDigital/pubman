@@ -5,7 +5,7 @@ export const platforms = z.enum([
     "DUMMY",
     "THINGIVERSE",
     "PRINTABLES",
-    "MAKERWORLD",
+    "MAKERWORLD"
 ])
 
 export const licenses = z.enum([
@@ -116,6 +116,90 @@ export const printablesCategories = z.enum([
   "People", // World & Scans > People
 ]);
 
+export const makerWorldCategories = z.enum([
+  // 3D Printer
+  "3D Printer Accessories", // 3D Printer > 3D Printer Accessories
+  "3D Printer Parts",       // 3D Printer > 3D Printer Parts
+  "Test Models",            // 3D Printer > Test Models
+  // Art
+  "2D Art",                 // Art > 2D Art
+  "Coin & Badges",          // Art > Coin & Badges
+  "Signs & Logos",          // Art > Signs & Logos
+  "Sculptures",             // Art > Sculptures
+  "Other Art Models",       // Art > Other Art Models
+  // Education
+  "Biology",                // Education > Biology
+  "Chemistry",              // Education > Chemistry
+  "Engineering",            // Education > Engineering
+  "Geography",              // Education > Geography
+  "Mathematics",            // Education > Mathematics
+  "Physics & Astronomy",    // Education > Physics & Astronomy
+  "Other Education Models", // Education > Other Education Models
+  // Fashion
+  "Bags",                   // Fashion > Bags
+  "Clothes",                // Fashion > Clothes
+  "Earrings",               // Fashion > Earrings
+  "Footwear",               // Fashion > Footwear
+  "Glasses",                // Fashion > Glasses
+  "Jewelry",                // Fashion > Jewelry
+  "Rings",                  // Fashion > Rings
+  "Other Fashion Models",   // Fashion > Other Fashion Models
+  // Hobby & DIY
+  "Electronics",            // Hobby & DIY > Electronics
+  "Music",                  // Hobby & DIY > Music
+  "RC",                     // Hobby & DIY > RC
+  "Robotics",               // Hobby & DIY > Robotics
+  "Sport & Outdoors",       // Hobby & DIY > Sport & Outdoors
+  "Vehicles",               // Hobby & DIY > Vehicles
+  "Other Hobby & DIY",      // Hobby & DIY > Other Hobby & DIY
+  // Household
+  "Decor",                  // Household > Decor
+  "Festivities",            // Household > Festivities
+  "Garden",                 // Household > Garden
+  "Office",                 // Household > Office
+  "Pets",                   // Household > Pets
+  "Other House Models",     // Household > Other House Models
+  // Miniatures
+  "Animals",                // Miniatures > Animals
+  "Architecture",           // Miniatures > Architecture
+  "Creatures",              // Miniatures > Creatures
+  "People",                 // Miniatures > People
+  "Other Miniatures",       // Miniatures > Other Miniatures
+  // Props & Cosplays
+  "Costumes",               // Props & Cosplays > Costumes
+  "Masks & Helmets",        // Props & Cosplays > Masks & Helmets
+  "Cosplay Weapons",        // Props & Cosplays > Cosplay Weapons
+  "Other Props & Cosplays", // Props & Cosplays > Other Props & Cosplays
+  // Tools
+  "Gadgets",                // Tools > Gadgets
+  "Hand Tools",             // Tools > Hand Tools
+  "Machine Tools",          // Tools > Machine Tools
+  "Measure Tools",          // Tools > Measure Tools
+  "Medical Tools",          // Tools > Medical Tools
+  "Organizers",             // Tools > Organizers
+  "Other Tools",            // Tools > Other Tools
+  // Toys & Games
+  "Board Games",            // Toys & Games > Board Games
+  "Characters",             // Toys & Games > Characters
+  "Outdoor Toys",           // Toys & Games > Outdoor Toys
+  "Puzzles",                // Toys & Games > Puzzles
+  "Construction Sets",      // Toys & Games > Construction Sets
+  "Other Toys & Games",     // Toys & Games > Other Toys & Games
+  // Generative 3D Model
+  "Hueforge & Lithophane",      // Generative 3D Model > Hueforge & Lithophane
+  "Make My Sign",               // Generative 3D Model > Make My Sign
+  "Make My Vase",               // Generative 3D Model > Make My Vase
+  "Pixel Puzzle Maker",         // Generative 3D Model > Pixel Puzzle Maker
+  "Relief Sculpture Maker",     // Generative 3D Model > Relief Sculpture Maker
+  "AI Scanner",                 // Generative 3D Model > AI Scanner
+  "Image to Keychain",          // Generative 3D Model > Image to Keychain
+  "Make My Desk Organizer",     // Generative 3D Model > Make My Desk Organizer
+  "PrintMon Maker",             // Generative 3D Model > PrintMon Maker
+  "Statue Maker",               // Generative 3D Model > Statue Maker
+  "Christmas Ornament Maker",   // Generative 3D Model > Christmas Ornament Maker
+  "Make My Lantern",            // Generative 3D Model > Make My Lantern
+]);
+
 export const designSchema = z.object({
     id: z.string(),
     main_name: z.string(),
@@ -129,6 +213,7 @@ export const designSchema = z.object({
     tags: z.array(z.object({ tag: z.string(), platform: platforms })),
     thingiverse_category: thingiverseCategories.nullable(),
     printables_category: printablesCategories.nullable(),
+    makerworld_category: makerWorldCategories.nullable(),
     thumbnail: z.string().nullish(),
     assets: z.array(
         z.object({
@@ -161,6 +246,7 @@ export const designCreateSchema = z.object({
     tags: z.string(),
     thingiverse_category: thingiverseCategories.nullable(),
     printables_category: printablesCategories.nullable(),
+    makerworld_category: makerWorldCategories.nullable(),
 })
 
 export type DesignCreateSchema = z.infer<typeof designCreateSchema>
@@ -173,6 +259,7 @@ export const designUpdateSchema = z.object({
     tags: z.string().nullish(),
     thingiverse_category: thingiverseCategories.nullish(),
     printables_category: printablesCategories.nullish(),
+    makerworld_category: makerWorldCategories.nullish(),
 })
 
 export type DesignUpdateSchema = z.infer<typeof designUpdateSchema>

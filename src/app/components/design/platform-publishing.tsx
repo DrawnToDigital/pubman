@@ -29,8 +29,8 @@ export interface PlatformPublishingInternalProps extends PlatformPublishingProps
   };
   isValidForPlatform: (design: DesignSchema, setErrorMessage: (msg: string) => void) => boolean;
   publishDraft: (args: { design: DesignSchema; designID: string; accessToken: string }) => Promise<{ id: string; url: string }>;
-  updateModel: (args: { design: DesignSchema; designID: string; accessToken: string; platformId: string }) => Promise<void>;
-  publishPublic: (args: { design?: DesignSchema; designID: string; accessToken: string; platformId: string }) => Promise<void>;
+  updateModel: (args: { design: DesignSchema; designID: string; accessToken: string; platformId: string, platformStatus: 'draft' | 'published' }) => Promise<{ status: 'draft' | 'published', id: string; url: string }>;
+  publishPublic: (args: { design?: DesignSchema; designID: string; accessToken: string; platformId: string }) => Promise<{ id: string; url: string }>;
 }
 
 export function PlatformPublishing(props: PlatformPublishingInternalProps) {
@@ -102,7 +102,13 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
-      await updateModel({ design, designID, accessToken, platformId: platformStatus.id });
+      const previousStatus = platformStatus.status === 'published' ? 'published' : 'draft';
+      const result = await updateModel({ design, designID, accessToken, platformId: platformStatus.id, platformStatus: previousStatus });
+      setPlatformStatus({
+        status: result.status,
+        id: result.id,
+        url: result.url,
+      });
       const updatedDesign = await fetchDesign(designID);
       onDesignUpdated(updatedDesign);
       setSuccessMessage(`Successfully updated model on ${platformName}`);
@@ -122,11 +128,11 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
-      await publishPublic({ design, designID, accessToken, platformId: platformStatus.id });
+      const result = await publishPublic({ design, designID, accessToken, platformId: platformStatus.id });
       setPlatformStatus({
         status: 'published',
-        id: platformStatus.id,
-        url: platformStatus.url,
+        id: result.id,
+        url: result.url,
       });
       const updatedDesign = await fetchDesign(designID);
       onDesignUpdated(updatedDesign);

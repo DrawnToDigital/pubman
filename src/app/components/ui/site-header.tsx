@@ -3,6 +3,7 @@
 import { redirect, usePathname } from "next/navigation";
 import {ThingiverseAuth} from "@/src/app/components/dashboard/thingiverse-auth";
 import {PrintablesAuth} from "@/src/app/components/dashboard/printables-auth";
+import {MakerWorldAuth} from "@/src/app/components/dashboard/makerworld-auth";
 import {useEffect, useState} from "react";
 
 export function SiteHeader() {
@@ -27,6 +28,7 @@ export function SiteHeader() {
                   <div className="auth-profiles inline-flex">
                     <ThingiverseAuth />
                     <PrintablesAuth />
+                    <MakerWorldAuth />
                   </div>
                 )}
             </div>

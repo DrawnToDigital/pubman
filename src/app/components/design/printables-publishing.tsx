@@ -72,7 +72,7 @@ export function PrintablesPublishing(props: PlatformPublishingProps) {
           url: `https://www.printables.com/model/${result.printablesId}`,
         };
       }}
-      updateModel={async ({ design, designID, accessToken, platformId }) => {
+      updateModel={async ({ design, designID, accessToken, platformId, platformStatus }) => {
         const response = await fetch(`/api/printables/model`, {
           method: 'POST',
           headers: {
@@ -89,6 +89,11 @@ export function PrintablesPublishing(props: PlatformPublishingProps) {
           const error = await response.json();
           throw new Error(error.message || "Failed to update Printables model");
         }
+        return {
+          status: platformStatus,
+          id: platformId,
+          url: `https://www.printables.com/model/${platformId}`,
+        };
       }}
       publishPublic={async ({ design, designID, accessToken, platformId }) => {
         const response = await fetch(`/api/printables/model`, {
@@ -107,6 +112,10 @@ export function PrintablesPublishing(props: PlatformPublishingProps) {
           const error = await response.json();
           throw new Error(error.message || "Failed to publish Printables model");
         }
+        return {
+          id: platformId,
+          url: `https://www.printables.com/model/${platformId}`,
+        };
       }}
     />
   );

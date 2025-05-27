@@ -11,6 +11,7 @@ import { Input } from "@/src/app/components/ui/input";
 import log from 'electron-log/renderer';
 import TextEditor from "@/src/app/components/text-editor/editor";
 import {printablesCategories} from "@/src/app/api/printables/printables-lib";
+import { makerWorldCategories } from "@/src/app/api/makerworld/makerworld-lib";
 
 const licenseMap: Record<string, string> = {
   'CC': 'Creative Commons',
@@ -43,6 +44,7 @@ const DesignForm = () => {
       tags: "",
       thingiverse_category: null,
       printables_category: null,
+      makerworld_category: null,
     },
   });
 
@@ -197,6 +199,44 @@ const DesignForm = () => {
                     Select a category
                   </option>
                   {Object.entries(printablesCategories).map(([category, cat]) => {
+                    if ('disabled' in cat && cat.disabled) {
+                      return (
+                        <option key={category} value={category} disabled>
+                          {category}
+                        </option>
+                      );
+                    } else {
+                      return (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      );
+                    }
+                  })}
+                </select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="makerworld_category"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <label htmlFor="makerworld_category" className="text-sm font-medium mb-1">
+                MakerWorld Category
+              </label>
+              <FormControl>
+                <select
+                  id="makerworld_category"
+                  {...field} value={field.value || ""}
+                  className="border border-gray-300 rounded-md p-2"
+                >
+                  <option value="">
+                    Select a category
+                  </option>
+                  {Object.entries(makerWorldCategories).map(([category, cat]) => {
                     if ('disabled' in cat && cat.disabled) {
                       return (
                         <option key={category} value={category} disabled>

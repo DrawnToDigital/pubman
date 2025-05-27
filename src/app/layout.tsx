@@ -4,6 +4,7 @@ import "./globals.css";
 import { SiteHeader } from "@/src/app/components/ui/site-header";
 import { ThingiverseAuthProvider } from './contexts/ThingiverseAuthContext';
 import {PrintablesAuthProvider} from "@/src/app/contexts/PrintablesAuthContext";
+import {MakerWorldAuthProvider} from "@/src/app/contexts/MakerWorldAuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,12 +30,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThingiverseAuthProvider><PrintablesAuthProvider>
+        <ThingiverseAuthProvider><PrintablesAuthProvider><MakerWorldAuthProvider>
           <div className="flex w-screen flex-row md:flex-row">
               <SiteHeader />
           </div>
           <div className="flex-grow p-6 md:px-12">{children}</div>
-        </PrintablesAuthProvider></ThingiverseAuthProvider>
+        </MakerWorldAuthProvider></PrintablesAuthProvider></ThingiverseAuthProvider>
       </body>
     </html>
   );

@@ -33,7 +33,7 @@ export function PrintablesAuthProvider({ children }: { children: ReactNode }) {
   // Check for existing auth on mount
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [])
 
   const checkAuth = async () => {
     try {

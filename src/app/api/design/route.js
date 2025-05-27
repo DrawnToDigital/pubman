@@ -9,6 +9,7 @@ const platformMap = {
   2: 'DUMMY',
   3: 'THINGIVERSE',
   4: 'PRINTABLES',
+  5: 'MAKERWORLD',
 }
 
 const PLATFORM_PUBMAN = 1;
@@ -31,7 +32,7 @@ export async function GET(request) {
 
     // Fetch the designs
     const designs = db.prepare(`
-        SELECT id, main_name, summary, description, license_key, thingiverse_category, printables_category, is_ready, is_published,
+        SELECT id, main_name, summary, description, license_key, thingiverse_category, printables_category, makerworld_category, is_ready, is_published,
                strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at,
                strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) AS updated_at
         FROM design
@@ -79,6 +80,7 @@ export async function GET(request) {
         license_key: design.license_key,
         thingiverse_category: design.thingiverse_category || null,
         printables_category: design.printables_category || null,
+        makerworld_category: design.makerworld_category || null,
         is_ready: Boolean(design.is_ready),
         is_published: Boolean(design.is_published),
         created_at: design.created_at,
@@ -136,8 +138,8 @@ export async function POST(request) {
 
     // Insert the new design
     const insertDesign = db.prepare(`
-      INSERT INTO design (designer_id, main_name, summary, description, license_key, thingiverse_category, printables_category, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      INSERT INTO design (designer_id, main_name, summary, description, license_key, thingiverse_category, printables_category, makerworld_category, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
     const result = insertDesign.run(
       designer.id,
@@ -146,7 +148,8 @@ export async function POST(request) {
       data.description,
       data.license_key || 'SDFL',
       data.thingiverse_category || null,
-      data.printables_category || null
+      data.printables_category || null,
+      data.makerworld_category || null
     );
 
     const designId = result.lastInsertRowid;

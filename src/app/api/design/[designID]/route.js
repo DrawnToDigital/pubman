@@ -9,7 +9,8 @@ const platformMap = {
   1: 'PUBMAN',
   2: 'DUMMY',
   3: 'THINGIVERSE',
-  4: 'PRINTABLES'
+  4: 'PRINTABLES',
+  5: 'MAKERWORLD'
 }
 
 const PLATFORM_PUBMAN = 1;
@@ -29,6 +30,7 @@ export async function GET(request, {params}) {
                license_key,
                thingiverse_category,
                printables_category,
+               makerworld_category,
                is_ready,
                is_published,
                strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at,
@@ -78,6 +80,7 @@ export async function GET(request, {params}) {
       license_key: design.license_key,
       thingiverse_category: design.thingiverse_category || null,
       printables_category: design.printables_category || null,
+      makerworld_category: design.makerworld_category || null,
       is_ready: Boolean(design.is_ready),
       is_published: Boolean(design.is_published),
       created_at: design.created_at,
@@ -136,7 +139,7 @@ export async function PUT(request, context) {
   }
 
   const data = designUpdateSchema.parse(await request.json());
-  const { main_name, summary, description, license_key, thingiverse_category, printables_category, tags: tagsRaw } = data;
+  const { main_name, summary, description, license_key, thingiverse_category, printables_category, makerworld_category, tags: tagsRaw } = data;
 
   try {
     db.prepare(`
@@ -162,6 +165,15 @@ export async function PUT(request, context) {
         WHERE id = ?
       `);
       updateCategory.run(printables_category, design.id);
+    }
+    if (typeof makerworld_category !== "undefined" && makerworld_category !== null) {
+      // Update makerworld_category
+      const updateCategory = db.prepare(`
+        UPDATE design
+        SET makerworld_category = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `);
+      updateCategory.run(makerworld_category, design.id);
     }
 
     if (typeof tagsRaw !== 'undefined' && tagsRaw !== null) {

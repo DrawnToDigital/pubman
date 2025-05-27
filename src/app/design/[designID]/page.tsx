@@ -14,6 +14,8 @@ import { PrintablesPublishing } from "@/src/app/components/design/printables-pub
 import log from 'electron-log/renderer';
 import TextEditor from "../../components/text-editor/editor";
 import {printablesCategories} from "@/src/app/api/printables/printables-lib";
+import {makerWorldCategories} from "@/src/app/api/makerworld/makerworld-lib";
+import {MakerWorldPublishing} from "@/src/app/components/design/makerworld-publishing";
 
 const getLicenseName = (licenseKey: string): string => {
   const licenseMap: Record<string, string> = {
@@ -53,6 +55,7 @@ const DesignDetailsPage = () => {
         tags: design.tags.map(tag => tag.tag).join(', '),
         thingiverse_category: design.thingiverse_category || null,
         printables_category: design.printables_category || null,
+        makerworld_category: design.makerworld_category || null,
       });
   }
 
@@ -80,6 +83,7 @@ const DesignDetailsPage = () => {
       const updatePayload: FieldValues = { ...data };
       if (data.thingiverse_category === undefined || data.thingiverse_category === null || data.thingiverse_category === '') delete updatePayload.thingiverse_category;
       if (data.printables_category === undefined || data.printables_category === null || data.printables_category === '') delete updatePayload.printables_category;
+      if (data.makerworld_category === undefined || data.makerworld_category === null || data.makerworld_category === '') delete updatePayload.makerworld_category;
 
       await updateDesign(designID, updatePayload);
       const updatedDesign = await fetchDesign(designID);
@@ -281,6 +285,34 @@ const DesignDetailsPage = () => {
                   })}
                 </select>
               </div>
+              <div>
+                <label htmlFor="makerworld_category" className="text-sm font-medium mb-1">MakerWorld Category</label>
+                <select
+                  id="makerworld_category"
+                  {...register('makerworld_category')}
+                  defaultValue={design.makerworld_category || ""}
+                  className="border border-gray-300 rounded-md p-2 w-full"
+                >
+                  <option value="">
+                    Select a category
+                  </option>
+                  {Object.entries(makerWorldCategories).map(([category, cat]) => {
+                    if ('disabled' in cat && cat.disabled) {
+                      return (
+                        <option key={category} value={category} disabled>
+                          {category}
+                        </option>
+                      );
+                    } else {
+                      return (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      );
+                    }
+                  })}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -362,7 +394,8 @@ const DesignDetailsPage = () => {
                 <div className="text-sm">
                   {design.thingiverse_category && <div>Thingiverse: {design.thingiverse_category}</div>}
                   {design.printables_category && <div>Printables: {design.printables_category}</div>}
-                  {!design.thingiverse_category && !design.printables_category && <p>Uncategorized</p>}
+                  {design.makerworld_category && <div>MakerWorld: {design.makerworld_category}</div>}
+                  {!design.thingiverse_category && !design.printables_category && !design.makerworld_category && <div>Uncategorized</div>}
                 </div>
               </div>
             </div>
@@ -391,6 +424,19 @@ const DesignDetailsPage = () => {
           onDesignUpdated={(updateDesign) => setDesign(updateDesign)}
         />
       )}
+
+      {/* MakerWorld Publishing Section */}
+      {design && (
+        <MakerWorldPublishing
+          design={design}
+          designID={designID.toString()}
+          setErrorMessage={setErrorMessage}
+          setSuccessMessage={setSuccessMessage}
+          onDesignUpdated={(updatedDesign) => setDesign(updatedDesign)}
+        />
+      )}
+
+      {/* File Management Section */}
 
       <h2 className="text-xl font-bold mt-6">Files</h2>
       <div className="mt-2 flex flex-col space-y-2">

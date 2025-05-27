@@ -1,7 +1,7 @@
 'use client';
 
 import { PlatformPublishing, PlatformPublishingProps } from "./platform-publishing";
-import { isPubmanLicenseSupported as thingiverseIsLicenseSupported } from "@/src/app/api/thingiverse/thingiverse-lib";
+import { isPubmanLicenseSupported } from "@/src/app/api/thingiverse/thingiverse-lib";
 import { useThingiverseAuth } from "@/src/app/contexts/ThingiverseAuthContext";
 
 export function ThingiversePublishing(props: PlatformPublishingProps) {
@@ -40,7 +40,7 @@ export function ThingiversePublishing(props: PlatformPublishingProps) {
           setErrorMessage("You need to add at least one file before publishing to Thingiverse");
           return false;
         }
-        if (!thingiverseIsLicenseSupported(design.license_key)) {
+        if (!isPubmanLicenseSupported(design.license_key)) {
           setErrorMessage("The selected license is not supported for Thingiverse.");
           return false;
         }
@@ -58,7 +58,7 @@ export function ThingiversePublishing(props: PlatformPublishingProps) {
             'x-thingiverse-token': accessToken
           },
           body: JSON.stringify({
-            designId: design.id,
+            designId: designID,
             designData: design
           }),
         });
@@ -69,7 +69,7 @@ export function ThingiversePublishing(props: PlatformPublishingProps) {
           url: data.thingiverseUrl
         };
       }}
-      updateModel={async ({ design, designID, accessToken, platformId }) => {
+      updateModel={async ({ design, accessToken, platformId, platformStatus }) => {
         // Update metadata
         const updateResponse = await fetch(`/api/thingiverse/${platformId}`, {
           method: 'PATCH',
@@ -106,6 +106,11 @@ export function ThingiversePublishing(props: PlatformPublishingProps) {
           const errorData = await filesResponse.json();
           throw new Error(errorData.error || 'Failed to update files on Thingiverse');
         }
+        return {
+          status: platformStatus,
+          id: platformId,
+          url: `https://www.thingiverse.com/thing:${platformId}`
+        };
       }}
       publishPublic={async ({ platformId, accessToken }) => {
         const response = await fetch(`/api/thingiverse/${platformId}/publish`, {
@@ -118,6 +123,10 @@ export function ThingiversePublishing(props: PlatformPublishingProps) {
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.error || 'Failed to publish to Thingiverse');
+        }
+        return {
+          id: platformId,
+          url: `https://www.thingiverse.com/thing:${platformId}`
         }
       }}
     />
