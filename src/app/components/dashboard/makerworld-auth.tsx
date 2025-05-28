@@ -10,7 +10,7 @@ import Image from 'next/image';
 import * as React from "react";
 
 export function MakerWorldAuth() {
-  const { isAuthenticated, user, login, logout, refreshToken } = useMakerWorldAuth();
+  const { isAuthenticated, user, login, logout } = useMakerWorldAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -18,15 +18,6 @@ export function MakerWorldAuth() {
     setIsLoading(true);
     try {
       await login();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setIsLoading(true);
-    try {
-      await refreshToken();
     } finally {
       setIsLoading(false);
     }
@@ -95,12 +86,6 @@ export function MakerWorldAuth() {
           >
             View MakerWorld Profile
           </Link>
-          <button
-            onClick={handleRefresh}
-            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Refresh Connection
-          </button>
           <button
             onClick={logout}
             className="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 hover:text-red-700"

@@ -1,5 +1,5 @@
 import { is } from "@electron-toolkit/utils";
-import { app, BrowserWindow, ipcMain, dialog, protocol, net, shell } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, protocol, net, shell, session } from "electron";
 import { getPort } from "get-port-please";
 import { startServer } from "next/dist/server/lib/start-server";
 import path, { join } from "path";
@@ -136,6 +136,8 @@ async function initializeAppData() {
   }
 }
 
+let serverPort = 3000; // Default port for Next.js server
+
 const createWindow = () => {
   mainWindow = new BrowserWindow({
     title: "PubMan",
@@ -165,10 +167,10 @@ const createWindow = () => {
     const retryDelay = 1000; // Delay between retries in milliseconds
     let attempt = 0;
 
-    let url = "http://localhost:3000";
+    let url = `http://localhost:${serverPort}`;
     if (!is.dev) {
-      const port = await startNextJSServer();
-      url = `http://localhost:${port}`;
+      serverPort = await startNextJSServer();
+      url = `http://localhost:${serverPort}`;
     }
 
     const isServerReady = async () => {
@@ -265,6 +267,12 @@ app.whenReady().then(() => {
       throw new Error("Failed to load resource");
     }
   });
+  protocol.handle("prusaslicer", async (req) => {
+    log.info("Redirecting", req.url);
+    const url = new URL(req.url);
+    const code = url.searchParams.get("code");
+    return new Response('', { status: 302, headers: { Location: `http://localhost:${serverPort}/api/printables/auth/callback?code=${code}` } });
+  })
 
   app.setAboutPanelOptions({
       applicationName: "PubMan",

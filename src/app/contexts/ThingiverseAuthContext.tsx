@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import log from 'electron-log/renderer';
 
 export interface ThingiverseUser {
@@ -103,12 +103,8 @@ export function ThingiverseAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<ThingiverseUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  // Check for existing auth on mount
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  // Memoize checkAuth so the event listener always gets the latest reference
+  const checkAuth = useCallback(async () => {
     try {
       // Get the token first
       const tokenResponse = await fetch('/api/thingiverse/auth/token');
@@ -128,14 +124,30 @@ export function ThingiverseAuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const userData = await response.json();
-        log.info('>>> UserData raw: {}', userData);
+        log.info('>>> Thingiverse user: {}', userData);
         setUser(userData);
         setIsAuthenticated(true);
       }
     } catch (error) {
       log.error('Failed to check auth status:', error);
     }
-  };
+  }, []);
+
+  // Check for existing auth on mount
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  // Listen for THINGIVERSE_AUTH_SUCCESS once, on mount
+  useEffect(() => {
+    const handler = async (event: MessageEvent) => {
+      if (event.data.type === 'THINGIVERSE_AUTH_SUCCESS') {
+        await checkAuth();
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [checkAuth]);
 
   const login = async () => {
     try {
@@ -145,20 +157,12 @@ export function ThingiverseAuthProvider({ children }: { children: ReactNode }) {
       const left = window.screen.width / 2 - width / 2;
       const top = window.screen.height / 2 - height / 2;
 
-      const popup = window.open(
+      window.open(
         '/api/thingiverse/auth',
         'thingiverse-auth',
         `width=${width},height=${height},left=${left},top=${top}`
       );
-
-      // Listen for completion message
-      window.addEventListener('message', async (event) => {
-        if (event.data.type === 'THINGIVERSE_AUTH_SUCCESS') {
-          popup?.close();
-          await checkAuth();
-        }
-      }, { once: true });
-
+      // No need to add event listener here anymore
     } catch (error) {
       log.error('Login failed:', error);
       throw error;

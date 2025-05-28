@@ -1,37 +1,56 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import log from 'electron-log/renderer';
+import { useEffect } from 'react';
 
 export default function Page() {
-  const router = useRouter();
-  const [accessToken, setAccessToken] = useState('');
+  useEffect(() => {
+    const AUTH_HOST = "https://account.prusa3d.com";
+    const CLIENT_ID = "oamhmhZez7opFosnwzElIgE2oGgI2iJORSkw587O"; // PrusaSlicer
+    const REDIRECT_URI = encodeURIComponent("prusaslicer://login");
+    const SCOPE = "basic_info";
+    const RESPONSE_TYPE = "code";
+    const CODE_CHALLENGE_METHOD = "S256";
+    const LANGUAGE = "en";
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!accessToken) {
-      log.error('Access token is required');
-      return;
+    function base64UrlEncode(str) {
+      return btoa(String.fromCharCode(...new Uint8Array(str)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
-    router.push(`/api/printables/auth/callback/save?access_token=${accessToken}`); // Redirect to the save page with the access token
-  };
+    async function sha256(plain) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(plain);
+      const hash = await window.crypto.subtle.digest('SHA-256', data);
+      return base64UrlEncode(hash);
+    }
+    function randomString(length) {
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = '';
+      const array = new Uint32Array(length);
+      window.crypto.getRandomValues(array);
+      for (let i = 0; i < length; i++) {
+        result += chars[array[i] % chars.length];
+      }
+      return result;
+    }
+
+    (async () => {
+      const codeVerifier = randomString(40);
+      const codeChallenge = await sha256(codeVerifier);
+
+      // Store code_verifier in sessionStorage for later use in the callback
+      sessionStorage.setItem('printables_code_verifier', codeVerifier);
+
+      const url = `${AUTH_HOST}/o/authorize/?embed=1&client_id=${CLIENT_ID}&response_type=${RESPONSE_TYPE}` +
+        `&code_challenge=${codeChallenge}&code_challenge_method=${CODE_CHALLENGE_METHOD}` +
+        `&scope=${SCOPE}&redirect_uri=${REDIRECT_URI}&language=${LANGUAGE}`;
+
+      window.location.href = url;
+    })();
+  }, []);
 
   return (
     <div>
-      <h1>Enter Printables.com Access Token</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Access Token:
-          <input
-            type="password"
-            value={accessToken}
-            onChange={(e) => setAccessToken(e.target.value)}
-            required
-          />
-        </label>
-        <button type="submit">Submit</button>
-      </form>
+      <p>Redirecting to Printables.com login...</p>
     </div>
   );
 }

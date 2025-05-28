@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useState, useCallback } from "react";
 import log from "electron-log/renderer";
 import {z} from "zod";
 import {UserInfoResponseSchema} from "@/src/app/api/makerworld/makerworld-lib";
@@ -13,7 +13,6 @@ interface MakerWorldAuthContextType {
   accessToken: string | null;
   login: () => Promise<void>;
   logout: () => void;
-  refreshToken: () => Promise<void>;
 }
 
 const MakerWorldAuthContext = createContext<MakerWorldAuthContextType | undefined>(undefined);
@@ -23,11 +22,8 @@ export function MakerWorldAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MakerWorldUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  // Memoize checkAuth so the event listener always gets the latest reference
+  const checkAuth = useCallback(async () => {
     try {
       const tokenResponse = await fetch('/api/makerworld/auth/token');
       if (!tokenResponse.ok) return;
@@ -45,13 +41,29 @@ export function MakerWorldAuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const userData = await response.json();
+        log.info('>>> MakerWorld User: {}', userData);
         setUser(userData);
         setIsAuthenticated(true);
       }
     } catch (error) {
       log.error('Failed to check MakerWorld auth status:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  // Listen for MAKERWORLD_AUTH_SUCCESS once, on mount
+  useEffect(() => {
+    const handler = async (event: MessageEvent) => {
+      if (event.data.type === 'MAKERWORLD_AUTH_SUCCESS') {
+        await checkAuth();
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [checkAuth]);
 
   const login = async () => {
     try {
@@ -60,20 +72,12 @@ export function MakerWorldAuthProvider({ children }: { children: ReactNode }) {
       const left = window.screen.width / 2 - width / 2;
       const top = window.screen.height / 2 - height / 2;
 
-      const popup = window.open(
+      window.open(
         '/api/makerworld/auth',
         'makerworld-auth',
         `width=${width},height=${height},left=${left},top=${top}`
       );
-
-      // Listen for completion message (future extension)
-      window.addEventListener('message', async (event) => {
-        if (event.data.type === 'MAKERWORLD_AUTH_SUCCESS') {
-          popup?.close();
-          await checkAuth();
-        }
-      }, { once: true });
-
+      // No need to add event listener here anymore
     } catch (error) {
       log.error('MakerWorld login failed:', error);
       throw error;
@@ -91,11 +95,6 @@ export function MakerWorldAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const refreshToken = async () => {
-    // No refresh endpoint, just re-login
-    await login();
-  };
-
   return (
     <MakerWorldAuthContext.Provider value={{
       isAuthenticated,
@@ -103,7 +102,6 @@ export function MakerWorldAuthProvider({ children }: { children: ReactNode }) {
       accessToken,
       login,
       logout,
-      refreshToken
     }}>
       {children}
     </MakerWorldAuthContext.Provider>
