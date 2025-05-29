@@ -5,7 +5,7 @@ import { Input } from "../ui/input";
 import { Dialog, DialogTrigger, DialogTitle, DialogContent, DialogDescription } from "@radix-ui/react-dialog";
 import { DialogHeader } from "../ui/dialog";
 import { LinkIcon } from "lucide-react";
-import { ControlButton } from "./control-button";
+import ControlButton from "./control-button";
 import log from "electron-log/renderer";
 
 const sanitizeUrl = (url: string) => {
@@ -27,7 +27,7 @@ interface LinkControlProps {
   editor: Editor;
 }
 
-export function LinkControl({ editor }: LinkControlProps) {
+export default function LinkControl({ editor }: LinkControlProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [linkUrl, setLinkUrl] = useState('')
     const [linkText, setLinkText] = useState('')

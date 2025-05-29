@@ -10,7 +10,7 @@ interface ControlButtonProps {
   className?: string;
 }
 
-export function ControlButton({
+export default function ControlButton({
   label,
   icon,
   command,

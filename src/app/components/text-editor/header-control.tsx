@@ -7,7 +7,7 @@ interface HeaderControlProps {
   editor: Editor;
 }
 
-export function HeaderControl({ editor }: HeaderControlProps) {
+export default function HeaderControl({ editor }: HeaderControlProps) {
     return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

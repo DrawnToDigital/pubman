@@ -1,10 +1,11 @@
 import { AlignJustifyIcon, List, ListOrderedIcon, ListPlusIcon } from "lucide-react";
 import { Editor } from "@tiptap/react";
-import { ControlButton } from "./control-button";
-import { LinkControl } from "./link-control";
-import { HeaderControl } from "./header-control";
+import ControlButton from "./control-button";
+import LinkControl from "./link-control";
+import HeaderControl from "./header-control";
+import ContentControl from "./content-control";
 
-const controls = [
+const simpleControls = [
   {
     name: "bold",
     icon: <strong>B</strong>,
@@ -74,25 +75,32 @@ const controls = [
 
 interface ToolbarProps {
   editor: Editor | null;
+  useMarkdown: boolean;
+  setUseMarkdown: (useMarkdown: boolean) => void;
 }
 
-export function Toolbar({ editor }: ToolbarProps) {
+export default function Toolbar({ editor, useMarkdown, setUseMarkdown }: ToolbarProps) {
     if (!editor) return null;
   
     return (
-      <div className="flex gap-1 mb-2 border-b sticky top-0 bg-white z-10">
-        {controls.map((cmd) => (
+      <div className="flex gap-1 mb-2 border-b sticky rounded-t-md top-0 bg-white z-10">
+        {simpleControls.map((control) => (
           <ControlButton
-            key={cmd.name}
-            label={cmd.label}
-            icon={cmd.icon}
-            command={() => cmd.command(editor)}
-            canExecute={() => cmd.canExecute(editor)}
-            isActive={() => cmd.isActive(editor)}
-            className={cmd.className}
+            key={control.name}
+            label={control.label}
+            icon={control.icon}
+            command={() => control.command(editor)}
+            canExecute={() => control.canExecute(editor)}
+            isActive={() => control.isActive(editor)}
+            className={control.className}
           />
         ))}
         <HeaderControl editor={editor} />
+        <ContentControl
+          editor={editor}
+          useMarkdown={useMarkdown}
+          setUseMarkdown={setUseMarkdown}
+        />
         <LinkControl editor={editor} />
       </div>
     );
