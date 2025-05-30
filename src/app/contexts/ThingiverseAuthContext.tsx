@@ -171,9 +171,26 @@ export function ThingiverseAuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/thingiverse/logout', { method: 'POST' });
+      await fetch('/api/thingiverse/auth/token', { method: 'DELETE' });
+
+      // Open a popup to clear cookies on Thingiverse domain
+      const width = 600;
+      const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+      const popup = window.open(
+        '/api/thingiverse/auth/logout',
+        'thingiverse-logout',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+      // Wait a moment for cookies to clear, then close popup
+      setTimeout(() => {
+        if (popup && !popup.closed) popup.close();
+      }, 2000);
+
       setUser(null);
       setIsAuthenticated(false);
+      setAccessToken(null)
     } catch (error) {
       log.error('Logout failed:', error);
     }
