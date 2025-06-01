@@ -1,5 +1,6 @@
 'use client';
 
+import path from "path";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/src/app/components/ui/button";
@@ -111,8 +112,8 @@ const DesignDetailsPage = () => {
       const filePath = result.filePaths[0];
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
-      const appDataPath = await window.electron.getAppDataPath();
-      await addFile(filePath, appDataPath, designID);
+      const assetsDir = path.join(await window.electron.getAppDataPath(), "assets");
+      await addFile(filePath, assetsDir, designID);
 
       const updatedDesign = await fetchDesign(designID.toString());
       setDesign(updatedDesign);
