@@ -1,11 +1,12 @@
 {
-  "name": "pubman-ui",
-  "productName": "PubMan",
+  "name": "pubman",
   "version": "2025.6.0",
+  "repository": "https://github.com/DrawnToDigital/pubman",
+  "description": "Draft, Track, and Publish 3D models to multiple platforms",
+  "productName": "PubMan",
   "private": true,
   "main": "build/main.js",
   "author": "DrawnToDigital <contact@drawnto.digital>",
-  "description": "Publishing Manager for 3D Designs",
   "scripts": {
     "next:dev": "next dev",
     "next:build": "next build",
