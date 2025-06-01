@@ -151,3 +151,14 @@ CREATE TABLE IF NOT EXISTS designer_platform (
     FOREIGN KEY(designer_id) REFERENCES designer(id),
     FOREIGN KEY(platform_id) REFERENCES platform(id)
 );
+
+CREATE TABLE IF NOT EXISTS migrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- Insert ALL migrations that exist at the time of this script
+INSERT OR IGNORE INTO migrations (name) VALUES
+('migrations-001.txt'),
+('migrations-002.txt'),
+('migrations-003.txt');

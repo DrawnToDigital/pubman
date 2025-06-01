@@ -99,7 +99,6 @@ async function initializeAppData() {
   // Ensure appDataPath and db directory exist
   await fs.mkdir(dbDir, { recursive: true });
 
-  let dbJustCreated = false;
   if (!existsSync(dbPath)) {
     // Create or open the SQLite database
     const db = new Database(dbPath);
@@ -110,7 +109,6 @@ async function initializeAppData() {
     db.exec(initSQL);
 
     log.info("Database initialized successfully.");
-    dbJustCreated = true;
     db.close();
   }
 
@@ -122,8 +120,8 @@ async function initializeAppData() {
 
   db.close();
 
-  // Add sample assets if just created
-  if (dbJustCreated || !existsSync(assetsDir)) {
+  // Add sample assets if assets dir does not exist
+  if (!existsSync(assetsDir)) {
     await fs.mkdir(assetsDir, { recursive: true });
     const sampleImageSource = path.join(sampleAssetsPath, "example_image.png");
     const sampleImageDest = path.join(assetsDir, "example_image.png");

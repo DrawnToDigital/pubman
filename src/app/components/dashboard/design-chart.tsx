@@ -321,16 +321,12 @@ export default function DesignsChart() {
                     <td className="p-4 align-middle">
                         <div className="flex items-center gap-3">
                             {design.thumbnail ? (
-                                <div className="h-16 w-16 overflow-hidden rounded-md border">
-                                    <img
-                                        src={design.thumbnail}
-                                        alt={design.main_name}
-                                        width={64}
-                                        height={64}
-                                        className="h-full w-full object-cover"
-                                        onError={(e) => {
-                                            e.currentTarget.src = "/placeholder.png";
-                                        }}
+                                <div className="h-16 w-16 overflow-hidden rounded-md border text-xs">
+                                    <Image
+                                      src={design.thumbnail} alt="Thumbnail" width={64} height={64} className="h-full w-full object-cover"
+                                      onError={({currentTarget}) => {
+                                        currentTarget.src = "/default-thumbnail.png";
+                                      }}
                                     />
                                 </div>
                             ) : (
