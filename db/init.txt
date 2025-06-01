@@ -1,0 +1,153 @@
+-- Create platform table
+CREATE TABLE IF NOT EXISTS platform (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    api_endpoint TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert platforms if they don't exist (including Thingiverse)
+INSERT OR IGNORE INTO platform (id, name, description, api_endpoint) VALUES
+    (1, 'PubMan', 'PubMan Local Platform', 'http://pubman.lan'),
+    (2, 'Dummy', 'Dummy Platform', 'https://pubman-dummy.lan'),
+    (3, 'Thingiverse', 'Thingiverse Platform', 'https://api.thingiverse.com'),
+    (4, 'Printables', 'Printables Platform', 'https://api.printables.com'),
+    (5, 'MakerWorld', 'MakerWorld Platform', 'https://makerworld.com/api');
+
+-- Create the license table if it doesn't exist
+CREATE TABLE IF NOT EXISTS license (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT NOT NULL,
+    name TEXT NOT NULL
+);
+
+-- Initial licenses
+INSERT OR IGNORE INTO license (key, name) VALUES
+    ('CC', 'Creative Commons'),
+    ('CC0', 'Creative Commons — Public Domain'),
+    ('CC-BY', 'Creative Commons — Attribution'),
+    ('CC-BY-SA', 'Creative Commons — Attribution — Share Alike'),
+    ('CC-BY-ND', 'Creative Commons — Attribution — NoDerivatives'),
+    ('CC-BY-NC', 'Creative Commons — Attribution — Noncommercial'),
+    ('CC-BY-NC-SA', 'Creative Commons — Attribution — Noncommercial — Share Alike'),
+    ('CC-BY-NC-ND', 'Creative Commons — Attribution — Noncommercial — NoDerivatives'),
+    ('GPL-2.0', 'GNU General Public License v2.0'),
+    ('GPL-3.0', 'GNU General Public License v3.0'),
+    ('LGPL', 'GNU Lesser General Public License'),
+    ('BSD', 'BSD License'),
+    ('SDFL', 'Standard Digital File License');
+
+-- Create the design table if it doesn't exist
+CREATE TABLE IF NOT EXISTS design (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    designer_id INTEGER NOT NULL,
+    main_name TEXT NOT NULL,
+    summary TEXT,
+    description TEXT,
+    license_key TEXT NOT NULL,
+    thingiverse_category TEXT,
+    printables_category TEXT,
+    makerworld_category TEXT,
+    is_ready INTEGER NOT NULL DEFAULT 0,
+    is_published INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Create the design_tag table if it doesn't exist
+CREATE TABLE IF NOT EXISTS design_tag (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    design_id INTEGER NOT NULL,
+    tag TEXT NOT NULL,
+    platform_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Create the design_platform table if it doesn't exist
+CREATE TABLE IF NOT EXISTS design_platform (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    platform_id INTEGER NOT NULL,
+    design_id INTEGER NOT NULL,
+    platform_design_id TEXT,
+    published_status INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    published_at TEXT DEFAULT NULL,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Create the designer table if it doesn't exist
+CREATE TABLE IF NOT EXISTS designer (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    status TEXT DEFAULT 'active',
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Insert a default designer if it doesn't exist
+INSERT OR IGNORE INTO designer (username, email, password_hash) VALUES
+    ('default', 'designer@smallbusiness.lan', '$2b$12$LP3Fcmc7AnXMozTXGCixp.rGSwt6L.z3KlN0Kc6AptBPyRz4r5Pva');
+
+-- Insert an example design associated with the default designer if it doesn't exist
+INSERT OR IGNORE INTO design (designer_id, main_name, summary, description, license_key, thingiverse_category, printables_category, is_ready, is_published) VALUES
+    (1, 'Example Design', 'Short summary of the design.', 'This is a detailed description of the example design.', 'SDFL', 'Other', NULL, 0, 0);
+
+-- Create the design_asset table if it doesn't exist
+CREATE TABLE IF NOT EXISTS design_asset (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    design_id INTEGER NOT NULL,
+    designer_id INTEGER NOT NULL,
+    file_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    file_ext TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT DEFAULT NULL
+);
+
+-- Insert an example design asset associated with the example design if it doesn't exist
+INSERT OR IGNORE INTO design_asset (design_id, designer_id, file_name, file_path, file_ext) VALUES
+    (1, 1, 'example_design.stl', '/assets/example_design.stl', 'stl'),
+    (1, 1, 'example_image.png', '/assets/example_image.png', 'png');
+
+-- Insert an example design tag associated with the example design if it doesn't exist
+INSERT OR IGNORE INTO design_tag (design_id, tag, platform_id) VALUES
+    (1, 'tag1', 1),
+    (1, 'tag2', 1),
+    (1, 'tag3', 1);
+
+-- Create the auth_tokens table if it doesn't exist
+CREATE TABLE IF NOT EXISTS auth_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider TEXT NOT NULL,
+    token TEXT NOT NULL,
+    designer_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(provider, designer_id)
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_provider ON auth_tokens(provider);
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_designer_id ON auth_tokens(designer_id);
+
+-- Create designer_platform table to link designers with platform accounts
+CREATE TABLE IF NOT EXISTS designer_platform (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    designer_id INTEGER NOT NULL,
+    platform_id INTEGER NOT NULL,
+    platform_username TEXT,
+    platform_user_id TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(designer_id, platform_id),
+    FOREIGN KEY(designer_id) REFERENCES designer(id),
+    FOREIGN KEY(platform_id) REFERENCES platform(id)
+);

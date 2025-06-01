@@ -1,0 +1,2 @@
+INSERT OR IGNORE INTO `platform` (id, name, description, api_endpoint) VALUES
+(5, 'MakerWorld', 'MakerWorld Platform', 'https://makerworld.com/api');

@@ -38,3 +38,27 @@ Download the latest release from the [Releases page](https://github.com/DrawnToD
 ### ⁉️ Questions or Concerns
 
 Create an [issue](https://github.com/DrawnToDigital/pubman/issues)
+
+### Contribute
+
+Want to help improve PubMan? Contributions are welcome!
+
+### Getting Started
+
+Install dependencies:
+```bash
+npm i
+```
+Run the development Electron app & NextJS server:
+
+```bash
+npm run dev
+```
+
+## Tools
+- [Electron](https://www.electronjs.org/)
+- [NextJS](https://nextjs.org/)
+- [Tailwind](https://tailwindcss.com/)
+- [shadcn](https://ui.shadcn.com/)
+- [zod](https://zod.dev/)
+- [Tiptap](https://tiptap.dev/docs/editor/getting-started/overview)
