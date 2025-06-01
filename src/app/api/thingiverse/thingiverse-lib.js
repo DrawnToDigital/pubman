@@ -39,6 +39,7 @@ export class ThingiverseAPI {
       'Authorization': `Bearer ${accessToken}`,
       'Host': 'api.thingiverse.com',
       'Content-Type': 'application/json; charset=utf-8',
+      'User-Agent': `PubMan/1.0  (${process.platform}; ${process.arch})`
     };
   }
 

@@ -233,6 +233,8 @@ const startNextJSServer = async () => {
 };
 
 app.whenReady().then(() => {
+  app.userAgentFallback = `PubMan/1.0 (${process.platform}; ${process.arch})`;
+
   initializeAppData().finally(() => {
     createWindow();
   });

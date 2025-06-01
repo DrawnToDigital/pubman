@@ -995,7 +995,7 @@ export class PrintablesAPI {
       'Authorization': `Bearer ${accessToken}`,
       'Host': 'api.printables.com',
       'Content-Type': 'application/json',
-      'User-Agent': 'PubMan/1.0'
+      'User-Agent': `PubMan/1.0 (${process.platform}; ${process.arch})`
     };
   }
 
