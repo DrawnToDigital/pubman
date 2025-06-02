@@ -4,6 +4,8 @@ import ControlButton from "./control-button";
 import LinkControl from "./link-control";
 import HeaderControl from "./header-control";
 import ContentControl from "./content-control";
+import DropdownToolbar from "./dropdown-toolbar";
+import { useDescriptionContext } from './description-context';
 
 const simpleControls = [
   {
@@ -73,35 +75,27 @@ const simpleControls = [
   },
 ];
 
-interface ToolbarProps {
-  editor: Editor | null;
-  useMarkdown: boolean;
-  setUseMarkdown: (useMarkdown: boolean) => void;
-}
+export default function Toolbar() {
+  const { editor } = useDescriptionContext();
+  if (!editor) return null;
 
-export default function Toolbar({ editor, useMarkdown, setUseMarkdown }: ToolbarProps) {
-    if (!editor) return null;
-  
-    return (
-      <div className="flex gap-1 mb-2 border-b sticky rounded-t-md top-0 bg-white z-10">
-        {simpleControls.map((control) => (
-          <ControlButton
-            key={control.name}
-            label={control.label}
-            icon={control.icon}
-            command={() => control.command(editor)}
-            canExecute={() => control.canExecute(editor)}
-            isActive={() => control.isActive(editor)}
-            className={control.className}
-          />
-        ))}
-        <HeaderControl editor={editor} />
-        <ContentControl
-          editor={editor}
-          useMarkdown={useMarkdown}
-          setUseMarkdown={setUseMarkdown}
+  return (
+    <div className="flex w-full gap-1 mb-2 border-b sticky rounded-t-md top-0 bg-white z-10">
+      {simpleControls.map((control) => (
+        <ControlButton
+          key={control.name}
+          label={control.label}
+          icon={control.icon}
+          command={() => control.command(editor)}
+          canExecute={() => control.canExecute(editor)}
+          isActive={() => control.isActive(editor)}
+          className={control.className}
         />
-        <LinkControl editor={editor} />
-      </div>
-    );
-  }
+      ))}
+      <ContentControl />
+      <HeaderControl />
+      <LinkControl />
+      <DropdownToolbar />
+    </div>
+  );
+}

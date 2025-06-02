@@ -26,7 +26,7 @@ export default function ControlButton({
               type="button"
               onClick={() => command()}
               disabled={!canExecute()}
-              className={`text-black w-10 aspect-square border-hidden rounded-none hover:bg-gray-400 ${
+              className={`text-black flex-1 aspect-square rounded-none hover:bg-gray-400 ${
                 isActive() ? "bg-gray-400" : "bg-transparent"
                 } ${className || ""}`}
             >
