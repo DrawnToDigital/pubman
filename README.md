@@ -1,4 +1,4 @@
-# 👤 PubMan – Your Central Hub for 3D Model Publishing
+# 👤 PubMan – 3D Model Publishing
 
 Helps 3D designers **draft, track, and publish models** to multiple platforms _from a single dashboard_.
 
