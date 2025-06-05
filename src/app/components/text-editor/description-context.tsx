@@ -42,10 +42,25 @@ const extensions = [
   }),
   Table.configure({
     resizable: true,
+    HTMLAttributes: {
+      class: 'border-collapse border border-gray-300 w-full',
+    },
   }),
-  TableRow,
-  TableHeader,
-  TableCell,
+  TableRow.configure({
+    HTMLAttributes: {
+      class: 'border border-gray-300 relative',
+    },
+  }),
+  TableHeader.configure({
+    HTMLAttributes: {
+      class: 'border border-gray-300 bg-gray-100 text-left p-2',
+    },
+  }),
+  TableCell.configure({
+    HTMLAttributes: {
+      class: 'border border-gray-300 p-2 relative',
+    },
+  }),
 ]
 
 interface DescriptionContextProps {

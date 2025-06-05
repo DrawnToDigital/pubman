@@ -1,3 +1,4 @@
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/src/app/components/ui/dropdown-menu';
 import { Button } from '@/src/app/components/ui/button';
 import { useDescriptionContext } from './description-context';
 
@@ -6,31 +7,36 @@ export default function TableControl() {
     if (!editor) return null;
 
     return (
-        <div className="grid grid-cols-4 gap-2">
-            <Button onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
-                Insert Table
-            </Button>
-            <Button onClick={() => editor.chain().focus().addColumnBefore().run()}>
-                Add Column Before
-            </Button>
-            <Button onClick={() => editor.chain().focus().addColumnAfter().run()}>
-                Add Column After
-            </Button>
-            <Button onClick={() => editor.chain().focus().deleteColumn().run()}>
-                Delete Column
-            </Button>
-            <Button onClick={() => editor.chain().focus().addRowBefore().run()}>
-                Add Row Before
-            </Button>
-            <Button onClick={() => editor.chain().focus().addRowAfter().run()}>
-                Add Row After
-            </Button>
-            <Button onClick={() => editor.chain().focus().deleteRow().run()}>
-                Delete Row
-            </Button>
-            <Button onClick={() => editor.chain().focus().deleteTable().run()}>
-                Delete Table
-            </Button>
-        </div>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline">Table Options</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
+                    Insert Table
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => editor.chain().focus().addColumnBefore().run()}>
+                    Add Column Before
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => editor.chain().focus().addColumnAfter().run()}>
+                    Add Column After
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => editor.chain().focus().deleteColumn().run()}>
+                    Delete Column
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => editor.chain().focus().addRowBefore().run()}>
+                    Add Row Before
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => editor.chain().focus().addRowAfter().run()}>
+                    Add Row After
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => editor.chain().focus().deleteRow().run()}>
+                    Delete Row
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => editor.chain().focus().deleteTable().run()}>
+                    Delete Table
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }

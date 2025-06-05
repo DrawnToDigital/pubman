@@ -12,6 +12,28 @@ const CustomMarkdownSerializer = new MarkdownSerializer(
       bulletList: defaultMarkdownSerializer.nodes.bullet_list,
       orderedList: defaultMarkdownSerializer.nodes.ordered_list,
       listItem: defaultMarkdownSerializer.nodes.list_item,
+      table: (state, node) => {
+        state.write('\n');
+        node.forEach((row, _offset, i) => {
+                  state.render(row, node, i);
+                  state.write('\n');
+                });
+        state.write('\n');
+      },
+      tableRow: (state, node) => {
+        node.forEach((cell, _offset, i) => {
+                  state.write('| ');
+                  state.render(cell, node, i);
+                  state.write(' ');
+                });
+        state.write('|');
+      },
+      tableCell: (state, node) => {
+        state.renderInline(node);
+      },
+      tableHeader: (state, node) => {
+        state.renderInline(node);
+      },
     },
     {
       ...defaultMarkdownSerializer.marks,

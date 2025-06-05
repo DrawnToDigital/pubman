@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
-import { TableIcon, QuoteIcon, ImageIcon, ChevronDownIcon } from 'lucide-react';
+import { QuoteIcon, ImageIcon, ChevronDownIcon } from 'lucide-react';
 import ControlButton from './control-button';
 import TableControl from './table-control';
 import { useDescriptionContext } from './description-context';
 
 const secondaryControls = [
-    {
-        name: 'table',
-        label: 'Insert Table',
-        icon: <TableIcon size={16} />,
-        command: () => <TableControl />,
-    },
     {
         name: 'blockQuote',
         label: 'Block Quote',
@@ -42,6 +36,7 @@ export default function DropdownToolbar() {
             />
             {isSecondaryToolbarVisible && (
                 <div className="absolute top-full left-0 flex gap-2 bg-white shadow-md border rounded-md p-2 z-10">
+                    <TableControl />
                     {secondaryControls.map((control) => (
                         <ControlButton
                             key={control.name}

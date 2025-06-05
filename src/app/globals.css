@@ -166,3 +166,9 @@ Button {
 .ProseMirror h3 {
   @apply text-xl font-bold;
 }
+
+.ProseMirror table td::after,
+.ProseMirror table th::after {
+  content: '';
+  @apply absolute top-0 right-0 w-[5px] h-full bg-transparent cursor-col-resize;
+}
