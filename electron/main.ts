@@ -92,7 +92,7 @@ async function runMigrations(db: typeof Database) {
 }
 
 async function initializeAppData() {
-  log.info(`MAIN.ts ${os.platform()} ${os.arch()} ${process.electron} ${process?.versions?.electron}  ${process?.versions?.node}`);
+  log.info(`MAIN.ts ${os.platform()} ${os.arch()} ${JSON.stringify(process.versions)}`);
   log.info(`Initializing app data dir ${appDataPath}`);
   const dbDir = path.dirname(dbPath);
 

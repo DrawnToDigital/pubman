@@ -2,9 +2,9 @@ import path from "node:path";
 import log from 'electron-log/node';
 
 export default function getBetterSqlite3() {
-  if (process.env.NODE_ENV !== "production" && process.platform === "darwin" && process.arch === 'arm64') {
+  if (process.env.NODE_ENV === "development" && !process?.versions?.electron) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('better-sqlite3-darwin');
+    return require('better-sqlite3-local');
   }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return require('better-sqlite3');
@@ -32,8 +32,8 @@ export function getDatabase() {
     const options = {
       verbose: log.info,
     }
-    if (process.env.NODE_ENV === "development" && process.platform === "darwin" && process.arch === 'arm64') {
-      options.nativeBinding = path.resolve('node_modules/better-sqlite3-darwin/build/Release/better_sqlite3.node');
+    if (process.env.NODE_ENV === "development" && !process?.versions?.electron) {
+      options.nativeBinding = path.resolve('node_modules/better-sqlite3-local/build/Release/better_sqlite3.node');
     }
     return new Database(dbPath, options);
   } catch (error) {

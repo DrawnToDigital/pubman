@@ -14,14 +14,6 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '50mb'
     },
   },
-  webpack: (config, { isServer, dev }) => {
-    if (isServer && dev) {
-      if (process.platform === "darwin" && process.arch === 'arm64') {
-        config.resolve.alias['better-sqlite3'] = 'better-sqlite3-darwin';
-      }
-    }
-    return config;
-  }
 };
 
 export default nextConfig;
