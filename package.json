@@ -25,7 +25,6 @@
     "postinstall": "run-s postinstall:electron postinstall:local",
     "postinstall:electron": "npx electron-rebuild --force --only better-sqlite3",
     "postinstall:local": "npm rebuild better-sqlite3-local",
-    "predist": "npx electron-rebuild -f -o better-sqlite3",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
