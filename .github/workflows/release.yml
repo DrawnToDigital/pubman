@@ -18,12 +18,6 @@ jobs:
         os: [macos-latest, ubuntu-22.04, windows-latest]
       fail-fast: false
 
-    outputs:
-      version: ${{ steps.calculate_version.outputs.version }}
-      shaosxarm: ${{ steps.calculate_macos_sha256.outputs.shaosxarm }}
-      shaosxintel: ${{ steps.calculate_macos_sha256.outputs.shaosxintel }}
-      shalinux: ${{ steps.calculate_linux_sha256.outputs.shalinux }}
-
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
