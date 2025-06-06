@@ -15,6 +15,7 @@
     "electron:dist:deb": "electron-builder --linux deb",
     "electron:build": "tsup",
     "build": "run-s next:build electron:build",
+    "clean": "rm -rf .next && rm -rf appdata && rm -rf build",
     "dist": "run-s next:build electron:build electron:dist",
     "dev": "cross-env NODE_ENV=development npm-run-all --parallel electron:dev next:dev",
     "electron:build_watch": "tsup --watch",
@@ -31,7 +32,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.817.0",
-    "@electron-toolkit/utils": "^4.0.0",
+  "@electron-toolkit/utils": "^4.0.0",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-dialog": "^1.1.13",
     "@radix-ui/react-dropdown-menu": "^2.1.14",
