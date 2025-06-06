@@ -47,3 +47,34 @@ jobs:
           echo THINGIVERSE_CLIENT_ID=${{ secrets.THINGIVERSE_CLIENT_ID }} > .env
           npm run build
           npx electron-builder --publish always
+
+      - name: Get SHA256
+        id: shasum
+        run: |
+          echo "shaosxarm=$(shasum -a 256 PubMan-$version-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "shaosxintel=$(shasum -a 256 PubMan-$version.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Checkout homebrew-pubman
+        uses: actions/checkout@v4
+        with:
+          repository: DrawnToDigital/homebrew-pubman
+          path: homebrew-pubman
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Cask
+        run: |
+          version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||')
+          cd homebrew-pubman
+          
+          # Update version and SHA256
+          sed -i '' "s|version \".*\"|version \"$version\"|" Casks/pubman.rb
+          sed -i '' "s|sha256 arm:   \".*\"|sha256 arm:   \"${{ steps.shasum.outputs.shaosxarm }}\"|" Casks/pubman.rb
+          sed -i '' "s|intel: \".*\"|intel: \"${{ steps.shasum.outputs.shaosxintel }}\"|" Casks/pubman.rb
+          
+          # Commit and push changes
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add Casks/pubman.rb
+          git commit -m "Update cask to version $version"
+          git push
+        if: startsWith(github.ref, 'refs/tags/v')
