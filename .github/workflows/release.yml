@@ -59,13 +59,18 @@ jobs:
         shell: bash
         run: |
           # Extract version from the tag
-          version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||; s|-.*$||')
+          version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||')
+          if [[ "$version" =~ \.[0-9]+(-.*)$ ]]; then
+              echo "Version ends with '-*', skipping homebrew update."
+              echo "version=" >> $GITHUB_OUTPUT
+              exit 0
+          fi
           echo "version=$version" >> $GITHUB_OUTPUT
 
       # Only run on macOS to calculate hashes and upload to artifact storage
       - name: Calculate macOS SHA256 hashes
         id: calculate_macos_sha256
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && steps.calculate_version.outputs.version != ''
         shell: bash
         run: |
           # if file not found, exit with error
@@ -83,7 +88,7 @@ jobs:
       # Only run on Linux to calculate Linux hash
       - name: Calculate Linux SHA256
         id: calculate_linux_sha256
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && steps.calculate_version.outputs.version != ''
         shell: bash
         run: |
           # if file not found, exit with error
@@ -96,6 +101,7 @@ jobs:
   update-homebrew:
     needs: release
     runs-on: ubuntu-latest
+    if: needs.release.outputs.version != ''
     steps:
       - name: Checkout homebrew-pubman
         uses: actions/checkout@v4
