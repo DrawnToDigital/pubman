@@ -74,16 +74,16 @@ jobs:
         shell: bash
         run: |
           # if file not found, exit with error
-          if [ ! -f "PubMan-${{ steps.calculate_version.outputs.version }}-arm64.dmg" ]; then
-              echo "Error: PubMan-${{ steps.calculate_version.outputs.version }}-arm64.dmg not found"
+          if [ ! -f "dist/PubMan-${{ steps.calculate_version.outputs.version }}-arm64.dmg" ]; then
+              echo "Error: dist/PubMan-${{ steps.calculate_version.outputs.version }}-arm64.dmg not found"
               exit 1
           fi
-          if [ ! -f "PubMan-${{ steps.calculate_version.outputs.version }}.dmg" ]; then
-              echo "Error: PubMan-${{ steps.calculate_version.outputs.version }}.dmg not found"
+          if [ ! -f "dist/PubMan-${{ steps.calculate_version.outputs.version }}.dmg" ]; then
+              echo "Error: dist/PubMan-${{ steps.calculate_version.outputs.version }}.dmg not found"
               exit 1
           fi
-          echo "shaosxarm=$(shasum -a 256 PubMan-${{ steps.calculate_version.outputs.version }}-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "shaosxintel=$(shasum -a 256 PubMan-${{ steps.calculate_version.outputs.version }}.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "shaosxarm=$(shasum -a 256 dist/PubMan-${{ steps.calculate_version.outputs.version }}-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "shaosxintel=$(shasum -a 256 dist/PubMan-${{ steps.calculate_version.outputs.version }}.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
 
       # Only run on Linux to calculate Linux hash
       - name: Calculate Linux SHA256
@@ -92,11 +92,11 @@ jobs:
         shell: bash
         run: |
           # if file not found, exit with error
-          if [ ! -f "PubMan-${{ steps.calculate_version.outputs.version }}.AppImage" ]; then
-              echo "Error: PubMan-${{ steps.calculate_version.outputs.version }}.AppImage not found"
+          if [ ! -f "dist/PubMan-${{ steps.calculate_version.outputs.version }}.AppImage" ]; then
+              echo "Error: dist/PubMan-${{ steps.calculate_version.outputs.version }}.AppImage not found"
               exit 1
           fi
-          echo "shalinux=$(shasum -a 256 PubMan-${{ steps.calculate_version.outputs.version }}.AppImage | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "shalinux=$(shasum -a 256 dist/PubMan-${{ steps.calculate_version.outputs.version }}.AppImage | awk '{print $1}')" >> $GITHUB_OUTPUT
 
   update-homebrew:
     needs: release
