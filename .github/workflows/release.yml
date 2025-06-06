@@ -54,6 +54,7 @@ jobs:
           version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||')
           echo "shaosxarm=$(shasum -a 256 PubMan-$version-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
           echo "shaosxintel=$(shasum -a 256 PubMan-$version.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "shalinux=$(shasum -a 256 PubMan-$version.AppImage | awk '{print $1}')" >> $GITHUB_OUTPUT
 
       - name: Checkout homebrew-pubman
         uses: actions/checkout@v4
@@ -71,6 +72,8 @@ jobs:
           sed -i '' "s|version \".*\"|version \"$version\"|" Casks/pubman.rb
           sed -i '' "s|sha256 arm:   \".*\"|sha256 arm:   \"${{ steps.shasum.outputs.shaosxarm }}\"|" Casks/pubman.rb
           sed -i '' "s|intel: \".*\"|intel: \"${{ steps.shasum.outputs.shaosxintel }}\"|" Casks/pubman.rb
+          sed -i '' "s|version \".*\"|version \"$version\"|" Formula/pubman-linux.rb
+          sed -i '' "s|sha256 \".*\"|sha256 \"${{ steps.shasum.outputs.shalinux }}\"|" Formula/pubman-linux.rb
           
           # Commit and push changes
           git config user.name github-actions
