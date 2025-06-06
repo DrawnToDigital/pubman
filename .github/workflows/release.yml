@@ -59,7 +59,7 @@ jobs:
         shell: bash
         run: |
           # Extract version from the tag
-          version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||; s/-.*$||')
+          version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||; s|-.*$||')
           echo "version=$version" >> $GITHUB_OUTPUT
 
       # Only run on macOS to calculate hashes and upload to artifact storage
