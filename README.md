@@ -24,10 +24,15 @@ PubMan is available for:
 - Windows 10/11  
 - Linux (AppImage)
 
-### 🔗 Download
+### 📦 Installation
+**Note:** PubMan is currently in **alpha**. Expect bugs and limited features.
 
-Download the latest release from the [Releases page](https://github.com/DrawnToDigital/pubman/releases)
-- **Note:** PubMan is currently in **alpha**. Expect bugs and limited features.
+PubMan can be installed with [homebrew](https://brew.sh/), or downloaded from the [Releases page](https://github.com/DrawnToDigital/pubman/releases)
+
+```shell
+brew tap DrawnToDigital/pubman
+brew install --cask pubman
+```
 
 ### 📌 Supported Platforms
 
