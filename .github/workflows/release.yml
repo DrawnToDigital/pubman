@@ -72,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hashes-${{ runner.os }}
-          path: ${{ github.output_path }}
+          path: hash.txt
           retention-days: 1
 
   update-homebrew:
@@ -102,10 +102,10 @@ jobs:
         shell: bash
         run: |
           # Load values from artifacts
-          version=$(grep 'version=' ./macos-hashes/github_output | cut -d= -f2)
-          shaosxarm=$(grep 'shaosxarm=' ./macos-hashes/github_output | cut -d= -f2)
-          shaosxintel=$(grep 'shaosxintel=' ./macos-hashes/github_output | cut -d= -f2)
-          shalinux=$(grep 'shalinux=' ./linux-hashes/github_output | cut -d= -f2)
+          version=$(grep 'version=' ./macos-hashes/hash.txt | cut -d= -f2)
+          shaosxarm=$(grep 'shaosxarm=' ./macos-hashes/hash.txt | cut -d= -f2)
+          shaosxintel=$(grep 'shaosxintel=' ./macos-hashes/hash.txt | cut -d= -f2)
+          shalinux=$(grep 'shalinux=' ./linux-hashes/hash.txt | cut -d= -f2)
 
           cd homebrew-pubman
 
