@@ -18,6 +18,12 @@ jobs:
         os: [macos-latest, ubuntu-22.04, windows-latest]
       fail-fast: false
 
+    outputs:
+      version: ${{ steps.calculate_version.outputs.version }}
+      shaosxarm: ${{ steps.calculate_macos_sha256.outputs.shaosxarm }}
+      shaosxintel: ${{ steps.calculate_macos_sha256.outputs.shaosxintel }}
+      shalinux: ${{ steps.calculate_linux_sha256.outputs.shalinux }}
+
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
@@ -48,49 +54,36 @@ jobs:
           npm run build
           npx electron-builder --publish always
 
+      - name: Calculate version
+        id: calculate_version
+        shell: bash
+        run: |
+          # Extract version from the tag
+          version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||; s/-.*$||')
+          echo "version=$version" >> $GITHUB_OUTPUT
+
       # Only run on macOS to calculate hashes and upload to artifact storage
       - name: Calculate macOS SHA256 hashes
+        id: calculate_macos_sha256
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||')
-          echo "version=$version" >> $GITHUB_OUTPUT
-          echo "shaosxarm=$(shasum -a 256 PubMan-$version-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "shaosxintel=$(shasum -a 256 PubMan-$version.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "shaosxarm=$(shasum -a 256 PubMan-${{ steps.calculate_version.outputs.version }}-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "shaosxintel=$(shasum -a 256 PubMan-${{ steps.calculate_version.outputs.version }}.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
 
       # Only run on Linux to calculate Linux hash
       - name: Calculate Linux SHA256
+        id: calculate_linux_sha256
         if: runner.os == 'Linux'
         shell: bash
         run: |
           version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||')
-          echo "shalinux=$(sha256sum PubMan-$version.AppImage | awk '{print $1}')" >> $GITHUB_OUTPUT
-
-      # Upload hash values as artifacts to be used in the update-homebrew job
-      - name: Upload hashes as artifacts
-        if: runner.os == 'macOS' || runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: hashes-${{ runner.os }}
-          path: hash.txt
-          retention-days: 1
+          echo "shalinux=$(shasum -a 256 PubMan-${{ steps.calculate_version.outputs.version }}.AppImage | awk '{print $1}')" >> $GITHUB_OUTPUT
 
   update-homebrew:
     needs: release
     runs-on: ubuntu-latest
     steps:
-      - name: Download macOS hashes
-        uses: actions/download-artifact@v4
-        with:
-          name: hashes-macOS
-          path: ./macos-hashes
-
-      - name: Download Linux hashes
-        uses: actions/download-artifact@v4
-        with:
-          name: hashes-Linux
-          path: ./linux-hashes
-
       - name: Checkout homebrew-pubman
         uses: actions/checkout@v4
         with:
@@ -102,10 +95,10 @@ jobs:
         shell: bash
         run: |
           # Load values from artifacts
-          version=$(grep 'version=' ./macos-hashes/hash.txt | cut -d= -f2)
-          shaosxarm=$(grep 'shaosxarm=' ./macos-hashes/hash.txt | cut -d= -f2)
-          shaosxintel=$(grep 'shaosxintel=' ./macos-hashes/hash.txt | cut -d= -f2)
-          shalinux=$(grep 'shalinux=' ./linux-hashes/hash.txt | cut -d= -f2)
+          version=${{ needs.release.outputs.version }}
+          shaosxarm=${{ needs.release.outputs.shaosxarm }}
+          shaosxintel=${{ needs.release.outputs.shaosxintel }}
+          shalinux=${{ needs.release.outputs.shalinux }}
 
           cd homebrew-pubman
 
