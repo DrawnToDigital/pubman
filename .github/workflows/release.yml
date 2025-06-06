@@ -51,6 +51,7 @@ jobs:
       - name: Get SHA256
         id: shasum
         run: |
+          version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||')
           echo "shaosxarm=$(shasum -a 256 PubMan-$version-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
           echo "shaosxintel=$(shasum -a 256 PubMan-$version.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
 
@@ -59,7 +60,7 @@ jobs:
         with:
           repository: DrawnToDigital/homebrew-pubman
           path: homebrew-pubman
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       - name: Update Cask
         run: |
@@ -77,4 +78,3 @@ jobs:
           git add Casks/pubman.rb
           git commit -m "Update cask to version $version"
           git push
-        if: startsWith(github.ref, 'refs/tags/v')
