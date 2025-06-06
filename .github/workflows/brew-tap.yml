@@ -37,7 +37,6 @@ jobs:
       - name: Update Cask
         shell: bash
         run: |
-          # Load values from artifacts
           version=${{ steps.release.outputs.version }}
           shaosxarm=${{ needs.release.outputs.shaosxarm }}
           shaosxintel=${{ needs.release.outputs.shaosxintel }}
