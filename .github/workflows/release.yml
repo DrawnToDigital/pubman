@@ -15,7 +15,7 @@ jobs:
     # Platforms to build on/for
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-18.04, windows-latest]
+        os: [macos-latest, ubuntu-20.04, windows-latest]
       fail-fast: false
 
     steps:
@@ -48,13 +48,48 @@ jobs:
           npm run build
           npx electron-builder --publish always
 
-      - name: Get SHA256
-        id: shasum
+      # Only run on macOS to calculate hashes and upload to artifact storage
+      - name: Calculate macOS SHA256 hashes
+        if: runner.os == 'macOS'
+        shell: bash
         run: |
           version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||')
+          echo "version=$version" >> $GITHUB_OUTPUT
           echo "shaosxarm=$(shasum -a 256 PubMan-$version-arm64.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
           echo "shaosxintel=$(shasum -a 256 PubMan-$version.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "shalinux=$(shasum -a 256 PubMan-$version.AppImage | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      # Only run on Linux to calculate Linux hash
+      - name: Calculate Linux SHA256
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||')
+          echo "shalinux=$(sha256sum PubMan-$version.AppImage | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      # Upload hash values as artifacts to be used in the update-homebrew job
+      - name: Upload hashes as artifacts
+        if: runner.os == 'macOS' || runner.os == 'Linux'
+        uses: actions/upload-artifact@v3
+        with:
+          name: hashes-${{ runner.os }}
+          path: ${{ github.output_path }}
+          retention-days: 1
+
+  update-homebrew:
+    needs: release
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Download macOS hashes
+        uses: actions/download-artifact@v3
+        with:
+          name: hashes-macOS
+          path: ./macos-hashes
+
+      - name: Download Linux hashes
+        uses: actions/download-artifact@v3
+        with:
+          name: hashes-Linux
+          path: ./linux-hashes
 
       - name: Checkout homebrew-pubman
         uses: actions/checkout@v4
@@ -64,20 +99,26 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       - name: Update Cask
+        shell: bash
         run: |
-          version=$(echo ${{ github.ref }} | sed 's|^refs/tags/v||')
+          # Load values from artifacts
+          version=$(grep 'version=' ./macos-hashes/github_output | cut -d= -f2)
+          shaosxarm=$(grep 'shaosxarm=' ./macos-hashes/github_output | cut -d= -f2)
+          shaosxintel=$(grep 'shaosxintel=' ./macos-hashes/github_output | cut -d= -f2)
+          shalinux=$(grep 'shalinux=' ./linux-hashes/github_output | cut -d= -f2)
+
           cd homebrew-pubman
-          
+
           # Update version and SHA256
-          sed -i '' "s|version \".*\"|version \"$version\"|" Casks/pubman.rb
-          sed -i '' "s|sha256 arm:   \".*\"|sha256 arm:   \"${{ steps.shasum.outputs.shaosxarm }}\"|" Casks/pubman.rb
-          sed -i '' "s|intel: \".*\"|intel: \"${{ steps.shasum.outputs.shaosxintel }}\"|" Casks/pubman.rb
-          sed -i '' "s|version \".*\"|version \"$version\"|" Formula/pubman-linux.rb
-          sed -i '' "s|sha256 \".*\"|sha256 \"${{ steps.shasum.outputs.shalinux }}\"|" Formula/pubman-linux.rb
-          
+          sed -i "s|version \".*\"|version \"$version\"|" Casks/pubman.rb
+          sed -i "s|sha256 arm:   \".*\"|sha256 arm:   \"$shaosxarm\"|" Casks/pubman.rb
+          sed -i "s|intel: \".*\"|intel: \"$shaosxintel\"|" Casks/pubman.rb
+          sed -i "s|version \".*\"|version \"$version\"|" Formula/pubman-linux.rb
+          sed -i "s|sha256 \".*\"|sha256 \"$shalinux\"|" Formula/pubman-linux.rb
+
           # Commit and push changes
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add Casks/pubman.rb
+          git add Casks/pubman.rb Formula/pubman-linux.rb
           git commit -m "Update cask to version $version"
           git push
