@@ -61,6 +61,6 @@ jobs:
       - name: Archive dist artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-${{ matrix.os }}
           path: |
-            dist/PubMan-*
+            dist
