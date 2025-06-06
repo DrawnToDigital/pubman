@@ -1,0 +1,60 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-tap:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - id: release
+        name: Get release information
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const release = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: context.payload.release.tag_name,
+            });
+            return {
+              version: release.data.tag_name.replace('v', ''),
+              shaosxarm: release.data.assets.find(asset => asset.name.includes('arm64.dmg')).digest.replace('sha256:', ''),
+              shaosxintel: release.data.assets.find(asset => asset.name.includes('.dmg') && !asset.name.includes('arm64')).digest.replace('sha256:', ''),
+              shalinux: release.data.assets.find(asset => asset.name.includes('.AppImage')).digest.replace('sha256:', ''),
+            };
+
+      - name: Checkout homebrew-pubman
+        uses: actions/checkout@v4
+        with:
+          repository: DrawnToDigital/homebrew-pubman
+          path: homebrew-pubman
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Update Cask
+        shell: bash
+        run: |
+          # Load values from artifacts
+          version=${{ steps.release.outputs.version }}
+          shaosxarm=${{ needs.release.outputs.shaosxarm }}
+          shaosxintel=${{ needs.release.outputs.shaosxintel }}
+          shalinux=${{ needs.release.outputs.shalinux }}
+
+          cd homebrew-pubman
+
+          # Update version and SHA256
+          sed -i "s|version \".*\"|version \"$version\"|" Casks/pubman.rb
+          sed -i "s|sha256 arm:   \".*\"|sha256 arm:   \"$shaosxarm\"|" Casks/pubman.rb
+          sed -i "s|intel: \".*\"|intel: \"$shaosxintel\"|" Casks/pubman.rb
+          sed -i "s|version \".*\"|version \"$version\"|" Formula/pubman-linux.rb
+          sed -i "s|sha256 \".*\"|sha256 \"$shalinux\"|" Formula/pubman-linux.rb
+
+          # Commit and push changes
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add Casks/pubman.rb Formula/pubman-linux.rb
+          git commit -m "Update cask to version $version"
+          git push
