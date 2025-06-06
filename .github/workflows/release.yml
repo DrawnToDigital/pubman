@@ -69,7 +69,7 @@ jobs:
       # Upload hash values as artifacts to be used in the update-homebrew job
       - name: Upload hashes as artifacts
         if: runner.os == 'macOS' || runner.os == 'Linux'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: hashes-${{ runner.os }}
           path: ${{ github.output_path }}
@@ -80,13 +80,13 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Download macOS hashes
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: hashes-macOS
           path: ./macos-hashes
 
       - name: Download Linux hashes
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: hashes-Linux
           path: ./linux-hashes
