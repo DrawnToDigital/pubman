@@ -57,3 +57,10 @@ jobs:
           echo THINGIVERSE_CLIENT_ID=${{ secrets.THINGIVERSE_CLIENT_ID }} > .env
           npm run build
           npx electron-builder --publish always
+
+      - name: Archive dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            dist/PubMan-*
