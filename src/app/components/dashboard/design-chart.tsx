@@ -43,6 +43,8 @@ export default function DesignsChart() {
     printables: true,
     makerworld: true,
   });
+  const nonTdColumns = ["thumbnail", "summary"]; // toggleable columns that don't reduce the td count
+  const requiredColumns = ["design", "actions"]; // columns always shown, not toggleable
 
   // Load visibleColumns from localStorage on mount
   useEffect(() => {
@@ -402,7 +404,8 @@ export default function DesignsChart() {
               {sortedDesigns.length === 0 ? (
                 <tr>
                   <td colSpan={
-                    Object.values(visibleColumns).filter(Boolean).length + 1
+                    Object.entries(visibleColumns).filter(([col, shown]) => shown && !nonTdColumns.includes(col)).length
+                    + requiredColumns.length
                   } className="px-4 py-4 text-center text-gray-500">
                     No designs found. <Link href="/design/create-design" className="text-blue-500 hover:underline">Create your first design</Link>
                   </td>
