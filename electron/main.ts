@@ -244,8 +244,8 @@ app.whenReady().then(() => {
   ipcMain.handle("get-app-data-path", () => {
     return appDataPath
   })
-  ipcMain.handle("dialog:openFile", (event, args) => {
-    return dialog.showOpenDialog(args[0]);
+  ipcMain.handle("dialog:openFile", (event, options) => {
+    return dialog.showOpenDialog(options);
   });
   ipcMain.handle("dialog:showMessageBoxSync", (event, args) => {
     return dialog.showMessageBoxSync(args);
