@@ -50,7 +50,7 @@ describe('POST /api/thingiverse/things', () => {
       main_name: 'Test Design',
       description: 'Test Description',
       license_key: 'cc-by',
-      categories: [{category: 'Art'}],
+      thingiverse_category: 'Art',
       tags: [{tag: 'test1'}, {tag: 'test2'}],
       assets: [
         // Use a simpler path format that matches the local:// prefix exactly
