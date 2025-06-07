@@ -63,4 +63,4 @@ jobs:
         with:
           name: dist-${{ matrix.os }}
           path: |
-            dist
+            dist/PubMan*
