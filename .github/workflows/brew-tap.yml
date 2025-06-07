@@ -18,8 +18,11 @@ jobs:
             const release = await github.rest.repos.getReleaseByTag({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag: context.payload.release.tag_name,
+              tag: github.event.release.tag_name,
             });
+            if (!release || !release.data || !release.data.assets) {
+              throw new Error('Release or assets not found');
+            }
             return {
               version: release.data.tag_name.replace('v', ''),
               shaosxarm: release.data.assets.find(asset => asset.name.includes('arm64.dmg')).digest.replace('sha256:', ''),
@@ -37,10 +40,15 @@ jobs:
       - name: Update Cask
         shell: bash
         run: |
-          version=${{ steps.release.outputs.version }}
-          shaosxarm=${{ needs.release.outputs.shaosxarm }}
-          shaosxintel=${{ needs.release.outputs.shaosxintel }}
-          shalinux=${{ needs.release.outputs.shalinux }}
+          version="${{ steps.release.outputs.version }}"
+          shaosxarm="${{ steps.release.outputs.shaosxarm }}"
+          shaosxintel="${{ steps.release.outputs.shaosxintel }}"
+          shalinux="${{ steps.release.outputs.shalinux }}"
+
+          if [[ -z "$version" || -z "$shaosxarm" || -z "$shaosxintel" || -z "$shalinux" ]]; then
+            echo "Missing required release info. Failing job."
+            exit 1
+          fi
 
           cd homebrew-pubman
 
