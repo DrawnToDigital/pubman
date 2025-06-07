@@ -29,9 +29,11 @@ describe('POST /api/thingiverse/[thingId]/publish', () => {
   it('should return 404 if design not found in database', async () => {
     // Mock Thingiverse API
     const mockPublishResult = {success: true};
+    const mockGetThingById = jest.fn().mockResolvedValue({is_published: 0});
     const mockPublishThing = jest.fn().mockResolvedValue(mockPublishResult);
 
     ThingiverseAPI.mockImplementation(() => ({
+      getThingById: mockGetThingById,
       publishThing: mockPublishThing
     }));
 
@@ -66,14 +68,16 @@ describe('POST /api/thingiverse/[thingId]/publish', () => {
   it('should publish the thing and update the database', async () => {
     // Mock Thingiverse API
     const mockPublishResult = {success: true};
+    const mockGetThingById = jest.fn().mockResolvedValue({is_published: 0});
     const mockPublishThing = jest.fn().mockResolvedValue(mockPublishResult);
 
     ThingiverseAPI.mockImplementation(() => ({
+      getThingById: mockGetThingById,
       publishThing: mockPublishThing
     }));
 
     // Mock database operations
-    const mockDesignPlatform = {design_id: '42'};
+    const mockDesignPlatform = {id: 36};
     const mockGetDesignPlatform = jest.fn().mockReturnValue(mockDesignPlatform);
 
     const mockUpdateResult = {changes: 1};
@@ -89,7 +93,7 @@ describe('POST /api/thingiverse/[thingId]/publish', () => {
     const mockGetUpdatedRecord = jest.fn().mockReturnValue(mockUpdatedRecord);
 
     const mockPrepare = jest.fn().mockImplementation((query) => {
-      if (query.includes('SELECT design_id')) {
+      if (query.includes('SELECT id')) {
         return {get: mockGetDesignPlatform};
       } else if (query.includes('UPDATE design_platform')) {
         return {run: mockRun};
@@ -122,17 +126,19 @@ describe('POST /api/thingiverse/[thingId]/publish', () => {
     expect(mockPublishThing).toHaveBeenCalledWith('12345');
 
     // Verify database operations
-    expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('SELECT design_id'));
+    expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('SELECT id'));
     expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('UPDATE design_platform'));
-    expect(mockRun).toHaveBeenCalledWith(2, 3, '42');
+    expect(mockRun).toHaveBeenCalledWith(2, 36);
   });
 
   it('should handle API errors', async () => {
     // Mock Thingiverse API to throw an error
     const mockError = new Error('API Error');
+    const mockGetThingById = jest.fn().mockReturnValue({is_published: 0});
     const mockPublishThing = jest.fn().mockRejectedValue(mockError);
 
     ThingiverseAPI.mockImplementation(() => ({
+      getThingById: mockGetThingById,
       publishThing: mockPublishThing
     }));
 
