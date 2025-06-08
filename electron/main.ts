@@ -1,5 +1,5 @@
 import { is } from "@electron-toolkit/utils";
-import { app, BrowserWindow, ipcMain, dialog, protocol, net, shell, session } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, protocol, net, shell } from "electron";
 import { getPort } from "get-port-please";
 import { startServer } from "next/dist/server/lib/start-server";
 import path, { join } from "path";
