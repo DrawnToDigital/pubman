@@ -172,3 +172,7 @@ Button {
   content: '';
   @apply absolute top-0 right-0 w-[5px] h-full bg-transparent cursor-col-resize;
 }
+
+.ProseMirror blockquote {
+  @apply border-l-4 border-gray-300 pl-4 text-gray-600 italic;
+}

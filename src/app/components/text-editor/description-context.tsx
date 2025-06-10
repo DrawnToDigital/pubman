@@ -12,6 +12,8 @@ import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import { useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import Blockquote from '@tiptap/extension-blockquote';
+import './editor-styles.css';
 
 
 const extensions = [
@@ -61,6 +63,7 @@ const extensions = [
       class: 'border border-gray-300 p-2 relative',
     },
   }),
+  Blockquote,
 ]
 
 interface DescriptionContextProps {

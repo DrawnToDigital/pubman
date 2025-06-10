@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
-import { QuoteIcon, ImageIcon, ChevronDownIcon } from 'lucide-react';
+import { QuoteIcon, ChevronDownIcon } from 'lucide-react';
 import ControlButton from './control-button';
 import TableControl from './table-control';
 import { useDescriptionContext } from './description-context';
+import { Editor } from '@tiptap/react';
 
 const secondaryControls = [
     {
-        name: 'blockQuote',
-        label: 'Block Quote',
-        icon: <QuoteIcon size={16} />,
-        command: () => console.log('Insert Block Quote'),
+    name: "blockquote",
+    icon: <QuoteIcon size={16} />,
+    label: "Block quote",
+    command: (editor: Editor) => editor.chain().focus().toggleBlockquote().run(),
+    canExecute: (editor: Editor) => editor.can().chain().focus().toggleBlockquote().run(),
+    isActive: (editor: Editor) => editor.isActive("blockquote"),
     },
-    {
-        name: 'image',
-        label: 'Insert Image',
-        icon: <ImageIcon size={16} />,
-        command: () => console.log('Insert Image'),
-    },
+    // {
+    //     name: 'image',
+    //     label: 'Insert Image',
+    //     icon: <ImageIcon size={16} />,
+    //     command: () => console.log('Insert Image'),
+    // },
 ];
 
 export default function DropdownToolbar() {
@@ -42,9 +45,9 @@ export default function DropdownToolbar() {
                             key={control.name}
                             label={control.label}
                             icon={control.icon}
-                            command={() => control.command()}
-                            canExecute={() => true}
-                            isActive={() => false}
+                            command={() => control.command(editor)}
+                            canExecute={() => control.canExecute(editor)}
+                            isActive={() => control.isActive(editor)}
                         />
                     ))}
                 </div>
