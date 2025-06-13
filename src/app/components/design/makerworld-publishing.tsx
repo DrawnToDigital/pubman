@@ -40,7 +40,7 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
           return false;
         }
         const hasImages = design.assets.some(asset =>
-          ["jpg", "jpeg", "png"].includes(asset.file_ext.toLowerCase())
+          ["png", "jpg", "webp", "gif"].includes(asset.file_ext.toLowerCase())
         );
         if (!hasImages) {
           setErrorMessage("You need to add at least one image before publishing to MakerWorld");

@@ -15,6 +15,7 @@
     "electron:dist:deb": "electron-builder --linux deb",
     "electron:build": "tsup",
     "build": "run-s next:build electron:build",
+    "clean": "rm -rf .next appdata build",
     "dist": "run-s next:build electron:build electron:dist",
     "dev": "cross-env NODE_ENV=development npm-run-all --parallel electron:dev next:dev",
     "electron:build_watch": "tsup --watch",
