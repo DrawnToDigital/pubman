@@ -29,9 +29,11 @@ win:
   target: ["portable"]
   icon: "./public/icons/icon.ico"
 linux:
-  target: ["appimage"]
+  target: ["appimage", "flatpak"]
   icon: "./public/icons/icon.png"
   category: "Utility"
+flatpak:
+  runtimeVersion: "24.08"
 mac:
   target:
     - target: dmg

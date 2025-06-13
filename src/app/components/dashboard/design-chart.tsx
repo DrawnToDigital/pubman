@@ -14,7 +14,7 @@ import {Edit, Trash2, Construction, CircleSlash, FileCheck, ChevronUp, ChevronDo
 import Image from "next/image";
 import log from 'electron-log/renderer';
 
-type SortField = "main_name" | "created_at" | "category" | "updated_at";
+type SortField = "main_name" | "created_at" | "updated_at";
 type SortOrder = "asc" | "desc";
 
 export default function DesignsChart() {
@@ -33,10 +33,36 @@ export default function DesignsChart() {
   ];
   const [manageColumnsIsOpen, setManageColumnsIsOpen] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState({
+    thumbnail: true,
+    summary: true,
+    tags: true,
+    category: true,
+    created: true,
+    updated: true,
     thingiverse: true,
     printables: true,
     makerworld: true,
   });
+  const nonTdColumns = ["thumbnail", "summary"]; // toggleable columns that don't reduce the td count
+  const requiredColumns = ["design", "actions"]; // columns always shown, not toggleable
+
+  // Load visibleColumns from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("dashboard.visibleColumns");
+    if (stored) {
+      try {
+        setVisibleColumns(JSON.parse(stored));
+      } catch {
+        // ignore parse errors, use default
+      }
+    }
+  }, []);
+
+  // Save visibleColumns to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("dashboard.visibleColumns", JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
+
   const toggleColumnVisibility = (column: keyof typeof visibleColumns) => {
     setVisibleColumns((prevState: typeof visibleColumns) => ({
       ...prevState,
@@ -89,10 +115,6 @@ export default function DesignsChart() {
           return sortModifier * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         case "updated_at":
           return sortModifier * (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
-        case "category":
-          const catA = a.thingiverse_category || a.printables_category || "";
-          const catB = b.thingiverse_category || b.printables_category || "";
-          return sortModifier * catA.localeCompare(catB);
         default:
           return 0;
       }
@@ -216,12 +238,72 @@ export default function DesignsChart() {
             {manageColumnsIsOpen && (
               <div className="grid gap-4 absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-10 p-4">
                 <div className="space-y-2">
-                  <h4 className="font-medium leading-none">Visible Platforms</h4>
+                  <h4 className="font-medium leading-none">Visible Columns</h4>
                   <p className="text-sm text-muted-foreground">
-                    Select which platforms to display.
+                    Select which columns to display.
                   </p>
                 </div>
                 <div className="grid gap-2">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox"
+                      id="thumbnail"
+                      checked={visibleColumns.thumbnail}
+                      onChange={() => toggleColumnVisibility('thumbnail')}
+                    />
+                    <label htmlFor="thumbnail" className="flex items-center">
+                      Thumbnail
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox"
+                      id="summary"
+                      checked={visibleColumns.summary}
+                      onChange={() => toggleColumnVisibility('summary')}
+                    />
+                    <label htmlFor="summary" className="flex items-center">
+                      Summary
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox"
+                      id="tags"
+                      checked={visibleColumns.tags}
+                      onChange={() => toggleColumnVisibility('tags')}
+                    />
+                    <label htmlFor="tags" className="flex items-center">
+                      Tags
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox"
+                      id="category"
+                      checked={visibleColumns.category}
+                      onChange={() => toggleColumnVisibility('category')}
+                    />
+                    <label htmlFor="category" className="flex items-center">
+                      Category
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox"
+                      id="created"
+                      checked={visibleColumns.created}
+                      onChange={() => toggleColumnVisibility('created')}
+                    />
+                    <label htmlFor="created" className="flex items-center">
+                      Created
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox"
+                      id="updated"
+                      checked={visibleColumns.updated}
+                      onChange={() => toggleColumnVisibility('updated')}
+                    />
+                    <label htmlFor="updated" className="flex items-center">
+                      Updated
+                    </label>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <input type="checkbox"
                       id="thingiverse"
@@ -270,24 +352,34 @@ export default function DesignsChart() {
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:bg-gray-100"
                   onClick={() => handleSort("main_name")}
                 >
-                  Name {renderSortIndicator("main_name")}
+                  Design {renderSortIndicator("main_name")}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tags
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:bg-gray-100"
-                  onClick={() => handleSort("category")}
-                >
-                  Category {renderSortIndicator("category")}
-                </th>
-                <th
-                  className="px-4 py-3 text-left font-medium tracking-wider hover:bg-gray-100"
-                  onClick={() => handleSort("created_at")}
-                >
-                  <div className="text-xs text-gray-500 uppercase">Created {renderSortIndicator("created_at")}</div>
-                  <div className="text-xs text-gray-500">Updated</div>
-                </th>
+                {visibleColumns.tags && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tags
+                  </th>
+                )}
+                {visibleColumns.category && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Category
+                  </th>
+                )}
+                {visibleColumns.created && (
+                  <th
+                    className="px-4 py-3 text-left font-medium tracking-wider hover:bg-gray-100"
+                    onClick={() => handleSort("created_at")}
+                  >
+                    <div className="text-xs text-gray-500 uppercase">Created {renderSortIndicator("created_at")}</div>
+                  </th>
+                )}
+                {visibleColumns.updated && (
+                  <th
+                    className="px-4 py-3 text-left font-medium tracking-wider hover:bg-gray-100"
+                    onClick={() => handleSort("updated_at")}
+                  >
+                    <div className="text-xs text-gray-500 uppercase">Updated {renderSortIndicator("updated_at")}</div>
+                  </th>
+                )}
                 {visibleColumns.thingiverse && (
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <Image src="/thingiverse.png" alt="Thingiverse" width="30" height="30" />
@@ -311,7 +403,10 @@ export default function DesignsChart() {
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedDesigns.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-4 text-center text-gray-500">
+                  <td colSpan={
+                    Object.entries(visibleColumns).filter(([col, shown]) => shown && !nonTdColumns.includes(col)).length
+                    + requiredColumns.length
+                  } className="px-4 py-4 text-center text-gray-500">
                     No designs found. <Link href="/design/create-design" className="text-blue-500 hover:underline">Create your first design</Link>
                   </td>
                 </tr>
@@ -319,63 +414,78 @@ export default function DesignsChart() {
                 sortedDesigns.map((design) => (
                   <tr key={design.id} className="hover:bg-gray-50">
                     <td className="p-4 align-middle">
-                        <div className="flex items-center gap-3">
-                            {design.thumbnail ? (
-                                <div className="h-16 w-16 overflow-hidden rounded-md border text-xs">
-                                    <Image
-                                      src={design.thumbnail} alt="Thumbnail" width={64} height={64} className="h-full w-full object-cover"
-                                      onError={({currentTarget}) => {
-                                        currentTarget.src = "/default-thumbnail.png";
-                                      }}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="h-16 w-16 flex items-center justify-center bg-muted rounded-md border">
-                                    <span className="text-muted-foreground text-xs">No image</span>
-                                </div>
-                            )}
-                            <div>
-                                <Link
-                                    href={`/design/${design.id}`}
-                                    className="font-medium hover:underline"
-                                >
-                                    {design.main_name}
-                                </Link>
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                    {design.summary}
-                                </p>
+                      <div className="flex items-center gap-3">
+                        {visibleColumns.thumbnail && (
+                          design.thumbnail ? (
+                            <div className="h-16 w-16 overflow-hidden rounded-md border text-xs">
+                              <Image
+                                src={design.thumbnail} alt="Thumbnail" width={64} height={64} className="h-full w-full object-cover"
+                                onError={({currentTarget}) => {
+                                  currentTarget.src = "/default-thumbnail.png";
+                                }}
+                              />
                             </div>
-                        </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {design.tags.slice(0, 3).map((tag, index) => (
-                          <span key={index} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                            {tag.tag}
-                          </span>
-                        ))}
-                        {design.tags.length > 3 && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                            +{design.tags.length - 3}
-                          </span>
+                          ) : (
+                            <div className="h-16 w-16 flex items-center justify-center bg-muted rounded-md border">
+                              <span className="text-muted-foreground text-xs">No image</span>
+                            </div>
+                          )
                         )}
+                        <div>
+                          <Link
+                            href={`/design/${design.id}`}
+                            className="font-medium hover:underline"
+                          >
+                            {design.main_name}
+                          </Link>
+                          { visibleColumns.summary && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {design.summary}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm text-gray-900">
-                        {design.thingiverse_category && <div className="text-xs">T: {design.thingiverse_category}</div>}
-                        {design.printables_category && <div className="text-xs">P: {design.printables_category}</div>}
-                        {!design.thingiverse_category && !design.printables_category && "Uncategorized"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {formatDate(design.created_at)}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {design.updated_at && formatDate(design.updated_at)}
-                      </div>
-                    </td>
+                    {visibleColumns.tags && (
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {design.tags.slice(0, 3).map((tag, index) => (
+                            <span key={index} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              {tag.tag}
+                            </span>
+                          ))}
+                          {design.tags.length > 3 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                              +{design.tags.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                    {visibleColumns.category && (
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-gray-900">
+                          {design.thingiverse_category && <div className="text-xs">T: {design.thingiverse_category}</div>}
+                          {design.printables_category && <div className="text-xs">P: {design.printables_category}</div>}
+                          {design.makerworld_category && <div className="text-xs">M: {design.makerworld_category}</div>}
+                          {!design.thingiverse_category && !design.printables_category && !design.makerworld_category && "Uncategorized"}
+                        </div>
+                      </td>
+                    )}
+                    {visibleColumns.created && (
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {formatDate(design.created_at)}
+                        </div>
+                      </td>
+                    )}
+                    {visibleColumns.updated && (
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {design.updated_at && formatDate(design.updated_at)}
+                        </div>
+                      </td>
+                    )}
                     {visibleColumns.thingiverse && (
                       <td className="px-4 py-4 whitespace-nowrap">
                         <TooltipProvider>

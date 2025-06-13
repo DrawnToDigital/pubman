@@ -103,17 +103,22 @@ const DesignDetailsPage = () => {
     try {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
-      const result = await window.electron.dialog.showOpenDialog({ properties: ['openFile'] });
+      const result = await window.electron.dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] });
       if (result.canceled) {
         log.info("No file selected!");
         return;
       }
 
-      const filePath = result.filePaths[0];
+      const filePaths = result.filePaths;
+      if (!filePaths || filePaths.length === 0) {
+        log.info("No files selected!");
+        return;
+      }
+
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       const assetsDir = path.join(await window.electron.getAppDataPath(), "assets");
-      await addFile(filePath, assetsDir, designID);
+      await addFile(filePaths, assetsDir, designID);
 
       const updatedDesign = await fetchDesign(designID.toString());
       setDesign(updatedDesign);

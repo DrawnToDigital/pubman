@@ -15,7 +15,7 @@ jobs:
     # Platforms to build on/for
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-22.04, windows-latest]
       fail-fast: false
 
     steps:
@@ -26,6 +26,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 23
+
+      - name: Add flatpak dependencies
+        if: runner.os == 'linux'
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y rpm flatpak flatpak-builder ca-certificates
+            flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+            flatpak install flathub --no-deps --arch x86_64 --assumeyes \
+            runtime/org.freedesktop.Sdk/x86_64/24.08 \
+            runtime/org.freedesktop.Platform/x86_64/24.08 \
+            org.electronjs.Electron2.BaseApp/x86_64/24.08
 
       - name: Add code signing dependencies
         if: runner.os == 'macOS'
@@ -47,3 +57,10 @@ jobs:
           echo THINGIVERSE_CLIENT_ID=${{ secrets.THINGIVERSE_CLIENT_ID }} > .env
           npm run build
           npx electron-builder --publish always
+
+      - name: Archive dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            dist/PubMan*
