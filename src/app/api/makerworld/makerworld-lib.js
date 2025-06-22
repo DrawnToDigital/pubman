@@ -409,7 +409,7 @@ export class MakerWorldAPI {
   constructor(accessToken = '') {
     this.bblApiUrl = 'https://api.bambulab.com'
     this.mwApiUrl = 'https://makerworld.com/api'
-    this.bblUlr = 'https://bambulab.com';
+    this.bblUrl = 'https://bambulab.com';
     this.headers = {
       'Authorization': `Bearer ${accessToken}`,
       'Host': 'makerworld.com',
@@ -537,7 +537,7 @@ export class MakerWorldAPI {
 
   // Verify TFA code
   async loginVerifyTfaCode(tfaCode, tfaKey) {
-    const url = `${this.bblUlr}/api/sign-in/tfa`;
+    const url = `${this.bblUrl}/api/sign-in/tfa`;
     const bodyObj = { tfaCode, tfaKey };
     const body = JSON.stringify(bodyObj);
     const res = await this.fetchWithoutAuth(url, {
