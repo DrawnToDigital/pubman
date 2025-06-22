@@ -369,6 +369,20 @@ const DesignDetailsPage = () => {
             <div
               className="prose text-gray-700 whitespace-pre-wrap"
               dangerouslySetInnerHTML={{ __html: design.description }}
+              onClick={e => {
+                const target = e.target as HTMLElement;
+                if (target.tagName === 'A') {
+                  e.preventDefault();
+                  // @ts-expect-error electron is defined in preload script
+                  window.electron?.shell?.openExternal?.(target.getAttribute('href'));
+                }
+              }}
+              onMouseOver={e => {
+                const target = e.target as HTMLElement;
+                if (target.tagName === 'A') {
+                  target.setAttribute('title', target.getAttribute('href') || '');
+                }
+              }}
             />
           </div>
 
