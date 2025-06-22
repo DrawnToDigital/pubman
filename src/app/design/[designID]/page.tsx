@@ -77,14 +77,6 @@ const DesignDetailsPage = () => {
   }, [designID]);
 
   useEffect(() => {
-    // Warn on browser/tab close or reload if editing
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (editMode) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
     // Set/unset global edit flag for navigation guards
     if (editMode) {
       // @ts-expect-error global var
@@ -94,7 +86,6 @@ const DesignDetailsPage = () => {
       window.__pubman_isEditing = false;
     }
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
       // @ts-expect-error global var
       window.__pubman_isEditing = false;
     };

@@ -51,16 +51,9 @@ const DesignForm = () => {
   useEffect(() => {
     // @ts-expect-error global var
     window.__pubman_isEditing = true;
-    // Warn on browser/tab close or reload if editing
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       // @ts-expect-error global var
       window.__pubman_isEditing = false;
-      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 
