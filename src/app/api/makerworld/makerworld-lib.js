@@ -166,6 +166,10 @@ export const LoginVerifyCodeRequestSchema = z.object({
   account: z.string(),
   code: z.string(),
 });
+export const LoginVerifyTfaKeyRequestSchema = z.object({
+  tfaCode: z.string(),
+  tfaKey: z.string(),
+})
 export const LoginVerifyCodeResponseSchema = z.object({
   accessToken: z.string(),
   refreshToken: z.string(),
@@ -405,6 +409,7 @@ export class MakerWorldAPI {
   constructor(accessToken = '') {
     this.bblApiUrl = 'https://api.bambulab.com'
     this.mwApiUrl = 'https://makerworld.com/api'
+    this.bblUlr = 'https://bambulab.com';
     this.headers = {
       'Authorization': `Bearer ${accessToken}`,
       'Host': 'makerworld.com',
@@ -479,7 +484,7 @@ export class MakerWorldAPI {
       });
     }
 
-    return response.json();
+    return response;
   }
 
   // Auth
@@ -491,14 +496,15 @@ export class MakerWorldAPI {
       method: 'POST',
       body,
     });
-    const parsed = LoginResponseSchema.safeParse(res);
+    const resBody = await res.json();
+    const parsed = LoginResponseSchema.safeParse(resBody);
     if (!parsed.success) {
       throw new MakerWorldAPIError({
         message: 'Invalid login response',
         url,
         method: 'POST',
         requestBody: bodyObj,
-        responseBody: res,
+        responseBody: resBody,
         validationIssues: parsed.error.issues,
       });
     }
@@ -514,18 +520,43 @@ export class MakerWorldAPI {
       method: 'POST',
       body,
     });
-    const parsed = LoginVerifyCodeResponseSchema.safeParse(res);
+    const resBody = await res.json();
+    const parsed = LoginVerifyCodeResponseSchema.safeParse(resBody);
     if (!parsed.success) {
       throw new MakerWorldAPIError({
         message: 'Invalid loginVerifyCode response',
         url,
         method: 'POST',
         requestBody: bodyObj,
-        responseBody: res,
+        responseBody: resBody,
         validationIssues: parsed.error.issues,
       });
     }
     return parsed.data;
+  }
+
+  // Verify TFA code
+  async loginVerifyTfaCode(tfaCode, tfaKey) {
+    const url = `${this.bblUlr}/api/sign-in/tfa`;
+    const bodyObj = { tfaCode, tfaKey };
+    const body = JSON.stringify(bodyObj);
+    const res = await this.fetchWithoutAuth(url, {
+      method: 'POST',
+      body,
+    });
+    const resText = await res.text();
+    const token_cookie = res.headers.getSetCookie().find(cookie => cookie.startsWith('token='));
+    const token = token_cookie ? token_cookie.slice("token=".length, token_cookie.indexOf(';')): undefined;
+    if (!token) {
+      throw new MakerWorldAPIError({
+        message: 'No token received from TFA verification',
+        url,
+        method: 'POST',
+        requestBody: bodyObj,
+        responseBody: resText,
+      });
+    }
+    return {accessToken: token};
   }
 
   // Get user info
