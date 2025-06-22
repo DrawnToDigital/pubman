@@ -45,6 +45,8 @@ const DesignDetailsPage = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [titleCount, setTitleCount] = useState(0);
+  const [summaryCount, setSummaryCount] = useState(0);
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
   const router = useRouter();
   const resetForm = (design: DesignSchema) => {
@@ -181,6 +183,13 @@ const DesignDetailsPage = () => {
     }
   };
 
+  useEffect(() => {
+    if (editMode) {
+      setTitleCount(design?.main_name?.length || 0);
+      setSummaryCount(design?.summary?.length || 0);
+    }
+  }, [editMode, design]);
+
   if (!design) return <div>Loading...</div>;
 
   return (
@@ -221,7 +230,12 @@ const DesignDetailsPage = () => {
               {...register('main_name', { required: true })}
               defaultValue={design.main_name}
               className="w-full"
+              onChange={e => {
+                register('main_name').onChange(e);
+                setTitleCount(e.target.value.length);
+              }}
             />
+            <div className="text-xs text-gray-500 text-right">{titleCount} Characters</div>
             {errors.main_name && <p className="text-red-500 text-sm">Name is required</p>}
           </div>
 
@@ -232,7 +246,12 @@ const DesignDetailsPage = () => {
               defaultValue={design.summary}
               className="w-full border rounded-md p-2"
               rows={2}
+              onChange={e => {
+                register('summary').onChange(e);
+                setSummaryCount(e.target.value.length);
+              }}
             />
+            <div className="text-xs text-gray-500 text-right">{summaryCount} Characters</div>
             {errors.summary && <p className="text-red-500 text-sm">Summary is required</p>}
           </div>
           

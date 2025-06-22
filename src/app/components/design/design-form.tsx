@@ -33,6 +33,8 @@ const DesignForm = () => {
   const router = useRouter();
   const [description, setDescription] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [titleCount, setTitleCount] = useState(0);
+  const [summaryCount, setSummaryCount] = useState(0);
 
   const form = useForm<DesignCreateSchema>({
     resolver: zodResolver(designCreateSchema),
@@ -56,6 +58,11 @@ const DesignForm = () => {
       window.__pubman_isEditing = false;
     };
   }, []);
+
+  useEffect(() => {
+    setTitleCount(form.getValues('main_name')?.length || 0);
+    setSummaryCount(form.getValues('summary')?.length || 0);
+  }, [form]);
 
   const onSubmit = async (data: DesignCreateSchema) => {
     setErrorMessage(null); // Clear previous errors
@@ -99,8 +106,13 @@ const DesignForm = () => {
                   {...field}
                   required
                   className="border border-gray-300 rounded-md p-2"
+                  onChange={e => {
+                    field.onChange(e);
+                    setTitleCount(e.target.value.length);
+                  }}
                 />
               </FormControl>
+              <div className="text-xs text-gray-500 text-right">{titleCount}</div>
             </FormItem>
           )}
         />
@@ -120,8 +132,13 @@ const DesignForm = () => {
                   {...field}
                   required
                   className="border border-gray-300 rounded-md p-2"
+                  onChange={e => {
+                    field.onChange(e);
+                    setSummaryCount(e.target.value.length);
+                  }}
                 />
               </FormControl>
+              <div className="text-xs text-gray-500 text-right">{summaryCount}</div>
             </FormItem>
           )}
         />
