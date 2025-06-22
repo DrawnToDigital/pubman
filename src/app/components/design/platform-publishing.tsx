@@ -169,6 +169,7 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
                 {platformStatus.url && (
                   <Link
                     href={platformStatus.url}
+                    title={platformStatus.url}
                     target="_blank"
                     className="text-blue-500 hover:underline block mt-1"
                   >
@@ -208,6 +209,7 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
                 {platformStatus.url && (
                   <Link
                     href={platformStatus.url}
+                    title={platformStatus.url}
                     target="_blank"
                     className="text-blue-500 hover:underline block mt-1"
                   >
