@@ -8,6 +8,8 @@ export default function MakerWorldAuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [tfaKey, setTfaKey] = useState("");
+  const [tfaCode, setTfaCode] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -28,6 +30,9 @@ export default function MakerWorldAuthPage() {
         setStep("done");
       } else if (resp.loginType === "verifyCode") {
         setStep("code");
+      } else if (resp.loginType === "tfa") {
+        setTfaKey(resp.tfaKey);
+        setStep("tfa");
       } else if (resp.error) {
         setError(resp.error);
       } else {
@@ -64,6 +69,34 @@ export default function MakerWorldAuthPage() {
     } catch (err) {
       log.error("MakerWorld code verification failed:", err);
       setError(err.message || "Code verification failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handles the TFA verification step (if needed)
+  const handleTfa = async (e) => {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    try {
+      const resp = await fetch("/api/makerworld/auth/login-tfa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tfaCode, tfaKey }),
+      }).then(r => r.json());
+
+      if (resp.accessToken) {
+        await saveToken(resp.accessToken);
+        setStep("done");
+      } else if (resp.error) {
+        setError(resp.error);
+      } else {
+        setError("TFA verification failed or unexpected response.");
+      }
+    } catch (err) {
+      log.error("MakerWorld TFA verification failed:", err);
+      setError(err.message || "TFA verification failed");
     } finally {
       setIsSubmitting(false);
     }
@@ -133,6 +166,32 @@ export default function MakerWorldAuthPage() {
           </div>
           <div className="text-gray-600 text-sm">
             Enter the code sent to your email.
+          </div>
+          {error && <div className="text-red-600">{error}</div>}
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Verifying..." : "Verify"}
+          </button>
+        </form>
+      )}
+      {step === "tfa" && (
+        <form onSubmit={handleTfa} className="space-y-4">
+          <div>
+            <label className="block mb-1">Verification Code</label>
+            <input
+              type="text"
+              className="border rounded w-full p-2"
+              value={tfaCode}
+              onChange={e => setTfaCode(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+          <div className="text-gray-600 text-sm">
+            Enter the code from your authenticator app.
           </div>
           {error && <div className="text-red-600">{error}</div>}
           <button
