@@ -238,6 +238,9 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on("ping", () => log.info("pong"));
+  ipcMain.handle("shell:openExternal", (event, url) => {
+    return shell.openExternal(url);
+  });
   ipcMain.handle("get-db-path", () => {
     return dbPath;
   })
