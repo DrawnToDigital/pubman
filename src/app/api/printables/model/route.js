@@ -209,7 +209,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       message: designId ? `Design updated ${hasFileErrors ? 'with errors ': ''}on Printables` : `Design published ${hasFileErrors ? 'with errors ': ''}to Printables as draft`,
-      designId: designResponse.id,
+      printablesId: designResponse.id,
       printablesUrl: `https://www.printables.com/model/${designResponse.id}`,
       hasFileErrors: hasFileErrors,
       fileResults: fileResults,
