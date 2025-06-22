@@ -76,6 +76,30 @@ const DesignDetailsPage = () => {
     fetch();
   }, [designID]);
 
+  useEffect(() => {
+    // Warn on browser/tab close or reload if editing
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (editMode) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    // Set/unset global edit flag for navigation guards
+    if (editMode) {
+      // @ts-expect-error global var
+      window.__pubman_isEditing = true;
+    } else {
+      // @ts-expect-error global var
+      window.__pubman_isEditing = false;
+    }
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // @ts-expect-error global var
+      window.__pubman_isEditing = false;
+    };
+  }, [editMode]);
+
   const onSubmit = async (data: FieldValues) => {
     if (!design) return;
 
@@ -431,6 +455,7 @@ const DesignDetailsPage = () => {
           setErrorMessage={setErrorMessage}
           setSuccessMessage={setSuccessMessage}
           onDesignUpdated={(updatedDesign) => setDesign(updatedDesign)}
+          editMode={editMode}
         />
       )}
 
@@ -442,6 +467,7 @@ const DesignDetailsPage = () => {
           setErrorMessage={setErrorMessage}
           setSuccessMessage={setSuccessMessage}
           onDesignUpdated={(updateDesign) => setDesign(updateDesign)}
+          editMode={editMode}
         />
       )}
 
@@ -453,6 +479,7 @@ const DesignDetailsPage = () => {
           setErrorMessage={setErrorMessage}
           setSuccessMessage={setSuccessMessage}
           onDesignUpdated={(updatedDesign) => setDesign(updatedDesign)}
+          editMode={editMode}
         />
       )}
 
