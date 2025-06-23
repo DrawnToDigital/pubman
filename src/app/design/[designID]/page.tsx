@@ -219,319 +219,288 @@ const DesignDetailsPage = () => {
   if (!design) return <div>Loading...</div>;
 
   return (
-    <div className="space-y-6 bg-white p-6 rounded-md shadow-md max-w-3xl mx-auto">
-      {errorMessage && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-          {errorMessage}
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
-          {successMessage}
-        </div>
-      )}
-
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">{editMode ? 'Edit Design' : design.main_name}</h1>
-        <Button
-          onClick={() => {
-            if (editMode) {
-              resetForm(design);
-            }
-            setEditMode(!editMode);
-          }}
-          variant="outline"
-        >
-          {editMode ? 'Cancel' : 'Edit'}
-        </Button>
-      </div>
-
-      {editMode ? (
-        /* Edit Form */
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
-            <Input
-              {...register('main_name', { required: true })}
-              defaultValue={design.main_name}
-              className="w-full"
-            />
-            {errors.main_name && <p className="text-red-500 text-sm">Name is required</p>}
+    <div className="flex flex-col lg:flex-row gap-8 bg-white max-w-7xl mx-auto">
+      {/* Main Content Column */}
+      <div className="flex-1 min-w-0 space-y-6">
+        {errorMessage && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            {errorMessage}
           </div>
+        )}
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Summary</label>
-            <textarea
-              {...register('summary', { required: true })}
-              defaultValue={design.summary}
-              className="w-full border rounded-md p-2"
-              rows={2}
-            />
-            {errors.summary && <p className="text-red-500 text-sm">Summary is required</p>}
+        {successMessage && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+            {successMessage}
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <div className="w-full">
-              <TextEditor
-                onContentChange={setDescription}
-                content={design.description}
+        )}
+
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">{editMode ? 'Edit Design' : design.main_name}</h1>
+          <Button
+            onClick={() => {
+              if (editMode) {
+                resetForm(design);
+              }
+              setEditMode(!editMode);
+            }}
+            variant="outline"
+          >
+            {editMode ? 'Cancel' : 'Edit'}
+          </Button>
+        </div>
+
+        {editMode ? (
+          /* Edit Form */
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Name</label>
+              <Input
+                {...register('main_name', { required: true })}
+                defaultValue={design.main_name}
+                className="w-full"
+              />
+              {errors.main_name && <p className="text-red-500 text-sm">Name is required</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Summary</label>
+              <textarea
+                {...register('summary', { required: true })}
+                defaultValue={design.summary}
+                className="w-full border rounded-md p-2"
+                rows={2}
+              />
+              {errors.summary && <p className="text-red-500 text-sm">Summary is required</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Description</label>
+              <div className="w-full">
+                <TextEditor
+                  onContentChange={setDescription}
+                  content={design.description}
+                />
+              </div>
+              {errors.description && <p className="text-red-500 text-sm">Description is required</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Tags</label>
+              <Input
+                {...register('tags', { required: true })}
+                defaultValue={design.tags.map(tag => tag.tag).join(', ')}
+                className="w-full"
+              />
+              {errors.tags && <p className="text-red-500 text-sm">Tags are required</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Categories</label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="thingiverse_category" className="text-sm font-medium mb-1">Thingiverse Category</label>
+                  <select
+                    id="thingiverse_category"
+                    {...register('thingiverse_category')}
+                    defaultValue={design.thingiverse_category || ""}
+                    className="border border-gray-300 rounded-md p-2 w-full"
+                  >
+                    <option value="">
+                      Select a category
+                    </option>
+                    {thingiverseCategories.options.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="printables_category" className="text-sm font-medium mb-1">Printables Category</label>
+                  <select
+                    id="printables_category"
+                    {...register('printables_category')}
+                    defaultValue={design.printables_category || ""}
+                    className="border border-gray-300 rounded-md p-2 w-full"
+                  >
+                    <option value="">
+                      Select a category
+                    </option>
+                    {Object.entries(printablesCategories).map(([category, cat]) => {
+                      if ('disabled' in cat && cat.disabled) {
+                        return (
+                          <option key={category} value={category} disabled>
+                            {category}
+                          </option>
+                        );
+                      } else {
+                        return (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        );
+                      }
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="makerworld_category" className="text-sm font-medium mb-1">MakerWorld Category</label>
+                  <select
+                    id="makerworld_category"
+                    {...register('makerworld_category')}
+                    defaultValue={design.makerworld_category || ""}
+                    className="border border-gray-300 rounded-md p-2 w-full"
+                  >
+                    <option value="">
+                      Select a category
+                    </option>
+                    {Object.entries(makerWorldCategories).map(([category, cat]) => {
+                      if ('disabled' in cat && cat.disabled) {
+                        return (
+                          <option key={category} value={category} disabled>
+                            {category}
+                          </option>
+                        );
+                      } else {
+                        return (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        );
+                      }
+                    })}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">License</label>
+              <select
+                {...register('license_key', { required: true })}
+                defaultValue={design.license_key}
+                className="w-full border rounded-md p-2"
+              >
+                <option value="" disabled>
+                  Select a license
+                </option>
+                <option value="CC">Creative Commons</option>
+                <option value="CC0">Creative Commons — Public Domain</option>
+                <option value="CC-BY">Creative Commons — Attribution</option>
+                <option value="CC-BY-SA">Creative Commons — Attribution — Share Alike</option>
+                <option value="CC-BY-ND">Creative Commons — Attribution — NoDerivatives</option>
+                <option value="CC-BY-NC">Creative Commons — Attribution — Noncommercial</option>
+                <option value="CC-BY-NC-SA">Creative Commons — Attribution — Noncommercial — Share Alike</option>
+                <option value="CC-BY-NC-ND">Creative Commons — Attribution — Noncommercial — NoDerivatives</option>
+                <option value="GPL-2.0">GNU General Public License v2.0</option>
+                <option value="GPL-3.0">GNU General Public License v3.0</option>
+                <option value="LGPL">GNU Lesser General Public License</option>
+                <option value="BSD">BSD License</option>
+                <option value="SDFL">Standard Digital File License</option>
+              </select>
+            </div>
+
+            <div className="flex space-x-4">
+              <Button type="submit">Save Changes</Button>
+              <Button variant="outline" onClick={() => {
+                resetForm(design)
+                setEditMode(false)
+              }}>Cancel</Button>
+            </div>
+          </form>
+        ) : (
+          /* Display View */
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Summary</h2>
+              <p className="text-gray-700">{design.summary}</p>
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Description</h2>
+              <div
+                className="prose text-gray-700 whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{ __html: design.description }}
+                onClick={e => {
+                  const target = e.target as HTMLElement;
+                  if (target.tagName === 'A') {
+                    e.preventDefault();
+                    // @ts-expect-error electron is defined in preload script
+                    window.electron?.shell?.openExternal?.(target.getAttribute('href'));
+                  }
+                }}
+                onMouseOver={e => {
+                  const target = e.target as HTMLElement;
+                  if (target.tagName === 'A') {
+                    target.setAttribute('title', target.getAttribute('href') || '');
+                  }
+                }}
               />
             </div>
-            {errors.description && <p className="text-red-500 text-sm">Description is required</p>}
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Tags</label>
-            <Input
-              {...register('tags', { required: true })}
-              defaultValue={design.tags.map(tag => tag.tag).join(', ')}
-              className="w-full"
-            />
-            {errors.tags && <p className="text-red-500 text-sm">Tags are required</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Categories</label>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="thingiverse_category" className="text-sm font-medium mb-1">Thingiverse Category</label>
-                <select
-                  id="thingiverse_category"
-                  {...register('thingiverse_category')}
-                  defaultValue={design.thingiverse_category || ""}
-                  className="border border-gray-300 rounded-md p-2 w-full"
-                >
-                  <option value="">
-                    Select a category
-                  </option>
-                  {thingiverseCategories.options.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="printables_category" className="text-sm font-medium mb-1">Printables Category</label>
-                <select
-                  id="printables_category"
-                  {...register('printables_category')}
-                  defaultValue={design.printables_category || ""}
-                  className="border border-gray-300 rounded-md p-2 w-full"
-                >
-                  <option value="">
-                    Select a category
-                  </option>
-                  {Object.entries(printablesCategories).map(([category, cat]) => {
-                    if ('disabled' in cat && cat.disabled) {
-                      return (
-                        <option key={category} value={category} disabled>
-                          {category}
-                        </option>
-                      );
-                    } else {
-                      return (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      );
-                    }
-                  })}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="makerworld_category" className="text-sm font-medium mb-1">MakerWorld Category</label>
-                <select
-                  id="makerworld_category"
-                  {...register('makerworld_category')}
-                  defaultValue={design.makerworld_category || ""}
-                  className="border border-gray-300 rounded-md p-2 w-full"
-                >
-                  <option value="">
-                    Select a category
-                  </option>
-                  {Object.entries(makerWorldCategories).map(([category, cat]) => {
-                    if ('disabled' in cat && cat.disabled) {
-                      return (
-                        <option key={category} value={category} disabled>
-                          {category}
-                        </option>
-                      );
-                    } else {
-                      return (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      );
-                    }
-                  })}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">License</label>
-            <select
-              {...register('license_key', { required: true })}
-              defaultValue={design.license_key}
-              className="w-full border rounded-md p-2"
-            >
-              <option value="" disabled>
-                Select a license
-              </option>
-              <option value="CC">Creative Commons</option>
-              <option value="CC0">Creative Commons — Public Domain</option>
-              <option value="CC-BY">Creative Commons — Attribution</option>
-              <option value="CC-BY-SA">Creative Commons — Attribution — Share Alike</option>
-              <option value="CC-BY-ND">Creative Commons — Attribution — NoDerivatives</option>
-              <option value="CC-BY-NC">Creative Commons — Attribution — Noncommercial</option>
-              <option value="CC-BY-NC-SA">Creative Commons — Attribution — Noncommercial — Share Alike</option>
-              <option value="CC-BY-NC-ND">Creative Commons — Attribution — Noncommercial — NoDerivatives</option>
-              <option value="GPL-2.0">GNU General Public License v2.0</option>
-              <option value="GPL-3.0">GNU General Public License v3.0</option>
-              <option value="LGPL">GNU Lesser General Public License</option>
-              <option value="BSD">BSD License</option>
-              <option value="SDFL">Standard Digital File License</option>
-            </select>
-          </div>
-
-          <div className="flex space-x-4">
-            <Button type="submit">Save Changes</Button>
-            <Button variant="outline" onClick={() => {
-              resetForm(design)
-              setEditMode(false)
-            }}>Cancel</Button>
-          </div>
-        </form>
-      ) : (
-        /* Display View */
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-lg font-semibold mb-2">Summary</h2>
-            <p className="text-gray-700">{design.summary}</p>
-          </div>
-
-          <div>
-            <h2 className="text-lg font-semibold mb-2">Description</h2>
-            <div
-              className="prose text-gray-700 whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: design.description }}
-              onClick={e => {
-                const target = e.target as HTMLElement;
-                if (target.tagName === 'A') {
-                  e.preventDefault();
-                  // @ts-expect-error electron is defined in preload script
-                  window.electron?.shell?.openExternal?.(target.getAttribute('href'));
-                }
-              }}
-              onMouseOver={e => {
-                const target = e.target as HTMLElement;
-                if (target.tagName === 'A') {
-                  target.setAttribute('title', target.getAttribute('href') || '');
-                }
-              }}
-            />
-          </div>
-
-          <div>
-            <h2 className="text-lg font-semibold mb-2">Details</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">License</p>
-                <p>{getLicenseName(design.license_key)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Created</p>
-                <p>{new Date(design.created_at).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Last Updated</p>
-                <p>{new Date(design.updated_at).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Status</p>
-                <p>{design.is_published ? 'Published' : 'Draft'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Tags</p>
-                <p>{design.tags.map(tag => tag.tag).join(', ')}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Categories</p>
-                <div className="text-sm">
-                  {design.thingiverse_category && <div>Thingiverse: {design.thingiverse_category}</div>}
-                  {design.printables_category && <div>Printables: {design.printables_category}</div>}
-                  {design.makerworld_category && <div>MakerWorld: {design.makerworld_category}</div>}
-                  {!design.thingiverse_category && !design.printables_category && !design.makerworld_category && <div>Uncategorized</div>}
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Details</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">License</p>
+                  <p>{getLicenseName(design.license_key)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Created</p>
+                  <p>{new Date(design.created_at).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Last Updated</p>
+                  <p>{new Date(design.updated_at).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <p>{design.is_published ? 'Published' : 'Draft'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Tags</p>
+                  <p>{design.tags.map(tag => tag.tag).join(', ')}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Categories</p>
+                  <div className="text-sm">
+                    {design.thingiverse_category && <div>Thingiverse: {design.thingiverse_category}</div>}
+                    {design.printables_category && <div>Printables: {design.printables_category}</div>}
+                    {design.makerworld_category && <div>MakerWorld: {design.makerworld_category}</div>}
+                    {!design.thingiverse_category && !design.printables_category && !design.makerworld_category && <div>Uncategorized</div>}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+        )}
+
+        {/* File Management Section (Files/Assets) */}
+        <div className="flex justify-between">
+          <h2 className="text-xl font-bold mt-6">Images</h2>
+          <Button onClick={handleFileAdd} className="mt-4">Add New File</Button>
         </div>
-      )}
-
-      {/* Thingiverse Publishing Section */}
-      {design && (
-        <ThingiversePublishing
-          design={design}
-          designID={designID.toString()}
-          setErrorMessage={setErrorMessage}
-          setSuccessMessage={setSuccessMessage}
-          onDesignUpdated={(updatedDesign) => setDesign(updatedDesign)}
-          editMode={editMode}
-        />
-      )}
-
-      {/* Printables Publishing Section */}
-      {design && (
-        <PrintablesPublishing
-          design={design}
-          designID={designID.toString()}
-          setErrorMessage={setErrorMessage}
-          setSuccessMessage={setSuccessMessage}
-          onDesignUpdated={(updateDesign) => setDesign(updateDesign)}
-          editMode={editMode}
-        />
-      )}
-
-      {/* MakerWorld Publishing Section */}
-      {design && (
-        <MakerWorldPublishing
-          design={design}
-          designID={designID.toString()}
-          setErrorMessage={setErrorMessage}
-          setSuccessMessage={setSuccessMessage}
-          onDesignUpdated={(updatedDesign) => setDesign(updatedDesign)}
-          editMode={editMode}
-        />
-      )}
-
-      {/* File Management Section (Files/Assets) */}
-      <h2 className="text-xl font-bold mt-6">Files</h2>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead>
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">File</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last Modified</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Original</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
-            {design.assets && design.assets.length > 0 ? (
-              design.assets.map((asset) => {
-                const isImg = pubmanImageFileTypes.includes(asset.file_ext?.toLowerCase());
-                const status = fileStatus[asset.id];
-                return (
-                  <tr key={asset.id} className="align-top">
-                    <td className="px-4 py-2 flex gap-3">
-                      {isImg ? (
-                        <div className="w-18 h-18 relative">
+        {/* Images Section */}
+        <div className="overflow-x-auto mb-6">
+          <table className="min-w-full divide-y divide-gray-200 align-middle">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">File</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last Modified</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Original</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {design.assets && design.assets.filter(asset => pubmanImageFileTypes.includes(asset.file_ext?.toLowerCase())).length > 0 ? (
+                design.assets.filter(asset => pubmanImageFileTypes.includes(asset.file_ext?.toLowerCase())).map((asset) => {
+                  const status = fileStatus[asset.id];
+                  return (
+                    <tr key={asset.id} className="align-middle">
+                      <td className="px-4 py-2">
+                        <div className="w-18 h-18 relative flex items-center justify-center">
                           <Image
                             src={asset.url}
                             alt={asset.file_name}
@@ -540,70 +509,179 @@ const DesignDetailsPage = () => {
                             onClick={() => setPreviewImg(asset.url)}
                           />
                         </div>
-                      ) : (
+                      </td>
+                      <td className="px-4 py-2">{asset.file_name}</td>
+                      <td className="px-4 py-2 text-sm text-gray-700">{formatBytes(asset.original_file_size)}</td>
+                      <td className="px-4 py-2 text-xs text-gray-500">{asset.original_file_mtime ? new Date(asset.original_file_mtime).toLocaleString() : '-'}</td>
+                      <td className="px-4 py-2">
+                        {asset.original_file_path ? (
+                          <div className="flex items-center gap-2">
+                            {status && !status.exists ? (
+                              <div
+                                className="text-red-500 cursor-help border border-red-200 bg-red-50 rounded text-xs inline-flex items-center p-1"
+                                title={`File not found:\n${asset.original_file_path}`}
+                              >
+                                <CircleDashed className="h-4 w-4 inline mr-1" />
+                                <span>Missing</span>
+                              </div>
+                            ) : (
+                              <Button size="sm" variant="outline" onClick={
+                                // @ts-expect-error electron is defined in preload script
+                                () => window.electron.shell.showItemInFolder(asset.original_file_path)
+                              } title={`Show in Finder:\n${asset.original_file_path}`} className="p-1 h-7 w-7 min-w-0">
+                                <ExternalLinkIcon/>
+                              </Button>
+                            )}
+                            {status ? (
+                              status.exists ? (
+                                status.modified ? (
+                                  <span title="File has been modified since import" className="text-yellow-500">⚠️</span>
+                                ) : (
+                                  <span title="File is unchanged" className="text-green-500">
+                                    <RefreshCwIcon width={16} height={16}/>
+                                  </span>
+                                )
+                              ) : null
+                            ) : (<span className="text-gray-500">-</span>)}
+                          </div>
+                        ) : (<span className="text-gray-500">-</span>)}
+                      </td>
+                      <td className="px-4 py-2">
+                        <Button onClick={() => handleFileRemove(asset.id)} variant="destructive" size="sm">Remove</Button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr><td colSpan={6} className="text-gray-500 px-4 py-4 text-center">No images added yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {/* Design Files Section */}
+        <h2 className="text-xl font-bold mt-6">Design Files</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 align-middle">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">File</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last Modified</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Original</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {design.assets && design.assets.filter(asset => !pubmanImageFileTypes.includes(asset.file_ext?.toLowerCase())).length > 0 ? (
+                design.assets.filter(asset => !pubmanImageFileTypes.includes(asset.file_ext?.toLowerCase())).map((asset) => {
+                  const status = fileStatus[asset.id];
+                  return (
+                    <tr key={asset.id} className="align-middle">
+                      <td className="px-4 py-2 flex gap-3 items-center">
                         <div className="w-18 h-18 flex items-center justify-center bg-gray-200 rounded text-gray-600 text-base font-bold">
                           {asset.file_ext?.toUpperCase() || '?'}
                         </div>
-                      )}
-                      <div>{asset.file_name}</div>
-                    </td>
-                    <td className="px-4 py-2 text-sm text-gray-700">{formatBytes(asset.original_file_size)}</td>
-                    <td className="px-4 py-2 text-xs text-gray-500">{asset.original_file_mtime ? new Date(asset.original_file_mtime).toLocaleString() : '-'}</td>
-                    <td className="px-4 py-2">
-                      {asset.original_file_path ? (
-                        <div className="flex items-center gap-2">
-                          {status && !status.exists ? (
-                            <div
-                              className="text-red-500 cursor-help border border-red-200 bg-red-50 rounded text-xs inline-flex items-center p-1"
-                              title={`File not found:\n${asset.original_file_path}`}
-                            >
-                              <CircleDashed className="h-4 w-4 inline mr-1" />
-                              <span>Missing</span>
-                            </div>
-                          ) : (
-                            <Button size="sm" variant="outline" onClick={
-                              // @ts-expect-error electron is defined in preload script
-                              () => window.electron.shell.showItemInFolder(asset.original_file_path)
-                            } title={`Show in Finder:\n${asset.original_file_path}`} className="p-1 h-7 w-7 min-w-0">
-                              <ExternalLinkIcon/>
-                            </Button>
-                          )}
-                          {status ? (
-                            status.exists ? (
-                              status.modified ? (
-                                <span title="File has been modified since import" className="text-yellow-500">⚠️</span>
-                              ) : (
-                                <span title="File is unchanged" className="text-green-500">
-                                  <RefreshCwIcon width={16} height={16}/>
-                                </span>
-                              )
-                            ) : null
-                          ) : (<span className="text-gray-500">-</span>)}
-                        </div>
-                      ) : (<span className="text-gray-500">-</span>)}
-                    </td>
-                    <td className="px-4 py-2">
-                      <Button onClick={() => handleFileRemove(asset.id)} variant="destructive" size="sm">Remove</Button>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr><td colSpan={5} className="text-gray-500 px-4 py-4 text-center">No files added yet.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <Button onClick={handleFileAdd} className="mt-4">Add File</Button>
-      {/* Image preview modal */}
-      {previewImg && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" onClick={() => setPreviewImg(null)}>
-          <img src={previewImg} alt="Preview" className="max-h-[80vh] max-w-[80vw] rounded shadow-lg" />
+                        <div>{asset.file_name}</div>
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-700">{formatBytes(asset.original_file_size)}</td>
+                      <td className="px-4 py-2 text-xs text-gray-500">{asset.original_file_mtime ? new Date(asset.original_file_mtime).toLocaleString() : '-'}</td>
+                      <td className="px-4 py-2">
+                        {asset.original_file_path ? (
+                          <div className="flex items-center gap-2">
+                            {status && !status.exists ? (
+                              <div
+                                className="text-red-500 cursor-help border border-red-200 bg-red-50 rounded text-xs inline-flex items-center p-1"
+                                title={`File not found:\n${asset.original_file_path}`}
+                              >
+                                <CircleDashed className="h-4 w-4 inline mr-1" />
+                                <span>Missing</span>
+                              </div>
+                            ) : (
+                              <Button size="sm" variant="outline" onClick={
+                                // @ts-expect-error electron is defined in preload script
+                                () => window.electron.shell.showItemInFolder(asset.original_file_path)
+                              } title={`Show in Finder:\n${asset.original_file_path}`} className="p-1 h-7 w-7 min-w-0">
+                                <ExternalLinkIcon/>
+                              </Button>
+                            )}
+                            {status ? (
+                              status.exists ? (
+                                status.modified ? (
+                                  <span title="File has been modified since import" className="text-yellow-500">⚠️</span>
+                                ) : (
+                                  <span title="File is unchanged" className="text-green-500">
+                                    <RefreshCwIcon width={16} height={16}/>
+                                  </span>
+                                )
+                              ) : null
+                            ) : (<span className="text-gray-500">-</span>)}
+                          </div>
+                        ) : (<span className="text-gray-500">-</span>)}
+                      </td>
+                      <td className="px-4 py-2">
+                        <Button onClick={() => handleFileRemove(asset.id)} variant="destructive" size="sm">Remove</Button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr><td colSpan={5} className="text-gray-500 px-4 py-4 text-center">No design files added yet.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+        {/* Image preview modal */}
+        {previewImg && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" onClick={() => setPreviewImg(null)}>
+            <img src={previewImg} alt="Preview" className="max-h-[80vh] max-w-[80vw] rounded shadow-lg" />
+          </div>
+        )}
 
-      <h2 className="text-xl font-bold">Danger Zone</h2>
-      <Button variant="destructive" onClick={() => {handleDeleteDesign(design.id)}}>Delete</Button>
+      </div>
+
+      {/* Sidebar: Publishing Platforms and Danger Zone */}
+      <aside className="w-full lg:w-96 flex-shrink-0 space-y-6">
+        <div className="bg-white rounded-lg p-6">
+          <h2 className="text-xl font-bold mb-2">Publishing Platforms</h2>
+          <div className="space-y-4">
+            {design && (
+              <MakerWorldPublishing
+                design={design}
+                designID={designID.toString()}
+                setErrorMessage={setErrorMessage}
+                setSuccessMessage={setSuccessMessage}
+                onDesignUpdated={(updatedDesign) => setDesign(updatedDesign)}
+                editMode={editMode}
+              />
+            )}
+            {design && (
+              <PrintablesPublishing
+                design={design}
+                designID={designID.toString()}
+                setErrorMessage={setErrorMessage}
+                setSuccessMessage={setSuccessMessage}
+                onDesignUpdated={(updatedDesign) => setDesign(updatedDesign)}
+                editMode={editMode}
+              />
+            )}
+            {design && (
+              <ThingiversePublishing
+                design={design}
+                designID={designID.toString()}
+                setErrorMessage={setErrorMessage}
+                setSuccessMessage={setSuccessMessage}
+                onDesignUpdated={(updatedDesign) => setDesign(updatedDesign)}
+                editMode={editMode}
+              />
+            )}
+            {/* Add more publishing platforms here as needed */}
+          </div>
+        </div>
+        <div className="bg-red-50 rounded-lg flex justify-between items-center px-2 py-2">
+          <h2 className="text-xl font-bold">Danger Zone</h2>
+          <Button variant="destructive" onClick={() => {handleDeleteDesign(design.id)}}>Delete Design</Button>
+        </div>
+      </aside>
     </div>
   );
 };
