@@ -17,6 +17,8 @@ import TextEditor from "../../components/text-editor/editor";
 import {printablesCategories} from "@/src/app/api/printables/printables-lib";
 import {makerWorldCategories} from "@/src/app/api/makerworld/makerworld-lib";
 import {MakerWorldPublishing} from "@/src/app/components/design/makerworld-publishing";
+import Image from 'next/image';
+import {CircleDashed, ExternalLinkIcon} from "lucide-react";
 
 const getLicenseName = (licenseKey: string): string => {
   const licenseMap: Record<string, string> = {
@@ -37,6 +39,9 @@ const getLicenseName = (licenseKey: string): string => {
 
   return licenseMap[licenseKey] || licenseKey;
 };
+
+// TODO: Move this to a shared utility file
+const pubmanImageFileTypes = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
 
 const DesignDetailsPage = () => {
   const { designID } = useParams<{ designID: string }>();
@@ -180,6 +185,30 @@ const DesignDetailsPage = () => {
       }
     }
   };
+
+  // State for image preview
+  const [previewImg, setPreviewImg] = useState<string | null>(null);
+
+  // File status state for each asset (by id)
+  const [fileStatus, setFileStatus] = useState<Record<string, {exists: boolean, modified: boolean}>>({});
+
+  useEffect(() => {
+    if (!design?.assets) return;
+    design.assets.forEach((asset) => {
+      if (!asset.original_file_path) return;
+      (async () => {
+        try {
+          // @ts-expect-error window.electron is defined in preload script;
+          const stat = await window.electron.fs.stat(asset.original_file_path);
+          const mtime = new Date(stat.mtime).toISOString();
+          const modified = !!(asset.original_file_mtime && mtime !== asset.original_file_mtime);
+          setFileStatus(prev => ({ ...prev, [asset.id]: { exists: true, modified } }));
+        } catch {
+          setFileStatus(prev => ({ ...prev, [asset.id]: { exists: false, modified: false } }));
+        }
+      })();
+    });
+  }, [design?.assets]);
 
   if (!design) return <div>Loading...</div>;
 
@@ -474,25 +503,97 @@ const DesignDetailsPage = () => {
         />
       )}
 
-      {/* File Management Section */}
-
+      {/* File Management Section (Files/Assets) */}
       <h2 className="text-xl font-bold mt-6">Files</h2>
-      <div className="mt-2 flex flex-col space-y-2">
-        {design.assets && design.assets.length > 0 ? (
-          design.assets.map((asset) => (
-            <div key={asset.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-              <span>{asset.file_name}</span>
-              <Button onClick={() => handleFileRemove(asset.id)} variant="destructive" size="sm">
-                Remove
-              </Button>
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-500">No files added yet.</p>
-        )}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead>
+            <tr>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">File</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last Modified</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Original</th>
+              <th className="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-100">
+            {design.assets && design.assets.length > 0 ? (
+              design.assets.map((asset) => {
+                const isImg = pubmanImageFileTypes.includes(asset.file_ext?.toLowerCase());
+                const formatBytes = (bytes: number | null | undefined) => {
+                  if (bytes === 0 || !bytes) return '-';
+                  const k = 1024;
+                  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                  const i = Math.floor(Math.log(bytes) / Math.log(k));
+                  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                };
+                const status = fileStatus[asset.id];
+                return (
+                  <tr key={asset.id} className="align-top">
+                    <td className="px-4 py-2 flex gap-3">
+                      {isImg ? (
+                        <div className="w-18 h-18 relative">
+                          <Image
+                            src={asset.url}
+                            alt={asset.file_name}
+                            fill={true}
+                            className="object-cover cursor-pointer"
+                            onClick={() => setPreviewImg(asset.url)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-18 h-18 flex items-center justify-center bg-gray-200 rounded text-gray-600 text-base font-bold">
+                          {asset.file_ext?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                      <div>{asset.file_name}</div>
+                    </td>
+                    <td className="px-4 py-2 text-sm text-gray-700">{formatBytes(asset.original_file_size)}</td>
+                    <td className="px-4 py-2 text-xs text-gray-500">{asset.original_file_mtime ? new Date(asset.original_file_mtime).toLocaleString() : '-'}</td>
+                    <td className="px-4 py-2">
+                      {asset.original_file_path ? (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={
+                            // @ts-expect-error electron is defined in preload script
+                            () => window.electron.shell.showItemInFolder(asset.original_file_path)
+                          } title="Show in Finder" className="p-1 h-7 w-7 min-w-0">
+                            <ExternalLinkIcon/>
+                          </Button>
+                          {status ? (
+                            status.exists ? (
+                              status.modified ? (
+                                <span title="File has been modified since import" className="text-yellow-500">⚠️</span>
+                              ) : (
+                                <span title="File is unchanged" className="text-blue-500" style={{display:'inline-flex',alignItems:'center'}}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                                </span>
+                              )
+                            ) : (
+                              <span title="File not found" className="text-red-500"><CircleDashed className="h-4 w-4"/></span>
+                            )
+                          ) : (<span className="text-gray-500">-</span>)}
+                        </div>
+                      ) : (<span className="text-gray-500">-</span>)}
+                    </td>
+                    <td className="px-4 py-2">
+                      <Button onClick={() => handleFileRemove(asset.id)} variant="destructive" size="sm">Remove</Button>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr><td colSpan={6} className="text-gray-500 px-4 py-4 text-center">No files added yet.</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
-
-      <Button onClick={handleFileAdd}>Add File</Button>
+      <Button onClick={handleFileAdd} className="mt-4">Add File</Button>
+      {/* Image preview modal */}
+      {previewImg && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" onClick={() => setPreviewImg(null)}>
+          <img src={previewImg} alt="Preview" className="max-h-[80vh] max-w-[80vw] rounded shadow-lg" />
+        </div>
+      )}
 
       <h2 className="text-xl font-bold">Danger Zone</h2>
       <Button variant="destructive" onClick={() => {handleDeleteDesign(design.id)}}>Delete</Button>

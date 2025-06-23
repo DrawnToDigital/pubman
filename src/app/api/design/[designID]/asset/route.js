@@ -29,7 +29,7 @@ export async function GET(request, context) {
 
   // Fetch assets
   const assets = db.prepare(`
-    SELECT id, file_name, file_ext, file_path,
+    SELECT id, file_name, file_ext, file_path, original_file_path, original_file_size, original_file_mtime,
            strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
     FROM design_asset
     WHERE design_id = ? AND deleted_at IS NULL
@@ -42,6 +42,9 @@ const assetCreateSchema = z.object({
   file_name: z.string(),
   file_ext: z.string(),
   file_path: z.string(),
+  original_file_path: z.string().optional(),
+  original_file_size: z.number().optional(),
+  original_file_mtime: z.string().optional(),
 });
 
 export async function POST(request, context) {
@@ -51,7 +54,7 @@ export async function POST(request, context) {
   const username = request.headers.get('x-username') || 'default';
   const body  = await request.json();
   const data = assetCreateSchema.parse(body);
-  const { file_name: fileName, file_ext: fileExt, file_path: filePathAbs } = data;
+  const { file_name: fileName, file_ext: fileExt, file_path: filePathAbs, original_file_path, original_file_size, original_file_mtime } = data;
   // Use Node.js path module for platform-safe normalization
   let filePath = path.normalize(filePathAbs);
   const assetsPrefix = path.join(path.sep, 'assets', path.sep);
@@ -78,9 +81,18 @@ export async function POST(request, context) {
   // Add file metadata to design_asset
   try {
     db.prepare(`
-    INSERT INTO design_asset (design_id, designer_id, file_name, file_ext, file_path, created_at)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `).run(designID, designer.id, fileName, fileExt, filePath);
+    INSERT INTO design_asset (design_id, designer_id, file_name, file_ext, file_path, original_file_path, original_file_size, original_file_mtime, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).run(
+      designID,
+      designer.id,
+      fileName,
+      fileExt,
+      filePath,
+      original_file_path || null,
+      original_file_size || null,
+      original_file_mtime || null
+    );
 
     db.prepare(
       `UPDATE design SET updated_at = datetime('now') WHERE id = ? AND designer_id = ?`

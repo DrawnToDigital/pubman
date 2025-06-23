@@ -12,8 +12,12 @@ contextBridge.exposeInMainWorld("electron", {
     showMessageBoxSync: (options: Electron.MessageBoxSyncOptions) =>
       ipcRenderer.invoke("dialog:showMessageBoxSync", options),
   },
+  fs: {
+    stat: (filePath: string) => ipcRenderer.invoke("fs:stat", filePath),
+  },
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke("shell:openExternal", url),
+    showItemInFolder: (filePath: string) => ipcRenderer.invoke("shell:showItemInFolder", filePath),
   },
   getDBPath: () => ipcRenderer.invoke("get-db-path"),
   getAppDataPath: () => ipcRenderer.invoke("get-app-data-path"),

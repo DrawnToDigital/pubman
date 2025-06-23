@@ -108,14 +108,17 @@ CREATE TABLE IF NOT EXISTS design_asset (
     file_name TEXT NOT NULL,
     file_path TEXT NOT NULL,
     file_ext TEXT NOT NULL,
+    original_file_path TEXT,
+    original_file_size INTEGER,
+    original_file_mtime TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TEXT DEFAULT NULL
 );
 
 -- Insert an example design asset associated with the example design if it doesn't exist
-INSERT OR IGNORE INTO design_asset (design_id, designer_id, file_name, file_path, file_ext) VALUES
-    (1, 1, 'example_design.stl', '/assets/example_design.stl', 'stl'),
-    (1, 1, 'example_image.png', '/assets/example_image.png', 'png');
+INSERT OR IGNORE INTO design_asset (design_id, designer_id, file_name, file_path, file_ext, original_file_size) VALUES
+    (1, 1, 'example_design.stl', '/assets/example_design.stl', 'stl', 19684),
+    (1, 1, 'example_image.png', '/assets/example_image.png', 'png', 5318);
 
 -- Insert an example design tag associated with the example design if it doesn't exist
 INSERT OR IGNORE INTO design_tag (design_id, tag, platform_id) VALUES
@@ -161,4 +164,6 @@ CREATE TABLE IF NOT EXISTS migrations (
 INSERT OR IGNORE INTO migrations (name) VALUES
 ('migrations-001.txt'),
 ('migrations-002.txt'),
-('migrations-003.txt');
+('migrations-003.txt'),
+('migrations-004.txt'),
+('migrations-005.txt');

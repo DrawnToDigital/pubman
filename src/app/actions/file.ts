@@ -28,6 +28,11 @@ export async function addFile(filePaths: string[] | string, storagePath: string,
       // Copy the file to the application data directory
       await fs.copyFile(filePath, newFilePath);
 
+      // Get original file stats
+      const stats = await fs.stat(filePath);
+      const originalFileSize = stats.size;
+      const originalFileMtime = stats.mtime.toISOString();
+
       // Insert metadata into the design_asset table
       const response = await fetch(`${API_URL}/api/design/${designID}/asset`, {
         method: "POST",
@@ -38,6 +43,9 @@ export async function addFile(filePaths: string[] | string, storagePath: string,
           file_path: newFilePath,
           file_ext: fileExtension.slice(1),  // remove the dot from the extension
           file_name: fileName,  // original file name
+          original_file_path: filePath,
+          original_file_size: originalFileSize,
+          original_file_mtime: originalFileMtime,
         }),
       });
       if (!response.ok) {
