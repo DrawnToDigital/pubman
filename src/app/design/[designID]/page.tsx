@@ -191,20 +191,25 @@ const DesignDetailsPage = () => {
 
   useEffect(() => {
     if (!design?.assets) return;
-    design.assets.forEach((asset) => {
-      if (!asset.original_file_path) return;
-      (async () => {
-        try {
-          // @ts-expect-error window.electron is defined in preload script;
-          const stat = await window.electron.fs.stat(asset.original_file_path);
-          const mtime = new Date(stat.mtime).toISOString();
-          const modified = !!(asset.original_file_mtime && mtime !== asset.original_file_mtime);
-          setFileStatus(prev => ({ ...prev, [asset.id]: { exists: true, modified } }));
-        } catch {
-          setFileStatus(prev => ({ ...prev, [asset.id]: { exists: false, modified: false } }));
-        }
-      })();
-    });
+    const updateFileStatus = async () => {
+      const statusUpdates: Record<string, { exists: boolean, modified: boolean }> = {};
+      await Promise.all(
+        design.assets.map(async (asset) => {
+          if (!asset.original_file_path) return;
+          try {
+            // @ts-expect-error window.electron is defined in preload script;
+            const stat = await window.electron.fs.stat(asset.original_file_path);
+            const mtime = new Date(stat.mtime).toISOString();
+            const modified = !!(asset.original_file_mtime && mtime !== asset.original_file_mtime);
+            statusUpdates[asset.id] = { exists: true, modified };
+          } catch {
+            statusUpdates[asset.id] = { exists: false, modified: false };
+          }
+        })
+      );
+      setFileStatus(statusUpdates);
+    };
+    updateFileStatus();
   }, [design?.assets]);
 
   // Utility to format bytes (moved out of map)
