@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { designCreateSchema } from '@/src/app/components/design/types';
+import { designCreateSchema, pubmanImageFileTypes } from '@/src/app/components/design/types';
 import { getDatabase } from "../../lib/betterSqlite3"
 import log from "electron-log/renderer";
 
@@ -11,9 +11,6 @@ const platformMap = {
   4: 'PRINTABLES',
   5: 'MAKERWORLD',
 }
-
-// TODO: Move this to a shared location
-const pubmanImageFileTypes = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'svg'];
 
 const PLATFORM_PUBMAN = 1;
 

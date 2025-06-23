@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/src/app/components/ui/button";
 import { fetchDesign, updateDesign } from "@/src/app/actions/design";
-import {DesignSchema, thingiverseCategories} from "@/src/app/components/design/types";
+import { DesignSchema, thingiverseCategories, pubmanImageFileTypes } from "@/src/app/components/design/types";
 import {FieldValues, useForm} from 'react-hook-form';
 import {addFile, removeFile} from "@/src/app/actions/file";
 import {Input} from "@/src/app/components/ui/input";
@@ -18,7 +18,7 @@ import {printablesCategories} from "@/src/app/api/printables/printables-lib";
 import {makerWorldCategories} from "@/src/app/api/makerworld/makerworld-lib";
 import {MakerWorldPublishing} from "@/src/app/components/design/makerworld-publishing";
 import Image from 'next/image';
-import {CircleDashed, ExternalLinkIcon} from "lucide-react";
+import {CircleDashed, ExternalLinkIcon, RefreshCwIcon} from "lucide-react";
 
 const getLicenseName = (licenseKey: string): string => {
   const licenseMap: Record<string, string> = {
@@ -39,9 +39,6 @@ const getLicenseName = (licenseKey: string): string => {
 
   return licenseMap[licenseKey] || licenseKey;
 };
-
-// TODO: Move this to a shared location
-const pubmanImageFileTypes = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'svg'];
 
 const DesignDetailsPage = () => {
   const { designID } = useParams<{ designID: string }>();
@@ -209,6 +206,15 @@ const DesignDetailsPage = () => {
       })();
     });
   }, [design?.assets]);
+
+  // Utility to format bytes (moved out of map)
+  const formatBytes = (bytes: number | null | undefined) => {
+    if (bytes === 0 || !bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   if (!design) return <div>Loading...</div>;
 
@@ -520,13 +526,6 @@ const DesignDetailsPage = () => {
             {design.assets && design.assets.length > 0 ? (
               design.assets.map((asset) => {
                 const isImg = pubmanImageFileTypes.includes(asset.file_ext?.toLowerCase());
-                const formatBytes = (bytes: number | null | undefined) => {
-                  if (bytes === 0 || !bytes) return '-';
-                  const k = 1024;
-                  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-                  const i = Math.floor(Math.log(bytes) / Math.log(k));
-                  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-                };
                 const status = fileStatus[asset.id];
                 return (
                   <tr key={asset.id} className="align-top">
@@ -553,24 +552,32 @@ const DesignDetailsPage = () => {
                     <td className="px-4 py-2">
                       {asset.original_file_path ? (
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={
-                            // @ts-expect-error electron is defined in preload script
-                            () => window.electron.shell.showItemInFolder(asset.original_file_path)
-                          } title="Show in Finder" className="p-1 h-7 w-7 min-w-0">
-                            <ExternalLinkIcon/>
-                          </Button>
+                          {status && !status.exists ? (
+                            <div
+                              className="text-red-500 cursor-help border border-red-200 bg-red-50 rounded text-xs inline-flex items-center p-1"
+                              title={`File not found:\n${asset.original_file_path}`}
+                            >
+                              <CircleDashed className="h-4 w-4 inline mr-1" />
+                              <span>Missing</span>
+                            </div>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={
+                              // @ts-expect-error electron is defined in preload script
+                              () => window.electron.shell.showItemInFolder(asset.original_file_path)
+                            } title={`Show in Finder:\n${asset.original_file_path}`} className="p-1 h-7 w-7 min-w-0">
+                              <ExternalLinkIcon/>
+                            </Button>
+                          )}
                           {status ? (
                             status.exists ? (
                               status.modified ? (
                                 <span title="File has been modified since import" className="text-yellow-500">⚠️</span>
                               ) : (
-                                <span title="File is unchanged" className="text-blue-500" style={{display:'inline-flex',alignItems:'center'}}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                                <span title="File is unchanged" className="text-green-500">
+                                  <RefreshCwIcon width={16} height={16}/>
                                 </span>
                               )
-                            ) : (
-                              <span title="File not found" className="text-red-500"><CircleDashed className="h-4 w-4"/></span>
-                            )
+                            ) : null
                           ) : (<span className="text-gray-500">-</span>)}
                         </div>
                       ) : (<span className="text-gray-500">-</span>)}
@@ -582,7 +589,7 @@ const DesignDetailsPage = () => {
                 );
               })
             ) : (
-              <tr><td colSpan={6} className="text-gray-500 px-4 py-4 text-center">No files added yet.</td></tr>
+              <tr><td colSpan={5} className="text-gray-500 px-4 py-4 text-center">No files added yet.</td></tr>
             )}
           </tbody>
         </table>
