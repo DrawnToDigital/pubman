@@ -200,6 +200,8 @@ export const makerWorldCategories = z.enum([
   "Make My Lantern",            // Generative 3D Model > Make My Lantern
 ]);
 
+export const pubmanImageFileTypes = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'svg'];
+
 export const designSchema = z.object({
     id: z.string(),
     main_name: z.string(),
@@ -220,6 +222,9 @@ export const designSchema = z.object({
             id: z.string(),
             file_name: z.string(),
             file_ext: z.string(),
+            original_file_path: z.string().nullish(),
+            original_file_size: z.number().nullish(),
+            original_file_mtime: z.string().datetime({ offset: false }).nullish(),
             url: z.string(),
             created_at: z.string().datetime({ offset: false }),
         }),

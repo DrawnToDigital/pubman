@@ -1,0 +1,11 @@
+-- Migration 005: Add original file tracking columns to design_asset
+ALTER TABLE design_asset ADD COLUMN original_file_path TEXT;
+ALTER TABLE design_asset ADD COLUMN original_file_size INTEGER;
+ALTER TABLE design_asset ADD COLUMN original_file_mtime TEXT;
+
+UPDATE design_asset
+SET original_file_size = 19684
+WHERE design_id = 1 and file_path = '/assets/example_design.stl';
+UPDATE design_asset
+SET original_file_size = 5318
+WHERE design_id = 1 and file_path = '/assets/example_image.png';

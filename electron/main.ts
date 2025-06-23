@@ -241,6 +241,22 @@ app.whenReady().then(() => {
   ipcMain.handle("shell:openExternal", (event, url) => {
     return shell.openExternal(url);
   });
+  ipcMain.handle("shell:showItemInFolder", (event, filePath) => {
+    return shell.showItemInFolder(filePath);
+  });
+  ipcMain.handle("fs:stat", async (event, filePath) => {
+    try {
+      const stats = await fs.stat(filePath);
+      return {
+        isFile: stats.isFile(),
+        isDirectory: stats.isDirectory(),
+        size: stats.size,
+        mtime: stats.mtime,
+      };
+    } catch (error) {
+      return error;
+    }
+  })
   ipcMain.handle("get-db-path", () => {
     return dbPath;
   })
