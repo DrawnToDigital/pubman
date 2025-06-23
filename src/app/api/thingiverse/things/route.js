@@ -159,14 +159,14 @@ export async function POST(request) {
       }
     }
 
-    // Update the design_platform record with the new status
+    // Update the design_platform record with the new thingId
+    // leaving published_status and published_at as they were
     db.prepare(`
       UPDATE design_platform
-      SET published_status = ?, 
-          platform_design_id = ?,
+      SET platform_design_id = ?,
           updated_at = datetime('now')
       WHERE platform_id = ? AND design_id = ?
-    `).run(PUBLISHED_STATUS_DRAFT, thingResponse.id.toString(), THINGIVERSE_PLATFORM_ID, designId);
+    `).run(thingResponse.id.toString(), THINGIVERSE_PLATFORM_ID, designId);
 
     // Get the updated record from the database
     const designPlatform = db.prepare(`
