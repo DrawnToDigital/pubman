@@ -42,9 +42,9 @@ const assetCreateSchema = z.object({
   file_name: z.string(),
   file_ext: z.string(),
   file_path: z.string(),
-  original_file_path: z.string().optional(),
-  original_file_size: z.number().optional(),
-  original_file_mtime: z.string().optional(),
+  original_file_path: z.string().nullish(),
+  original_file_size: z.number().nullish(),
+  original_file_mtime: z.string().nullish(),
 });
 
 export async function POST(request, context) {
