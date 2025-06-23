@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import {z} from "zod";
 import { getDatabase } from "../../../../lib/betterSqlite3";
 import log from "electron-log/renderer"
+import path from 'path';
 
 export async function GET(request, context) {
   const { designID } = await context.params; // Await params
@@ -50,7 +51,12 @@ export async function POST(request, context) {
   const username = request.headers.get('x-username') || 'default';
   const body  = await request.json();
   const data = assetCreateSchema.parse(body);
-  const { file_name: fileName, file_ext: fileExt, file_path: filePath } = data;
+  const { file_name: fileName, file_ext: fileExt, file_path: filePathAbs } = data;
+  // Use Node.js path module for platform-safe normalization
+  let filePath = path.normalize(filePathAbs);
+  const assetsPrefix = path.join(path.sep, 'assets', path.sep);
+  const idx = filePath.indexOf(assetsPrefix);
+  if (idx !== -1) filePath = filePath.slice(idx);
 
   const designer = db.prepare(`
     SELECT id FROM designer
