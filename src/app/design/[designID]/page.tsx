@@ -40,8 +40,8 @@ const getLicenseName = (licenseKey: string): string => {
   return licenseMap[licenseKey] || licenseKey;
 };
 
-// TODO: Move this to a shared utility file
-const pubmanImageFileTypes = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+// TODO: Move this to a shared location
+const pubmanImageFileTypes = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'svg'];
 
 const DesignDetailsPage = () => {
   const { designID } = useParams<{ designID: string }>();
