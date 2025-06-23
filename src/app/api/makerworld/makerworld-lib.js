@@ -112,9 +112,7 @@ export const licenseToMakerWorldMap = {
   'SDFL': 'Standard Digital File License' // Standard Design File License
 };
 
-export const makerWorldImageFileTypes = [
-  'jpg', 'jpeg', 'png', 'gif', 'webp',
-];
+export const makerWorldImageFileTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
 export function isPubmanLicenseSupported(pubmanLicense) {
   const license = licenseToMakerWorldMap[pubmanLicense];

@@ -1,7 +1,7 @@
 'use client';
 
 import { PlatformPublishing, PlatformPublishingProps } from "./platform-publishing";
-import {printablesImageFileTypes, printablesIsLicenseSupported} from "@/src/app/api/printables/printables-lib";
+import { printablesImageFileTypes, printablesIsLicenseSupported } from "@/src/app/api/printables/printables-lib";
 import { usePrintablesAuth } from "@/src/app/contexts/PrintablesAuthContext";
 
 export function PrintablesPublishing(props: PlatformPublishingProps) {

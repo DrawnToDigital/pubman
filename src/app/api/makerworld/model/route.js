@@ -3,7 +3,9 @@ import {
   MakerWorldAPI,
   UpdateDraftRequestSchema,
   makerWorldCategories,
-  licenseToMakerWorldMap, MakerWorldAPIError, makerWorldImageFileTypes
+  licenseToMakerWorldMap,
+  MakerWorldAPIError,
+  makerWorldImageFileTypes
 } from "../makerworld-lib";
 import log from "electron-log/renderer";
 import { getDatabase } from "../../../lib/betterSqlite3";

@@ -1,7 +1,7 @@
 'use client';
 
 import { PlatformPublishing, PlatformPublishingProps } from "./platform-publishing";
-import {isPubmanLicenseSupported, makerWorldImageFileTypes} from "@/src/app/api/makerworld/makerworld-lib";
+import { isPubmanLicenseSupported, makerWorldImageFileTypes } from "@/src/app/api/makerworld/makerworld-lib";
 import { useMakerWorldAuth } from "@/src/app/contexts/MakerWorldAuthContext";
 import log from 'electron-log/renderer';
 
