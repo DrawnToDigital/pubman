@@ -1,5 +1,7 @@
 import log from 'electron-log/renderer';
 
+export const printablesImageFileTypes = ["gif", "heic", "heif", "jpeg", "jpg", "png", "svg", "webp"];
+
 export const printablesCategories = {
   "3D Printers": {"id": "1", "path": ["3D Printers"], "pathIds": ["1"], "disabled": true},
   "Prusa Parts & Upgrades": {"id": "134", "path": ["3D Printers", "Prusa Parts & Upgrades"], "pathIds": ["1", "134"]},

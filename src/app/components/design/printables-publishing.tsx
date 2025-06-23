@@ -1,7 +1,7 @@
 'use client';
 
 import { PlatformPublishing, PlatformPublishingProps } from "./platform-publishing";
-import { printablesIsLicenseSupported } from "@/src/app/api/printables/printables-lib";
+import { printablesImageFileTypes, printablesIsLicenseSupported } from "@/src/app/api/printables/printables-lib";
 import { usePrintablesAuth } from "@/src/app/contexts/PrintablesAuthContext";
 
 export function PrintablesPublishing(props: PlatformPublishingProps) {
@@ -37,7 +37,7 @@ export function PrintablesPublishing(props: PlatformPublishingProps) {
           return false;
         }
         const hasImages = design.assets.some(asset =>
-          ["gif", "heic", "heif", "jpeg", "jpg", "png", "svg", "webp"].includes(asset.file_ext.toLowerCase())
+          printablesImageFileTypes.includes(asset.file_ext.toLowerCase())
         );
         if (!hasImages) {
           setErrorMessage("You need to add at least one image before publishing to Printables");

@@ -1,7 +1,7 @@
 'use client';
 
 import { PlatformPublishing, PlatformPublishingProps } from "./platform-publishing";
-import { isPubmanLicenseSupported } from "@/src/app/api/makerworld/makerworld-lib";
+import { isPubmanLicenseSupported, makerWorldImageFileTypes } from "@/src/app/api/makerworld/makerworld-lib";
 import { useMakerWorldAuth } from "@/src/app/contexts/MakerWorldAuthContext";
 import log from 'electron-log/renderer';
 
@@ -40,7 +40,7 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
           return false;
         }
         const hasImages = design.assets.some(asset =>
-          ["png", "jpg", "webp", "gif"].includes(asset.file_ext.toLowerCase())
+          makerWorldImageFileTypes.includes(asset.file_ext.toLowerCase())
         );
         if (!hasImages) {
           setErrorMessage("You need to add at least one image before publishing to MakerWorld");

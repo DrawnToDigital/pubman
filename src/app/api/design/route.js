@@ -12,6 +12,9 @@ const platformMap = {
   5: 'MAKERWORLD',
 }
 
+// TODO: Move this to a shared location
+const pubmanImageFileTypes = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'svg'];
+
 const PLATFORM_PUBMAN = 1;
 
 export async function GET(request) {
@@ -89,7 +92,7 @@ export async function GET(request) {
           tag: tag.tag,
           platform: platformMap[tag.platform_id] || 'UNKNOWN',
         })),
-        thumbnail: assets.filter((asset) => ["jpg", "jpeg", "png"].includes(asset.file_ext.toLowerCase())).map(asset => `local://${asset.file_path}`)[0] || null,
+        thumbnail: assets.filter((asset) => pubmanImageFileTypes.includes(asset.file_ext.toLowerCase())).map(asset => `local://${asset.file_path}`)[0] || null,
         assets: assets.map((asset) => ({
           id: asset.id.toString(),
           file_name: asset.file_name,
