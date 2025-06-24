@@ -14,6 +14,7 @@ export interface PlatformPublishingProps {
   setErrorMessage: (message: string | null) => void;
   setSuccessMessage: (message: string | null) => void;
   onDesignUpdated: (design: DesignSchema) => void;
+  editMode?: boolean;
 }
 
 // Internal props, including all platform-specific and implementation props
@@ -49,6 +50,7 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
     publishDraft,
     updateModel,
     publishPublic,
+    editMode,
   } = props;
 
   const [isUpdating, setIsUpdating] = useState(false);
@@ -155,7 +157,7 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
           {platformStatus.status === 'not_published' && (
             <Button
               onClick={handlePublishDraft}
-              disabled={isPublishing}
+              disabled={editMode || isPublishing}
               className="w-full"
             >
               {isPublishing ? 'Publishing Draft...' : `Publish Draft to ${platformName}`}
@@ -169,6 +171,7 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
                 {platformStatus.url && (
                   <Link
                     href={platformStatus.url}
+                    title={platformStatus.url}
                     target="_blank"
                     className="text-blue-500 hover:underline block mt-1"
                   >
@@ -184,7 +187,7 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
               <div className="flex space-x-2">
                 <Button
                   onClick={handleUpdateModel}
-                  disabled={isUpdating || isPublishing}
+                  disabled={editMode || isUpdating || isPublishing}
                   className="flex-1"
                   variant="outline"
                 >
@@ -192,7 +195,7 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
                 </Button>
                 <Button
                   onClick={handlePublishPublic}
-                  disabled={isUpdating || isPublishing}
+                  disabled={editMode || isUpdating || isPublishing}
                   className="flex-1"
                 >
                   {isPublishing ? "Publishing..." : "Publish to Public"}
@@ -208,6 +211,7 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
                 {platformStatus.url && (
                   <Link
                     href={platformStatus.url}
+                    title={platformStatus.url}
                     target="_blank"
                     className="text-blue-500 hover:underline block mt-1"
                   >
@@ -223,7 +227,7 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
               <div className="flex space-x-2">
                 <Button
                   onClick={handleUpdateModel}
-                  disabled={isUpdating}
+                  disabled={editMode || isUpdating}
                   className="flex-1"
                   variant="outline"
                 >

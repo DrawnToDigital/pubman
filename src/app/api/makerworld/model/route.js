@@ -3,7 +3,9 @@ import {
   MakerWorldAPI,
   UpdateDraftRequestSchema,
   makerWorldCategories,
-  licenseToMakerWorldMap, MakerWorldAPIError
+  licenseToMakerWorldMap,
+  MakerWorldAPIError,
+  makerWorldImageFileTypes
 } from "../makerworld-lib";
 import log from "electron-log/renderer";
 import { getDatabase } from "../../../lib/betterSqlite3";
@@ -100,7 +102,7 @@ export async function POST(request) {
           const fileBuffer = fs.readFileSync(filePath);
           const uploadResult = await api.uploadFile(asset.file_name, fileBuffer, makerWorldUserId);
           log.info(`Uploaded file: ${asset.file_name}`, uploadResult);
-          if (["jpg", "jpeg", "png"].includes(asset.file_ext.toLowerCase())) {
+          if (makerWorldImageFileTypes.includes(asset.file_ext.toLowerCase())) {
             images.push({
               name: asset.file_name,
               url: uploadResult.url,

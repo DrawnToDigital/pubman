@@ -1,6 +1,6 @@
 import {NextResponse} from 'next/server';
 import {getDatabase} from "../../../lib/betterSqlite3";
-import {designUpdateSchema} from "../../../components/design/types";
+import { designUpdateSchema, pubmanImageFileTypes } from "../../../components/design/types";
 import log from "electron-log/renderer";
 
 // TODO: Move this to a shared location
@@ -54,7 +54,7 @@ export async function GET(request, {params}) {
 
     // Fetch assets
     const assets = db.prepare(`
-          SELECT id, file_name, file_ext, file_path,
+          SELECT id, file_name, file_ext, file_path, original_file_path, original_file_size, original_file_mtime,
                  strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
           FROM design_asset 
           WHERE design_id = ? AND deleted_at IS NULL
@@ -89,11 +89,14 @@ export async function GET(request, {params}) {
         tag: tag.tag,
         platform: platformMap[tag.platform_id] || 'UNKNOWN',
       })),
-      thumbnail: assets.filter((asset) => ["jpg", "jpeg", "png"].includes(asset.file_ext.toLowerCase())).map(asset => `local://${asset.file_path}`)[0] || null,
+      thumbnail: assets.filter((asset) => pubmanImageFileTypes.includes(asset.file_ext.toLowerCase())).map(asset => `local://${asset.file_path}`)[0] || null,
       assets: assets.map((asset) => ({
         id: asset.id.toString(),
         file_name: asset.file_name,
         file_ext: asset.file_ext,
+        original_file_path: asset.original_file_path,
+        original_file_size: asset.original_file_size,
+        original_file_mtime: asset.original_file_mtime,
         url: `local://${asset.file_path}`,
         created_at: asset.created_at,
       })),

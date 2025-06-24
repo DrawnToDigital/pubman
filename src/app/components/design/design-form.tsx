@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -47,6 +47,15 @@ const DesignForm = () => {
       makerworld_category: null,
     },
   });
+
+  useEffect(() => {
+    // @ts-expect-error global var
+    window.__pubman_isEditing = true;
+    return () => {
+      // @ts-expect-error global var
+      window.__pubman_isEditing = false;
+    };
+  }, []);
 
   const onSubmit = async (data: DesignCreateSchema) => {
     setErrorMessage(null); // Clear previous errors

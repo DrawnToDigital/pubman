@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { designCreateSchema } from '@/src/app/components/design/types';
+import { designCreateSchema, pubmanImageFileTypes } from '@/src/app/components/design/types';
 import { getDatabase } from "../../lib/betterSqlite3"
 import log from "electron-log/renderer";
 
@@ -89,7 +89,7 @@ export async function GET(request) {
           tag: tag.tag,
           platform: platformMap[tag.platform_id] || 'UNKNOWN',
         })),
-        thumbnail: assets.filter((asset) => ["jpg", "jpeg", "png"].includes(asset.file_ext.toLowerCase())).map(asset => `local://${asset.file_path}`)[0] || null,
+        thumbnail: assets.filter((asset) => pubmanImageFileTypes.includes(asset.file_ext.toLowerCase())).map(asset => `local://${asset.file_path}`)[0] || null,
         assets: assets.map((asset) => ({
           id: asset.id.toString(),
           file_name: asset.file_name,
