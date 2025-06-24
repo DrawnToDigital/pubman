@@ -286,56 +286,56 @@ const DesignDetailsPage = () => {
         {editMode ? (
           /* Edit Form */
           <FormProvider {...form} >
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Name</label>
+                  <Input
+                    {...register('main_name', { required: true })}
+                    defaultValue={design.main_name}
+                    className="w-full"
+                  />
+                  {errors.main_name && <p className="text-red-500 text-sm">Name is required</p>}
+                </div>
+
               <div>
-                <label className="block text-sm font-medium mb-1">Name</label>
+                <label className="block text-sm font-medium mb-1">Summary</label>
+                <textarea
+                  {...register('summary', { required: true })}
+                  defaultValue={design.summary}
+                  className="w-full border rounded-md p-2"
+                  rows={2}
+                />
+                {errors.summary && <p className="text-red-500 text-sm">Summary is required</p>}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <div className="w-full">
+                  <DescriptionProvider content={design.description} >
+                    <TextEditor />
+                  </DescriptionProvider>
+                </div>
+                {errors.description && <p className="text-red-500 text-sm">Description is required</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Tags</label>
                 <Input
-                  {...register('main_name', { required: true })}
-                  defaultValue={design.main_name}
+                  {...register('tags', { required: true })}
+                  defaultValue={design.tags.map(tag => tag.tag).join(', ')}
                   className="w-full"
                 />
-                {errors.main_name && <p className="text-red-500 text-sm">Name is required</p>}
+                {errors.tags && <p className="text-red-500 text-sm">Tags are required</p>}
               </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Summary</label>
-              <textarea
-                {...register('summary', { required: true })}
-                defaultValue={design.summary}
-                className="w-full border rounded-md p-2"
-                rows={2}
-              />
-              {errors.summary && <p className="text-red-500 text-sm">Summary is required</p>}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
-              <div className="w-full">
-                <DescriptionProvider content={design.description} >
-                  <TextEditor />
-                </DescriptionProvider>
+              <div>
+                <label className="block text-sm font-medium mb-1">Tags</label>
+                <Input
+                  {...register('tags', { required: true })}
+                  defaultValue={design.tags.map(tag => tag.tag).join(', ')}
+                  className="w-full"
+                />
+                {errors.tags && <p className="text-red-500 text-sm">Tags are required</p>}
               </div>
-              {errors.description && <p className="text-red-500 text-sm">Description is required</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Tags</label>
-              <Input
-                {...register('tags', { required: true })}
-                defaultValue={design.tags.map(tag => tag.tag).join(', ')}
-                className="w-full"
-              />
-              {errors.tags && <p className="text-red-500 text-sm">Tags are required</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Tags</label>
-              <Input
-                {...register('tags', { required: true })}
-                defaultValue={design.tags.map(tag => tag.tag).join(', ')}
-                className="w-full"
-              />
-              {errors.tags && <p className="text-red-500 text-sm">Tags are required</p>}
-            </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1">Categories</label>
@@ -452,7 +452,7 @@ const DesignDetailsPage = () => {
               </div>
             </form>
           </FormProvider>
-      ) : (
+        ) : (
           /* Display View */
           <div className="space-y-6">
             <div>
