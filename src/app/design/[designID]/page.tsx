@@ -13,8 +13,8 @@ import {useRouter} from "next/navigation";
 import { ThingiversePublishing } from "@/src/app/components/design/thingiverse-publishing";
 import { PrintablesPublishing } from "@/src/app/components/design/printables-publishing";
 import log from 'electron-log/renderer';
-import TextEditor from "../../components/text-editor/editor";
-import { DescriptionProvider } from '@/src/app/components/text-editor/description-context'
+import TextEditor from "../../features/design-description-editor/components/editor";
+import { DescriptionProvider } from '@/src/app/features/design-description-editor/context/description-context'
 import {printablesCategories} from "@/src/app/api/printables/printables-lib";
 import {makerWorldCategories} from "@/src/app/api/makerworld/makerworld-lib";
 import {MakerWorldPublishing} from "@/src/app/components/design/makerworld-publishing";

@@ -2,9 +2,9 @@ import { EditorContent } from '@tiptap/react'
 import React, { useEffect } from 'react'
 import Toolbar from './toolbar';
 import DOMPurify from 'dompurify';
-import CustomMarkdownSerializer from '@/src/app/lib/md-serializer';
+import CustomMarkdownSerializer from '@/src/app/features/design-description-editor/extensions/md-serializer';
 import { useFormContext } from 'react-hook-form';
-import { useDescriptionContext } from './description-context';
+import { useDescriptionContext } from '../context/description-context';
 
 const TextEditor = () => {
   const { setValue } = useFormContext();

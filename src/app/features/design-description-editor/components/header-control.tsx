@@ -1,6 +1,6 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/src/app/components/ui/dropdown-menu"
-import { Button } from '../ui/button'
-import { useDescriptionContext } from './description-context';
+import { Button } from '../../../components/ui/button'
+import { useDescriptionContext } from '../context/description-context';
 
 export default function HeaderControl() {
   const { editor } = useDescriptionContext();

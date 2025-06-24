@@ -1,31 +1,27 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { QuoteIcon, ChevronDownIcon } from 'lucide-react';
 import ControlButton from './control-button';
 import TableControl from './table-control';
-import { useDescriptionContext } from './description-context';
+import { useDescriptionContext } from '../context/description-context';
 import { Editor } from '@tiptap/react';
 
-const secondaryControls = [
-    {
-    name: "blockquote",
-    icon: <QuoteIcon size={16} />,
-    label: "Block quote",
-    command: (editor: Editor) => editor.chain().focus().toggleBlockquote().run(),
-    canExecute: (editor: Editor) => editor.can().chain().focus().toggleBlockquote().run(),
-    isActive: (editor: Editor) => editor.isActive("blockquote"),
-    },
-    // {
-    //     name: 'image',
-    //     label: 'Insert Image',
-    //     icon: <ImageIcon size={16} />,
-    //     command: () => console.log('Insert Image'),
-    // },
-];
-
 export default function DropdownToolbar() {
-    const [isSecondaryToolbarVisible, setSecondaryToolbarVisible] = useState(false);
-    const { editor } = useDescriptionContext();
+    const { editor, isSecondaryToolbarVisible, setSecondaryToolbarVisible } = useDescriptionContext();
     if (!editor) return null;
+
+    const secondaryControls = [
+        {
+        name: "blockquote",
+        icon: <QuoteIcon size={16} />,
+        label: "Block quote",
+        command: (editor: Editor) => {
+            editor.chain().focus().toggleBlockquote().run()
+            setSecondaryToolbarVisible(false);
+        },
+        canExecute: (editor: Editor) => editor.can().chain().focus().toggleBlockquote().run(),
+        isActive: (editor: Editor) => editor.isActive("blockquote"),
+        },
+    ];
     
     return (
         <div className="relative">

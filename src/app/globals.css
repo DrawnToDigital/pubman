@@ -133,3 +133,46 @@ Button {
     @apply cursor-pointer;
   }
 }
+
+/* Text Editor Styles */
+.tiptap {
+  @apply flex-1;
+}
+
+.ProseMirror-focused {
+  all: unset;
+}
+
+.prose h1 {
+  @apply text-2xl font-bold;
+}
+
+.prose h2 {
+  @apply text-xl font-bold;
+}
+
+.prose h3 {
+  @apply text-base font-bold;
+}
+
+.ProseMirror h1 {
+  @apply text-3xl font-bold;
+}
+
+.ProseMirror h2 {
+  @apply text-2xl font-bold;
+}
+
+.ProseMirror h3 {
+  @apply text-xl font-bold;
+}
+
+.ProseMirror table td::after,
+.ProseMirror table th::after {
+  content: '';
+  @apply absolute top-0 right-0 w-[5px] h-full bg-transparent cursor-col-resize;
+}
+
+.ProseMirror blockquote {
+  @apply border-l-4 border-gray-300 pl-4 text-gray-600 italic;
+}

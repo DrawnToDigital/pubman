@@ -7,14 +7,13 @@ import OrderedList from "@tiptap/extension-ordered-list";
 import ListItem from "@tiptap/extension-list-item";
 import Link from '@tiptap/extension-link'
 import Table from '@tiptap/extension-table'
+import CustomTableTab from '../extensions/custom-tab-table';
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import { useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Blockquote from '@tiptap/extension-blockquote';
-import './editor-styles.css';
-
 
 const extensions = [
   StarterKit.configure({
@@ -63,6 +62,7 @@ const extensions = [
       class: 'border border-gray-300 p-2 relative',
     },
   }),
+  CustomTableTab,
   Blockquote,
 ]
 
@@ -71,6 +71,8 @@ interface DescriptionContextProps {
   content: string;
   useMarkdown: boolean;
   setUseMarkdown: (value: boolean) => void;
+  isSecondaryToolbarVisible: boolean;
+  setSecondaryToolbarVisible: (value: boolean) => void;
 }
 
 const DescriptionContext = createContext<DescriptionContextProps | undefined>(undefined);
@@ -83,6 +85,7 @@ export const DescriptionProvider = ({
   children: React.ReactNode;
 }) => {
   const [useMarkdown, setUseMarkdown] = useState(true);
+  const [isSecondaryToolbarVisible, setSecondaryToolbarVisible] = useState(false);
   const editor = useEditor({
     extensions: extensions,
     content: content,
@@ -90,7 +93,14 @@ export const DescriptionProvider = ({
   })
 
   return (
-    <DescriptionContext.Provider value={{ editor, content, useMarkdown, setUseMarkdown }}>
+    <DescriptionContext.Provider value={{
+      editor,
+      content,
+      useMarkdown,
+      setUseMarkdown,
+      isSecondaryToolbarVisible,
+      setSecondaryToolbarVisible,
+    }}>
       {children}
     </DescriptionContext.Provider>
   );
@@ -99,7 +109,7 @@ export const DescriptionProvider = ({
 export const useDescriptionContext = () => {
   const context = useContext(DescriptionContext);
   if (!context) {
-    throw new Error('useEditorContext must be used within an EditorProvider');
+    throw new Error('useDescriptionContext must be used within a DescriptionProvider');
   }
   return context;
 };

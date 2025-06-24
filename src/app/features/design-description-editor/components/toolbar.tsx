@@ -5,7 +5,7 @@ import LinkControl from "./link-control";
 import HeaderControl from "./header-control";
 import ContentControl from "./content-control";
 import DropdownToolbar from "./dropdown-toolbar";
-import { useDescriptionContext } from './description-context';
+import { useDescriptionContext } from '../context/description-context';
 
 const simpleControls = [
   {
