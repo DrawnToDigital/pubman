@@ -60,6 +60,7 @@ const DesignDetailsPage = () => {
         printables_category: design.printables_category || null,
         makerworld_category: design.makerworld_category || null,
       });
+    setDescription(design.description);
   }
 
   useEffect(() => {
@@ -68,6 +69,7 @@ const DesignDetailsPage = () => {
         if (designID) {
           const designData = await fetchDesign(designID.toString());
           setDesign(designData);
+          setDescription(designData.description);
         }
       } catch (error) {
         log.error("Failed to fetch design:", error);
