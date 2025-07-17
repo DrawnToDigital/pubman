@@ -42,10 +42,10 @@ jobs:
       - name: Update Cask
         shell: bash
         run: |
-          version="${{ steps.release.outputs.version }}"
-          shaosxarm="${{ steps.release.outputs.shaosxarm }}"
-          shaosxintel="${{ steps.release.outputs.shaosxintel }}"
-          shalinux="${{ steps.release.outputs.shalinux }}"
+          version="${{ steps.release.outputs.result.version }}"
+          shaosxarm="${{ steps.release.outputs.result.shaosxarm }}"
+          shaosxintel="${{ steps.release.outputs.result.shaosxintel }}"
+          shalinux="${{ steps.release.outputs.result.shalinux }}"
 
           if [[ -z "$version" || -z "$shaosxarm" || -z "$shaosxintel" || -z "$shalinux" ]]; then
             echo "Missing required release info. Failing job."
