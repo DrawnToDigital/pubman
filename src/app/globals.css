@@ -134,7 +134,7 @@ Button {
   }
 }
 
-/* Overrides for description editor component */
+/* Text Editor Styles */
 .tiptap {
   @apply flex-1;
 }
@@ -165,4 +165,14 @@ Button {
 
 .ProseMirror h3 {
   @apply text-xl font-bold;
+}
+
+.ProseMirror table td::after,
+.ProseMirror table th::after {
+  content: '';
+  @apply absolute top-0 right-0 w-[5px] h-full bg-transparent cursor-col-resize;
+}
+
+.ProseMirror blockquote {
+  @apply border-l-4 border-gray-300 pl-4 text-gray-600 italic;
 }

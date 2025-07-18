@@ -9,7 +9,8 @@ import { createDesign } from "@/src/app/actions/design";
 import { FormControl, FormField, FormItem } from "@/src/app/components/ui/form";
 import { Input } from "@/src/app/components/ui/input";
 import log from 'electron-log/renderer';
-import TextEditor from "@/src/app/components/text-editor/editor";
+import TextEditor from "@/src/app/features/design-description-editor/components/editor";
+import { DescriptionProvider } from '@/src/app/features/design-description-editor/context/description-context'
 import {printablesCategories} from "@/src/app/api/printables/printables-lib";
 import { makerWorldCategories } from "@/src/app/api/makerworld/makerworld-lib";
 
@@ -31,7 +32,6 @@ const licenseMap: Record<string, string> = {
 
 const DesignForm = () => {
   const router = useRouter();
-  const [description, setDescription] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const form = useForm<DesignCreateSchema>({
@@ -60,7 +60,6 @@ const DesignForm = () => {
   const onSubmit = async (data: DesignCreateSchema) => {
     setErrorMessage(null); // Clear previous errors
     try {
-      data.description = description;
       const response = await createDesign(data);
       if (response && response.id) {
         router.push(`/design/${response.id}`);
@@ -135,7 +134,9 @@ const DesignForm = () => {
                 Description
               </label>
               <FormControl>
-                <TextEditor onContentChange={setDescription} />
+                <DescriptionProvider content={form.watch("description") || ""}>
+                  <TextEditor />
+                </DescriptionProvider>
               </FormControl>
             </FormItem>
           )}

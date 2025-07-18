@@ -261,7 +261,7 @@ export const designUpdateSchema = z.object({
     summary: z.string().nullish(),
     description: z.string().nullish(),
     license_key: licenses.nullish(),
-    tags: z.string().nullish(),
+    tags: z.array(z.object({ tag: z.string(), platform: platforms })),
     thingiverse_category: thingiverseCategories.nullish(),
     printables_category: printablesCategories.nullish(),
     makerworld_category: makerWorldCategories.nullish(),

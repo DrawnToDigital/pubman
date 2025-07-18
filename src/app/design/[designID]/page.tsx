@@ -5,20 +5,22 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/src/app/components/ui/button";
 import { fetchDesign, updateDesign } from "@/src/app/actions/design";
-import { DesignSchema, thingiverseCategories, pubmanImageFileTypes } from "@/src/app/components/design/types";
-import {FieldValues, useForm} from 'react-hook-form';
+import { DesignSchema, DesignUpdateSchema, designUpdateSchema, thingiverseCategories, pubmanImageFileTypes } from "@/src/app/components/design/types";
+import {FormProvider, useForm} from 'react-hook-form';
 import {addFile, removeFile} from "@/src/app/actions/file";
 import {Input} from "@/src/app/components/ui/input";
 import {useRouter} from "next/navigation";
 import { ThingiversePublishing } from "@/src/app/components/design/thingiverse-publishing";
 import { PrintablesPublishing } from "@/src/app/components/design/printables-publishing";
 import log from 'electron-log/renderer';
-import TextEditor from "../../components/text-editor/editor";
+import TextEditor from "../../features/design-description-editor/components/editor";
+import { DescriptionProvider } from '@/src/app/features/design-description-editor/context/description-context'
 import {printablesCategories} from "@/src/app/api/printables/printables-lib";
 import {makerWorldCategories} from "@/src/app/api/makerworld/makerworld-lib";
 import {MakerWorldPublishing} from "@/src/app/components/design/makerworld-publishing";
 import Image from 'next/image';
 import {CircleDashed, ExternalLinkIcon, RefreshCwIcon} from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 const getLicenseName = (licenseKey: string): string => {
   const licenseMap: Record<string, string> = {
@@ -43,19 +45,32 @@ const getLicenseName = (licenseKey: string): string => {
 const DesignDetailsPage = () => {
   const { designID } = useParams<{ designID: string }>();
   const [design, setDesign] = useState<DesignSchema | null>(null);
-  const [description, setDescription] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  // const { register, reset, formState: { errors } } = useForm();
   const router = useRouter();
+  const form = useForm<DesignUpdateSchema>({
+    resolver: zodResolver(designUpdateSchema),
+    defaultValues: {
+      main_name: design?.main_name,
+      summary: design?.summary,
+      description: design?.description,
+      license_key: design?.license_key,
+      tags: design?.tags,
+      thingiverse_category: design?.thingiverse_category,
+      printables_category: design?.printables_category,
+      makerworld_category: design?.makerworld_category,
+    },
+  });
+  const { reset, register, handleSubmit, formState: { errors } } = form;
   const resetForm = (design: DesignSchema) => {
     reset({
         main_name: design.main_name,
         summary: design.summary,
         description: design.description,
         license_key: design.license_key,
-        tags: design.tags.map(tag => tag.tag).join(', '),
+        tags: design.tags,
         thingiverse_category: design.thingiverse_category || null,
         printables_category: design.printables_category || null,
         makerworld_category: design.makerworld_category || null,
@@ -95,15 +110,29 @@ const DesignDetailsPage = () => {
     };
   }, [editMode]);
 
-  const onSubmit = async (data: FieldValues) => {
+  useEffect(() => {
+    // Set/unset global edit flag for navigation guards
+    if (editMode) {
+      // @ts-expect-error global var
+      window.__pubman_isEditing = true;
+    } else {
+      // @ts-expect-error global var
+      window.__pubman_isEditing = false;
+    }
+    return () => {
+      // @ts-expect-error global var
+      window.__pubman_isEditing = false;
+    };
+  }, [editMode]);
+
+  const onSubmit = async (data: DesignUpdateSchema) => {
     if (!design) return;
 
     try {
-      data.description = description;
-      const updatePayload: FieldValues = { ...data };
-      if (data.thingiverse_category === undefined || data.thingiverse_category === null || data.thingiverse_category === '') delete updatePayload.thingiverse_category;
-      if (data.printables_category === undefined || data.printables_category === null || data.printables_category === '') delete updatePayload.printables_category;
-      if (data.makerworld_category === undefined || data.makerworld_category === null || data.makerworld_category === '') delete updatePayload.makerworld_category;
+      const updatePayload: DesignUpdateSchema = { ...data };
+      if (data.thingiverse_category === undefined || data.thingiverse_category === null) delete updatePayload.thingiverse_category;
+      if (data.printables_category === undefined || data.printables_category === null) delete updatePayload.printables_category;
+      if (data.makerworld_category === undefined || data.makerworld_category === null) delete updatePayload.makerworld_category;
 
       await updateDesign(designID, updatePayload);
       const updatedDesign = await fetchDesign(designID);
@@ -258,163 +287,173 @@ const DesignDetailsPage = () => {
 
         {editMode ? (
           /* Edit Form */
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <Input
-                {...register('main_name', { required: true })}
-                defaultValue={design.main_name}
-                className="w-full"
-              />
-              {errors.main_name && <p className="text-red-500 text-sm">Name is required</p>}
-            </div>
+          <FormProvider {...form} >
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Name</label>
+                  <Input
+                    {...register('main_name', { required: true })}
+                    defaultValue={design.main_name}
+                    className="w-full"
+                  />
+                  {errors.main_name && <p className="text-red-500 text-sm">Name is required</p>}
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Summary</label>
-              <textarea
-                {...register('summary', { required: true })}
-                defaultValue={design.summary}
-                className="w-full border rounded-md p-2"
-                rows={2}
-              />
-              {errors.summary && <p className="text-red-500 text-sm">Summary is required</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
-              <div className="w-full">
-                <TextEditor
-                  onContentChange={setDescription}
-                  content={design.description}
+              <div>
+                <label className="block text-sm font-medium mb-1">Summary</label>
+                <textarea
+                  {...register('summary', { required: true })}
+                  defaultValue={design.summary}
+                  className="w-full border rounded-md p-2"
+                  rows={2}
                 />
+                {errors.summary && <p className="text-red-500 text-sm">Summary is required</p>}
               </div>
-              {errors.description && <p className="text-red-500 text-sm">Description is required</p>}
-            </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <div className="w-full">
+                  <DescriptionProvider content={design.description} >
+                    <TextEditor />
+                  </DescriptionProvider>
+                </div>
+                {errors.description && <p className="text-red-500 text-sm">Description is required</p>}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Tags</label>
-              <Input
-                {...register('tags', { required: true })}
-                defaultValue={design.tags.map(tag => tag.tag).join(', ')}
-                className="w-full"
-              />
-              {errors.tags && <p className="text-red-500 text-sm">Tags are required</p>}
-            </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Tags</label>
+                <Input
+                  {...register('tags', { required: true })}
+                  defaultValue={design.tags.map(tag => tag.tag).join(', ')}
+                  className="w-full"
+                />
+                {errors.tags && <p className="text-red-500 text-sm">Tags are required</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Tags</label>
+                <Input
+                  {...register('tags', { required: true })}
+                  defaultValue={design.tags.map(tag => tag.tag).join(', ')}
+                  className="w-full"
+                />
+                {errors.tags && <p className="text-red-500 text-sm">Tags are required</p>}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Categories</label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="thingiverse_category" className="text-sm font-medium mb-1">Thingiverse Category</label>
-                  <select
-                    id="thingiverse_category"
-                    {...register('thingiverse_category')}
-                    defaultValue={design.thingiverse_category || ""}
-                    className="border border-gray-300 rounded-md p-2 w-full"
-                  >
-                    <option value="">
-                      Select a category
-                    </option>
-                    {thingiverseCategories.options.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
+              <div>
+                <label className="block text-sm font-medium mb-1">Categories</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="thingiverse_category" className="text-sm font-medium mb-1">Thingiverse Category</label>
+                    <select
+                      id="thingiverse_category"
+                      {...register('thingiverse_category')}
+                      defaultValue={design.thingiverse_category || ""}
+                      className="border border-gray-300 rounded-md p-2 w-full"
+                    >
+                      <option value="">
+                        Select a category
                       </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="printables_category" className="text-sm font-medium mb-1">Printables Category</label>
-                  <select
-                    id="printables_category"
-                    {...register('printables_category')}
-                    defaultValue={design.printables_category || ""}
-                    className="border border-gray-300 rounded-md p-2 w-full"
-                  >
-                    <option value="">
-                      Select a category
-                    </option>
-                    {Object.entries(printablesCategories).map(([category, cat]) => {
-                      if ('disabled' in cat && cat.disabled) {
-                        return (
-                          <option key={category} value={category} disabled>
-                            {category}
-                          </option>
-                        );
-                      } else {
-                        return (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        );
-                      }
-                    })}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="makerworld_category" className="text-sm font-medium mb-1">MakerWorld Category</label>
-                  <select
-                    id="makerworld_category"
-                    {...register('makerworld_category')}
-                    defaultValue={design.makerworld_category || ""}
-                    className="border border-gray-300 rounded-md p-2 w-full"
-                  >
-                    <option value="">
-                      Select a category
-                    </option>
-                    {Object.entries(makerWorldCategories).map(([category, cat]) => {
-                      if ('disabled' in cat && cat.disabled) {
-                        return (
-                          <option key={category} value={category} disabled>
-                            {category}
-                          </option>
-                        );
-                      } else {
-                        return (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        );
-                      }
-                    })}
-                  </select>
+                      {thingiverseCategories.options.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="printables_category" className="text-sm font-medium mb-1">Printables Category</label>
+                    <select
+                      id="printables_category"
+                      {...register('printables_category')}
+                      defaultValue={design.printables_category || ""}
+                      className="border border-gray-300 rounded-md p-2 w-full"
+                    >
+                      <option value="">
+                        Select a category
+                      </option>
+                      {Object.entries(printablesCategories).map(([category, cat]) => {
+                        if ('disabled' in cat && cat.disabled) {
+                          return (
+                            <option key={category} value={category} disabled>
+                              {category}
+                            </option>
+                          );
+                        } else {
+                          return (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          );
+                        }
+                      })}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="makerworld_category" className="text-sm font-medium mb-1">MakerWorld Category</label>
+                    <select
+                      id="makerworld_category"
+                      {...register('makerworld_category')}
+                      defaultValue={design.makerworld_category || ""}
+                      className="border border-gray-300 rounded-md p-2 w-full"
+                    >
+                      <option value="">
+                        Select a category
+                      </option>
+                      {Object.entries(makerWorldCategories).map(([category, cat]) => {
+                        if ('disabled' in cat && cat.disabled) {
+                          return (
+                            <option key={category} value={category} disabled>
+                              {category}
+                            </option>
+                          );
+                        } else {
+                          return (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          );
+                        }
+                      })}
+                    </select>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">License</label>
-              <select
-                {...register('license_key', { required: true })}
-                defaultValue={design.license_key}
-                className="w-full border rounded-md p-2"
-              >
-                <option value="" disabled>
-                  Select a license
-                </option>
-                <option value="CC">Creative Commons</option>
-                <option value="CC0">Creative Commons — Public Domain</option>
-                <option value="CC-BY">Creative Commons — Attribution</option>
-                <option value="CC-BY-SA">Creative Commons — Attribution — Share Alike</option>
-                <option value="CC-BY-ND">Creative Commons — Attribution — NoDerivatives</option>
-                <option value="CC-BY-NC">Creative Commons — Attribution — Noncommercial</option>
-                <option value="CC-BY-NC-SA">Creative Commons — Attribution — Noncommercial — Share Alike</option>
-                <option value="CC-BY-NC-ND">Creative Commons — Attribution — Noncommercial — NoDerivatives</option>
-                <option value="GPL-2.0">GNU General Public License v2.0</option>
-                <option value="GPL-3.0">GNU General Public License v3.0</option>
-                <option value="LGPL">GNU Lesser General Public License</option>
-                <option value="BSD">BSD License</option>
-                <option value="SDFL">Standard Digital File License</option>
-              </select>
-            </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">License</label>
+                <select
+                  {...register('license_key', { required: true })}
+                  defaultValue={design.license_key}
+                  className="w-full border rounded-md p-2"
+                >
+                  <option value="" disabled>
+                    Select a license
+                  </option>
+                  <option value="CC">Creative Commons</option>
+                  <option value="CC0">Creative Commons — Public Domain</option>
+                  <option value="CC-BY">Creative Commons — Attribution</option>
+                  <option value="CC-BY-SA">Creative Commons — Attribution — Share Alike</option>
+                  <option value="CC-BY-ND">Creative Commons — Attribution — NoDerivatives</option>
+                  <option value="CC-BY-NC">Creative Commons — Attribution — Noncommercial</option>
+                  <option value="CC-BY-NC-SA">Creative Commons — Attribution — Noncommercial — Share Alike</option>
+                  <option value="CC-BY-NC-ND">Creative Commons — Attribution — Noncommercial — NoDerivatives</option>
+                  <option value="GPL-2.0">GNU General Public License v2.0</option>
+                  <option value="GPL-3.0">GNU General Public License v3.0</option>
+                  <option value="LGPL">GNU Lesser General Public License</option>
+                  <option value="BSD">BSD License</option>
+                  <option value="SDFL">Standard Digital File License</option>
+                </select>
+              </div>
 
-            <div className="flex space-x-4">
-              <Button type="submit">Save Changes</Button>
-              <Button variant="outline" onClick={() => {
-                resetForm(design)
-                setEditMode(false)
-              }}>Cancel</Button>
-            </div>
-          </form>
+              <div className="flex space-x-4">
+                <Button type="submit">Save Changes</Button>
+                <Button variant="outline" onClick={() => {
+                  resetForm(design)
+                  setEditMode(false)
+                }}>Cancel</Button>
+              </div>
+            </form>
+          </FormProvider>
         ) : (
           /* Display View */
           <div className="space-y-6">
