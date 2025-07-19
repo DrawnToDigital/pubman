@@ -150,8 +150,26 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
   return (
     <div className="mt-6 p-4 border border-gray-200 rounded-md">
       <h2 className="text-xl font-bold">{platformName} Publishing</h2>
+      
+      {/* Show status information for draft/published designs regardless of authentication */}
+      {(platformStatus.status === 'draft' || platformStatus.status === 'published') && (
+        <div className="flex items-center justify-between mb-4">
+          <span>Status: {platformStatus.status === 'draft' ? 'Draft' : 'Published'}</span>
+          {platformStatus.url && (
+            <Link
+              href={platformStatus.url}
+              title={platformStatus.url}
+              target="_blank"
+              className="text-blue-500 hover:underline block mt-1"
+            >
+              View on {platformName}
+            </Link>
+          )}
+        </div>
+      )}
+
       {!isAuthenticated ? (
-        <p>Please log in to {platformName} to publish this design.</p>
+        <p>Please log in to {platformName} to publish.</p>
       ) : (
         <div className="space-y-4">
           {platformStatus.status === 'not_published' && (
@@ -166,19 +184,6 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
 
           {platformStatus.status === 'draft' && (
             <>
-              <div className="flex items-center justify-between">
-                <span>Status: Draft</span>
-                {platformStatus.url && (
-                  <Link
-                    href={platformStatus.url}
-                    title={platformStatus.url}
-                    target="_blank"
-                    className="text-blue-500 hover:underline block mt-1"
-                  >
-                    View on {platformName}
-                  </Link>
-                )}
-              </div>
               {platformStatus.id && needsSync() && (
                 <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 my-4" role="alert">
                   <span className="font-bold">Design Modified:</span> Click <i>Update Draft</i> to sync your changes
@@ -206,40 +211,20 @@ export function PlatformPublishing(props: PlatformPublishingInternalProps) {
 
           {platformStatus.status === 'published' && (
             <>
-              <div className="flex items-center justify-between">
-                <span>Status: Published</span>
-                {platformStatus.url && (
-                  <Link
-                    href={platformStatus.url}
-                    title={platformStatus.url}
-                    target="_blank"
-                    className="text-blue-500 hover:underline block mt-1"
-                  >
-                    View on {platformName}
-                  </Link>
-                )}
-              </div>
               {platformStatus.id && needsSync() && (
                 <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 my-4" role="alert">
                   <span className="font-bold">Design Modified:</span> Click <i>Update Published</i> to sync your changes
                 </div>
               )}
-              <div className="flex space-x-2">
-                <Button
-                  onClick={handleUpdateModel}
-                  disabled={editMode || isUpdating}
-                  className="flex-1"
-                  variant="outline"
-                >
-                  {isUpdating ? "Updating Design..." : "Update Published Design"}
-                </Button>
-                <Button
-                  disabled={true}
-                  className="flex-1"
-                >
-                  Already Published
-                </Button>
-              </div>
+              {/* Only show the "Update Published Design" button, hide the disabled "Already Published" button */}
+              <Button
+                onClick={handleUpdateModel}
+                disabled={editMode || isUpdating}
+                className="w-full"
+                variant="outline"
+              >
+                {isUpdating ? "Updating Design..." : "Update Published Design"}
+              </Button>
             </>
           )}
         </div>
