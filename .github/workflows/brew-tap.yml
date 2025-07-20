@@ -41,13 +41,13 @@ jobs:
 
       - name: Update Cask
         shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.result.version }}
+          SHAOSXARM: ${{ steps.release.outputs.result.shaosxarm }}
+          SHAOSXINTEL: ${{ steps.release.outputs.result.shaosxintel }}
+          SHALINUX: ${{ steps.release.outputs.result.shalinux }}
         run: |
-          version="${{ steps.release.outputs.result.version }}"
-          shaosxarm="${{ steps.release.outputs.result.shaosxarm }}"
-          shaosxintel="${{ steps.release.outputs.result.shaosxintel }}"
-          shalinux="${{ steps.release.outputs.result.shalinux }}"
-
-          if [[ -z "$version" || -z "$shaosxarm" || -z "$shaosxintel" || -z "$shalinux" ]]; then
+          if [[ -z "$VERSION" || -z "$SHAOSXARM" || -z "$SHAOSXINTEL" || -z "$SHALINUX" ]]; then
             echo "Missing required release info. Failing job."
             exit 1
           fi
@@ -55,15 +55,15 @@ jobs:
           cd homebrew-pubman
 
           # Update version and SHA256
-          sed -i "s|version \".*\"|version \"$version\"|" Casks/pubman.rb
-          sed -i "s|sha256 arm:   \".*\"|sha256 arm:   \"$shaosxarm\"|" Casks/pubman.rb
-          sed -i "s|intel: \".*\"|intel: \"$shaosxintel\"|" Casks/pubman.rb
-          sed -i "s|version \".*\"|version \"$version\"|" Formula/pubman-linux.rb
-          sed -i "s|sha256 \".*\"|sha256 \"$shalinux\"|" Formula/pubman-linux.rb
+          sed -i "s|version \".*\"|version \"$VERSION\"|" Casks/pubman.rb
+          sed -i "s|sha256 arm:   \".*\"|sha256 arm:   \"$SHAOSXARM\"|" Casks/pubman.rb
+          sed -i "s|intel: \".*\"|intel: \"$SHAOSXINTEL\"|" Casks/pubman.rb
+          sed -i "s|version \".*\"|version \"$VERSION\"|" Formula/pubman-linux.rb
+          sed -i "s|sha256 \".*\"|sha256 \"$SHALINUX\"|" Formula/pubman-linux.rb
 
           # Commit and push changes
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add Casks/pubman.rb Formula/pubman-linux.rb
-          git commit -m "Update cask to version $version"
+          git commit -m "Update cask to version $VERSION"
           git push
