@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld("electron", {
   },
   fs: {
     stat: (filePath: string) => ipcRenderer.invoke("fs:stat", filePath),
+    readFile: (filePath: string) => ipcRenderer.invoke("fs:readFile", filePath),
   },
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke("shell:openExternal", url),
@@ -22,6 +23,8 @@ contextBridge.exposeInMainWorld("electron", {
   makerworld: {
     auth: () => ipcRenderer.invoke("makerworld:auth"),
     logout: () => ipcRenderer.invoke("makerworld:logout"),
+    fetch: (url: string, options: { method?: string; headers?: Record<string, string>; body?: string }) =>
+      ipcRenderer.invoke("makerworld:fetch", url, options),
   },
   getDBPath: () => ipcRenderer.invoke("get-db-path"),
   getAppDataPath: () => ipcRenderer.invoke("get-app-data-path"),

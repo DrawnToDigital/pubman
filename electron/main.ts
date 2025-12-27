@@ -401,6 +401,71 @@ app.whenReady().then(() => {
     return { success: true };
   });
 
+  // MakerWorld API fetch using the authenticated session
+  // This routes requests through Electron's session which has Cloudflare cookies
+  // Only allows requests to MakerWorld/BambuLab domains for security
+  const ALLOWED_MAKERWORLD_DOMAINS = [
+    "makerworld.com",
+    "api.bambulab.com",
+    "bambulab.com",
+  ];
+
+  ipcMain.handle("makerworld:fetch", async (event, url: string, options: { method?: string; headers?: Record<string, string>; body?: string }) => {
+    // Validate URL is to an allowed domain
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      throw new Error("Invalid URL");
+    }
+
+    const isAllowedDomain = ALLOWED_MAKERWORLD_DOMAINS.some(
+      domain => parsedUrl.hostname === domain || parsedUrl.hostname.endsWith(`.${domain}`)
+    );
+    if (!isAllowedDomain) {
+      log.error(`makerworld:fetch blocked request to unauthorized domain: ${parsedUrl.hostname}`);
+      throw new Error("Request to unauthorized domain");
+    }
+
+    const sess = session.fromPartition("persist:makerworld");
+
+    try {
+      const response = await sess.fetch(url, {
+        method: options.method || "GET",
+        headers: options.headers,
+        body: options.body,
+      } as RequestInit);
+
+      const body = await response.text();
+      return {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        body,
+      };
+    } catch (error) {
+      log.error("MakerWorld fetch error:", error);
+      throw error;
+    }
+  });
+
+  // File system read for client-side file access
+  // Only allows reading from the assets directory to prevent path traversal attacks
+  ipcMain.handle("fs:readFile", async (event, filePath: string) => {
+    // Resolve to absolute paths to prevent traversal attacks like "/assets/../../../etc/passwd"
+    const resolvedAssetsDir = path.resolve(assetsDir);
+    const resolvedFilePath = path.resolve(filePath);
+
+    // Ensure the resolved path is within the assets directory
+    if (!resolvedFilePath.startsWith(resolvedAssetsDir + path.sep) && resolvedFilePath !== resolvedAssetsDir) {
+      log.error(`fs:readFile access denied: ${filePath} resolves outside assets directory`);
+      throw new Error("Access denied: path outside assets directory");
+    }
+
+    const buffer = await fs.readFile(resolvedFilePath);
+    return buffer;
+  });
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
