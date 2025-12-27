@@ -6,10 +6,12 @@ const MAKERWORLD_PLATFORM_ID = 5;
 const PUBLISHED_STATUS_DRAFT = 1;
 const PUBLISHED_STATUS_PUBLISHED = 2;
 
+type RecordStatus = 'draft' | 'published';
+
 interface RecordRequestBody {
   designId: string;
   platformDesignId: string | number;
-  status: string;
+  status: RecordStatus;
 }
 
 export async function POST(request: NextRequest) {
@@ -18,6 +20,10 @@ export async function POST(request: NextRequest) {
 
     if (!designId || !platformDesignId || !status) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
+    }
+
+    if (status !== 'draft' && status !== 'published') {
+      return NextResponse.json({ error: 'Invalid status: must be "draft" or "published"' }, { status: 400 });
     }
 
     const db = getDatabase();
@@ -30,20 +36,15 @@ export async function POST(request: NextRequest) {
     `).get(MAKERWORLD_PLATFORM_ID, designId);
 
     if (existing) {
-      // Update existing record
-      if (status === 'published') {
-        db.prepare(`
-          UPDATE design_platform
-          SET published_status = ?, platform_design_id = ?, updated_at = datetime('now'), published_at = datetime('now')
-          WHERE platform_id = ? AND design_id = ?
-        `).run(publishedStatus, platformDesignId, MAKERWORLD_PLATFORM_ID, designId);
-      } else {
-        db.prepare(`
-          UPDATE design_platform
-          SET published_status = ?, platform_design_id = ?, updated_at = datetime('now')
-          WHERE platform_id = ? AND design_id = ?
-        `).run(publishedStatus, platformDesignId, MAKERWORLD_PLATFORM_ID, designId);
-      }
+      // Update existing record (conditionally set published_at only when publishing)
+      db.prepare(`
+        UPDATE design_platform
+        SET published_status = ?,
+            platform_design_id = ?,
+            updated_at = datetime('now'),
+            published_at = CASE WHEN ? = 'published' THEN datetime('now') ELSE published_at END
+        WHERE platform_id = ? AND design_id = ?
+      `).run(publishedStatus, platformDesignId, status, MAKERWORLD_PLATFORM_ID, designId);
     } else {
       // Insert new record
       db.prepare(`
