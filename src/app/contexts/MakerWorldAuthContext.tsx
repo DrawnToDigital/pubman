@@ -12,7 +12,17 @@ declare global {
       makerworld?: {
         auth: () => Promise<{ accessToken: string }>;
         logout: () => Promise<{ success: boolean }>;
+        fetch: (url: string, options: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<{
+          ok: boolean;
+          status: number;
+          statusText: string;
+          body: string;
+        }>;
       };
+      fs?: {
+        readFile: (filePath: string) => Promise<ArrayBuffer>;
+      };
+      getAppDataPath?: () => Promise<string>;
     };
   }
 }

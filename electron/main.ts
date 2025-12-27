@@ -401,6 +401,37 @@ app.whenReady().then(() => {
     return { success: true };
   });
 
+  // MakerWorld API fetch using the authenticated session
+  // This routes requests through Electron's session which has Cloudflare cookies
+  ipcMain.handle("makerworld:fetch", async (event, url: string, options: { method?: string; headers?: Record<string, string>; body?: string }) => {
+    const sess = session.fromPartition("persist:makerworld");
+
+    try {
+      const response = await sess.fetch(url, {
+        method: options.method || "GET",
+        headers: options.headers,
+        body: options.body,
+      } as RequestInit);
+
+      const body = await response.text();
+      return {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        body,
+      };
+    } catch (error) {
+      log.error("MakerWorld fetch error:", error);
+      throw error;
+    }
+  });
+
+  // File system read for client-side file access
+  ipcMain.handle("fs:readFile", async (event, filePath: string) => {
+    const buffer = await fs.readFile(filePath);
+    return buffer;
+  });
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
