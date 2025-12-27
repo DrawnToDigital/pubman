@@ -99,9 +99,21 @@ async function initializeAppData() {
   // Ensure appDataPath and db directory exist
   await fs.mkdir(dbDir, { recursive: true });
 
-  if (!existsSync(dbPath)) {
-    // Create or open the SQLite database
-    const db = new Database(dbPath);
+  // Open or create the database
+  const db = new Database(dbPath);
+
+  // Check if database needs initialization by looking for core tables
+  // This handles the race condition where Next.js might create an empty db file
+  // before Electron can initialize it
+  let needsInit = false;
+  try {
+    const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='designer'").get();
+    needsInit = !tableCheck;
+  } catch {
+    needsInit = true;
+  }
+
+  if (needsInit) {
     log.info(`DB init script ${dbInitFilePath}`);
 
     // Read and execute SQL commands from init.txt
@@ -109,11 +121,7 @@ async function initializeAppData() {
     db.exec(initSQL);
 
     log.info("Database initialized successfully.");
-    db.close();
   }
-
-  // Open DB for migrations
-  const db = new Database(dbPath);
 
   // Run migrations if any
   await runMigrations(db);
