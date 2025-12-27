@@ -284,6 +284,123 @@ app.whenReady().then(() => {
   ipcMain.handle("dialog:showMessageBoxSync", (event, args) => {
     return dialog.showMessageBoxSync(args);
   });
+
+  // MakerWorld authentication via BrowserWindow
+  // Uses BambuLab's SSO flow to handle Cloudflare challenges in a real browser context
+  ipcMain.handle("makerworld:auth", async () => {
+    const AUTH_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+
+      const authWindow = new BrowserWindow({
+        width: 500,
+        height: 700,
+        parent: mainWindow || undefined,
+        modal: true,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          partition: "persist:makerworld", // Persistent session for cookies
+        },
+      });
+
+      // Timeout to prevent indefinite hang if user abandons auth
+      const timeout = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          log.warn("MakerWorld auth timed out");
+          authWindow.close();
+          reject(new Error("Authentication timed out"));
+        }
+      }, AUTH_TIMEOUT_MS);
+
+      // Helper to extract token from MakerWorld session cookies
+      const extractTokenFromSession = async (): Promise<string | null> => {
+        const cookies = await session.fromPartition("persist:makerworld").cookies.get({ domain: ".makerworld.com" });
+        const tokenCookie = cookies.find(c => c.name === "token");
+        return tokenCookie?.value || null;
+      };
+
+      // Helper to handle successful authentication
+      const handleAuthSuccess = (token: string, source: string) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        log.info(`MakerWorld auth successful via ${source}`);
+        authWindow.close();
+        resolve({ accessToken: token });
+      };
+
+      // Helper to handle authentication failure
+      const handleAuthFailure = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        log.error("MakerWorld auth failed:", error.message);
+        authWindow.close();
+        reject(error);
+      };
+
+      // Build the login URL programmatically for maintainability
+      // Redirect flow:
+      // 1. User logs in at bambulab.com
+      // 2. BambuLab redirects to makerworld.com/api/sign-in/ticket with a ticket
+      // 3. MakerWorld sets a 'token' cookie and redirects to makerworld.com/en
+      const makerWorldFinalUrl = "https://makerworld.com/en";
+      const makerWorldTicketUrl = `https://makerworld.com/api/sign-in/ticket?to=${encodeURIComponent(makerWorldFinalUrl)}`;
+      const loginUrl = `https://bambulab.com/en-us/sign-in?ticket=1&to=${encodeURIComponent(makerWorldTicketUrl)}`;
+
+      authWindow.loadURL(loginUrl);
+
+      // Monitor navigation to detect successful login
+      authWindow.webContents.on("will-redirect", async (event, url) => {
+        log.info("MakerWorld auth redirect:", url);
+
+        // When redirected to makerworld.com/en, authentication is complete
+        if (url.startsWith("https://makerworld.com/en")) {
+          event.preventDefault();
+
+          const token = await extractTokenFromSession();
+          if (token) {
+            handleAuthSuccess(token, "will-redirect");
+          } else {
+            handleAuthFailure(new Error("No token cookie found after authentication"));
+          }
+        }
+      });
+
+      // Also check did-navigate for cases where will-redirect doesn't fire
+      authWindow.webContents.on("did-navigate", async (event, url) => {
+        log.info("MakerWorld auth navigated to:", url);
+
+        if (url.startsWith("https://makerworld.com/en")) {
+          const token = await extractTokenFromSession();
+          if (token) {
+            handleAuthSuccess(token, "did-navigate");
+          }
+        }
+      });
+
+      authWindow.on("closed", () => {
+        // Only reject if promise hasn't been settled yet
+        if (!settled) {
+          settled = true;
+          clearTimeout(timeout);
+          reject(new Error("Authentication window was closed"));
+        }
+      });
+    });
+  });
+
+  // Clear MakerWorld session cookies for logout
+  ipcMain.handle("makerworld:logout", async () => {
+    const sess = session.fromPartition("persist:makerworld");
+    await sess.clearStorageData({ storages: ["cookies"] });
+    log.info("MakerWorld session cookies cleared");
+    return { success: true };
+  });
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
