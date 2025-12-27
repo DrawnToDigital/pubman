@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "../../../../lib/betterSqlite3";
 import log from "electron-log/renderer";
 
@@ -6,9 +6,15 @@ const MAKERWORLD_PLATFORM_ID = 5;
 const PUBLISHED_STATUS_DRAFT = 1;
 const PUBLISHED_STATUS_PUBLISHED = 2;
 
-export async function POST(request) {
+interface RecordRequestBody {
+  designId: string;
+  platformDesignId: string | number;
+  status: string;
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const { designId, platformDesignId, status } = await request.json();
+    const { designId, platformDesignId, status }: RecordRequestBody = await request.json();
 
     if (!designId || !platformDesignId || !status) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
@@ -50,7 +56,8 @@ export async function POST(request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     log.error('Failed to record MakerWorld status:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

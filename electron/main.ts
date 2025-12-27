@@ -427,8 +427,14 @@ app.whenReady().then(() => {
   });
 
   // File system read for client-side file access
+  // Only allows reading from the assets directory to prevent path traversal attacks
   ipcMain.handle("fs:readFile", async (event, filePath: string) => {
-    const buffer = await fs.readFile(filePath);
+    const normalizedPath = path.normalize(filePath);
+    if (!normalizedPath.startsWith(assetsDir)) {
+      log.error(`fs:readFile access denied: ${filePath} is outside assets directory`);
+      throw new Error("Access denied: path outside assets directory");
+    }
+    const buffer = await fs.readFile(normalizedPath);
     return buffer;
   });
 

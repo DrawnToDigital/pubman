@@ -171,11 +171,11 @@ export class MakerWorldClientAPI {
       cdnUrl: string;
     }
   ): Promise<{ url: string }> {
-    // Generate the S3 key
+    // Generate the S3 key with cryptographically secure random ID
     const today = new Date().toISOString().slice(0, 10);
-    const randomHex = Math.random().toString(16).slice(2, 16);
+    const randomId = crypto.randomUUID();
     const fileExt = fileName.split('.').pop();
-    const key = `makerworld/user/${userId}/draft/${today}_${randomHex}.${fileExt}`;
+    const key = `makerworld/user/${userId}/draft/${today}_${randomId}.${fileExt}`;
 
     // For S3 upload, we need to use AWS SDK on the client side
     // Since we're in a browser context, we'll use a simpler approach with presigned URLs
