@@ -284,6 +284,86 @@ app.whenReady().then(() => {
   ipcMain.handle("dialog:showMessageBoxSync", (event, args) => {
     return dialog.showMessageBoxSync(args);
   });
+
+  // MakerWorld authentication via BrowserWindow
+  // Uses BambuLab's SSO flow to handle Cloudflare challenges in a real browser context
+  ipcMain.handle("makerworld:auth", async () => {
+    return new Promise((resolve, reject) => {
+      const authWindow = new BrowserWindow({
+        width: 500,
+        height: 700,
+        parent: mainWindow || undefined,
+        modal: true,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          partition: "persist:makerworld", // Persistent session for cookies
+        },
+      });
+
+      // The redirect flow:
+      // 1. User logs in at bambulab.com
+      // 2. BambuLab redirects to makerworld.com/api/sign-in/ticket with a ticket
+      // 3. MakerWorld sets a 'token' cookie and redirects to makerworld.com/en
+      const loginUrl = "https://bambulab.com/en-us/sign-in?ticket=1&to=https%3A%2F%2Fmakerworld.com%2Fapi%2Fsign-in%2Fticket%3Fto%3Dhttps%253A%252F%252Fmakerworld.com%252Fen";
+
+      authWindow.loadURL(loginUrl);
+
+      // Monitor navigation to detect successful login
+      authWindow.webContents.on("will-redirect", async (event, url) => {
+        log.info("MakerWorld auth redirect:", url);
+
+        // When redirected to makerworld.com/en, authentication is complete
+        if (url.startsWith("https://makerworld.com/en")) {
+          event.preventDefault();
+
+          // Get cookies from the makerworld session
+          const cookies = await session.fromPartition("persist:makerworld").cookies.get({ domain: ".makerworld.com" });
+          const tokenCookie = cookies.find(c => c.name === "token");
+
+          if (tokenCookie) {
+            log.info("MakerWorld auth successful, token obtained");
+            authWindow.close();
+            resolve({ accessToken: tokenCookie.value });
+          } else {
+            log.error("MakerWorld auth: No token cookie found");
+            authWindow.close();
+            reject(new Error("No token cookie found after authentication"));
+          }
+        }
+      });
+
+      // Also check did-navigate for cases where will-redirect doesn't fire
+      authWindow.webContents.on("did-navigate", async (event, url) => {
+        log.info("MakerWorld auth navigated to:", url);
+
+        if (url.startsWith("https://makerworld.com/en")) {
+          const cookies = await session.fromPartition("persist:makerworld").cookies.get({ domain: ".makerworld.com" });
+          const tokenCookie = cookies.find(c => c.name === "token");
+
+          if (tokenCookie) {
+            log.info("MakerWorld auth successful via did-navigate");
+            authWindow.close();
+            resolve({ accessToken: tokenCookie.value });
+          }
+        }
+      });
+
+      authWindow.on("closed", () => {
+        // If window is closed without resolving, reject
+        reject(new Error("Authentication window was closed"));
+      });
+    });
+  });
+
+  // Clear MakerWorld session cookies for logout
+  ipcMain.handle("makerworld:logout", async () => {
+    const sess = session.fromPartition("persist:makerworld");
+    await sess.clearStorageData({ storages: ["cookies"] });
+    log.info("MakerWorld session cookies cleared");
+    return { success: true };
+  });
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

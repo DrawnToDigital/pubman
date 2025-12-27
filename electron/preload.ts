@@ -19,6 +19,10 @@ contextBridge.exposeInMainWorld("electron", {
     openExternal: (url: string) => ipcRenderer.invoke("shell:openExternal", url),
     showItemInFolder: (filePath: string) => ipcRenderer.invoke("shell:showItemInFolder", filePath),
   },
+  makerworld: {
+    auth: () => ipcRenderer.invoke("makerworld:auth"),
+    logout: () => ipcRenderer.invoke("makerworld:logout"),
+  },
   getDBPath: () => ipcRenderer.invoke("get-db-path"),
   getAppDataPath: () => ipcRenderer.invoke("get-app-data-path"),
 });
