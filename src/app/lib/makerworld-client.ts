@@ -69,8 +69,10 @@ export class MakerWorldClientAPI {
       throw new Error('MakerWorld IPC not available - are you running in Electron?');
     }
 
+    // session.fetch() automatically includes cookies from the persist:makerworld partition
+    // The 'token' cookie handles authentication for all MakerWorld/BambuLab API requests
+    // No Authorization header needed - session cookies are used instead
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${this.accessToken}`,
       'Content-Type': 'application/json',
     };
 
@@ -81,8 +83,8 @@ export class MakerWorldClientAPI {
     });
 
     if (!response.ok) {
-      throw new MakerWorldClientAPIError({
-        message: 'MakerWorld API error',
+      const error = new MakerWorldClientAPIError({
+        message: `MakerWorld API error: ${response.status} ${response.statusText}`,
         url,
         method: options.method || 'GET',
         requestBody: options.body,
@@ -90,6 +92,15 @@ export class MakerWorldClientAPI {
         responseStatusText: response.statusText,
         responseBody: response.body,
       });
+      log.error('MakerWorld API request failed:', {
+        url,
+        method: options.method || 'GET',
+        status: response.status,
+        statusText: response.statusText,
+        responseBody: response.body,
+        requestBody: options.body?.substring(0, 500), // Truncate for logging
+      });
+      throw error;
     }
 
     try {
@@ -171,11 +182,13 @@ export class MakerWorldClientAPI {
       cdnUrl: string;
     }
   ): Promise<{ url: string }> {
-    // Generate the S3 key with cryptographically secure random ID
+    // Generate the S3 key (matching the original format)
     const today = new Date().toISOString().slice(0, 10);
-    const randomId = crypto.randomUUID();
+    const randomHex = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
     const fileExt = fileName.split('.').pop();
-    const key = `makerworld/user/${userId}/draft/${today}_${randomId}.${fileExt}`;
+    const key = `makerworld/user/${userId}/draft/${today}_${randomHex}.${fileExt}`;
 
     // For S3 upload, we need to use AWS SDK on the client side
     // Since we're in a browser context, we'll use a simpler approach with presigned URLs
