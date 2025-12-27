@@ -109,8 +109,15 @@ async function initializeAppData() {
   try {
     const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='designer'").get();
     needsInit = !tableCheck;
-  } catch {
-    needsInit = true;
+  } catch (error: any) {
+    // Only treat expected "no such table" errors as initialization-needed
+    const message = error && typeof error.message === "string" ? error.message : "";
+    if (/no such table/i.test(message)) {
+      needsInit = true;
+    } else {
+      log.error("Error while checking for core database tables:", error);
+      throw error;
+    }
   }
 
   if (needsInit) {
