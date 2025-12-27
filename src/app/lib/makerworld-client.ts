@@ -88,6 +88,15 @@ export class MakerWorldClientAPI {
   // No access token is needed as session.fetch() automatically includes the auth cookies
   constructor() {}
 
+  private validateId(id: string | number, paramName: string): void {
+    if (id === '' || id === null || id === undefined) {
+      throw new Error(`Invalid ${paramName}: value is empty or undefined`);
+    }
+    if (typeof id === 'number' && (isNaN(id) || id <= 0)) {
+      throw new Error(`Invalid ${paramName}: ${id} is not a positive number`);
+    }
+  }
+
   private async fetch(url: string, options: { method?: string; body?: string } = {}): Promise<unknown> {
     if (!window.electron?.makerworld?.fetch) {
       throw new Error('MakerWorld IPC not available - are you running in Electron?');
@@ -145,8 +154,8 @@ export class MakerWorldClientAPI {
 
     try {
       return response.body ? JSON.parse(response.body) : null;
-    } catch {
-      log.error(`[MakerWorld API] Failed to parse response as JSON`);
+    } catch (parseError) {
+      log.error(`[MakerWorld API] Failed to parse response as JSON:`, parseError);
       throw new MakerWorldClientAPIError({
         message: 'Failed to parse response',
         url,
@@ -212,6 +221,7 @@ export class MakerWorldClientAPI {
   }
 
   async updateDraft(draftId: string | number, draftData: Record<string, unknown>) {
+    this.validateId(draftId, 'draftId');
     const url = `${this.mwApiUrl}/v1/design-service/my/draft/${draftId}`;
     await this.fetch(url, {
       method: 'PUT',
@@ -221,6 +231,7 @@ export class MakerWorldClientAPI {
   }
 
   async getDraftById(draftId: string | number) {
+    this.validateId(draftId, 'draftId');
     const url = `${this.mwApiUrl}/v1/design-service/my/draft/${draftId}`;
     const res = await this.fetch(url);
     const parsed = DraftDetailResponseSchema.safeParse(res);
@@ -231,6 +242,7 @@ export class MakerWorldClientAPI {
   }
 
   async publishDraft(draftId: string | number): Promise<{ designId?: number }> {
+    this.validateId(draftId, 'draftId');
     const url = `${this.mwApiUrl}/v1/design-service/my/draft/${draftId}/submit`;
     const res = await this.fetch(url, { method: 'POST' });
     return (res || {}) as { designId?: number };
@@ -274,7 +286,8 @@ export class MakerWorldClientAPI {
     });
 
     // Sanitize filename for Content-Disposition header to prevent header injection
-    const sanitizedFileName = fileName.replace(/["\\\r\n]/g, '_');
+    // Remove all control characters (0x00-0x1F, 0x7F) plus quotes and backslashes
+    const sanitizedFileName = fileName.replace(/[\x00-\x1F\x7F"\\]/g, '_');
 
     const command = new PutObjectCommand({
       Bucket: s3Config.bucketName,
