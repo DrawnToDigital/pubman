@@ -56,13 +56,12 @@ export class MakerWorldClientAPIError extends Error {
 }
 
 export class MakerWorldClientAPI {
-  private accessToken: string;
   private bblApiUrl = 'https://api.bambulab.com';
   private mwApiUrl = 'https://makerworld.com/api';
 
-  constructor(accessToken: string) {
-    this.accessToken = accessToken;
-  }
+  // Note: Authentication is handled by session cookies in Electron's persist:makerworld partition
+  // No access token is needed as session.fetch() automatically includes the auth cookies
+  constructor() {}
 
   private async fetch(url: string, options: { method?: string; body?: string } = {}): Promise<unknown> {
     if (!window.electron?.makerworld?.fetch) {
@@ -187,14 +186,9 @@ export class MakerWorldClientAPI {
     const randomHex = Array.from(crypto.getRandomValues(new Uint8Array(8)))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
-    const fileExt = fileName.split('.').pop();
+    const fileExt = fileName.includes('.') ? fileName.split('.').pop() : 'bin';
     const key = `makerworld/user/${userId}/draft/${today}_${randomHex}.${fileExt}`;
 
-    // For S3 upload, we need to use AWS SDK on the client side
-    // Since we're in a browser context, we'll use a simpler approach with presigned URLs
-    // or route through a minimal server endpoint just for S3 uploads
-
-    // Actually, for S3 uploads we can use the AWS SDK in the browser
     const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
 
     const client = new S3Client({
@@ -207,11 +201,14 @@ export class MakerWorldClientAPI {
       },
     });
 
+    // Sanitize filename for Content-Disposition header to prevent header injection
+    const sanitizedFileName = fileName.replace(/["\\\r\n]/g, '_');
+
     const command = new PutObjectCommand({
       Bucket: s3Config.bucketName,
       Key: key,
       Body: new Uint8Array(fileData),
-      ContentDisposition: `attachment; filename="${fileName}"`,
+      ContentDisposition: `attachment; filename="${sanitizedFileName}"`,
       ContentType: 'application/octet-stream',
     });
 

@@ -33,11 +33,12 @@ async function uploadAsset(
   asset: { file_name: string; file_ext: string },
   userId: number,
   appDataPath: string
-): Promise<{ url: string }> {
+): Promise<{ url: string; size: number }> {
   const fs = getElectronFS();
   const filePath = joinPath(appDataPath, 'assets', asset.file_name);
   const fileBuffer = await fs.readFile(filePath);
-  return api.uploadFile(asset.file_name, fileBuffer, userId);
+  const result = await api.uploadFile(asset.file_name, fileBuffer, userId);
+  return { url: result.url, size: fileBuffer.byteLength };
 }
 
 // Publish design to MakerWorld
@@ -58,13 +59,13 @@ async function publishToMakerWorld(
 
   for (const asset of design.assets) {
     const ext = asset.file_ext.toLowerCase();
-    const { url } = await uploadAsset(api, asset, user.uid, appDataPath);
+    const { url, size } = await uploadAsset(api, asset, user.uid, appDataPath);
 
     if (makerWorldImageFileTypes.includes(ext)) {
       uploadedAssets.images.push({ name: asset.file_name, url });
     } else {
       // Assume it's a model file
-      uploadedAssets.models.push({ name: asset.file_name, url, size: 0 });
+      uploadedAssets.models.push({ name: asset.file_name, url, size });
     }
   }
 
@@ -197,7 +198,7 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
       publishDraft={async ({ design, designID, accessToken }) => {
         if (!user) throw new Error('Not authenticated to MakerWorld');
 
-        const api = new MakerWorldClientAPI(accessToken);
+        const api = new MakerWorldClientAPI();
         const { draftId } = await publishToMakerWorld(api, design, user);
 
         // Record in local database
@@ -211,7 +212,7 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
       updateModel={async ({ design, designID, accessToken, platformId, platformStatus }) => {
         if (!user) throw new Error('Not authenticated to MakerWorld');
 
-        const api = new MakerWorldClientAPI(accessToken);
+        const api = new MakerWorldClientAPI();
         const isPublished = platformStatus === 'published';
 
         if (isPublished) {
@@ -250,7 +251,7 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
         if (!user) throw new Error('Not authenticated to MakerWorld');
         if (!design) throw new Error('Design data is required');
 
-        const api = new MakerWorldClientAPI(accessToken);
+        const api = new MakerWorldClientAPI();
 
         // First update the draft with latest data
         await publishToMakerWorld(api, design, user, { existingDraftId: platformId });
