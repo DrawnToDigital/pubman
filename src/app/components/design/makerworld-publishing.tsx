@@ -3,7 +3,7 @@
 import { PlatformPublishing, PlatformPublishingProps } from "./platform-publishing";
 import { isPubmanLicenseSupported, makerWorldImageFileTypes, licenseToMakerWorldMap, makerWorldCategories, UpdateDraftRequestSchema } from "@/src/app/api/makerworld/makerworld-lib";
 import { useMakerWorldAuth, MakerWorldUser } from "@/src/app/contexts/MakerWorldAuthContext";
-import { MakerWorldClientAPI } from "@/src/app/lib/makerworld-client";
+import { MakerWorldClientAPI, getMakerWorldStatusName } from "@/src/app/lib/makerworld-client";
 import log from 'electron-log/renderer';
 
 // Browser-compatible path join (simple version for assets)
@@ -36,8 +36,10 @@ async function uploadAsset(
 ): Promise<{ url: string; size: number }> {
   const fs = getElectronFS();
   const filePath = joinPath(appDataPath, 'assets', asset.file_name);
+  log.info(`[MakerWorld] Uploading asset: ${asset.file_name}`);
   const fileBuffer = await fs.readFile(filePath);
   const result = await api.uploadFile(asset.file_name, fileBuffer, userId);
+  log.info(`[MakerWorld] Asset uploaded: ${asset.file_name} (${fileBuffer.byteLength} bytes) -> ${result.url}`);
   return { url: result.url, size: fileBuffer.byteLength };
 }
 
@@ -51,12 +53,22 @@ async function publishToMakerWorld(
   const appDataPath = await getAppDataPath();
   const { existingDraftId, existingDesignId, isPublished } = options || {};
 
+  log.info(`[MakerWorld] publishToMakerWorld called:`, {
+    designName: design.main_name,
+    assetCount: design.assets.length,
+    existingDraftId,
+    existingDesignId,
+    isPublished,
+    userId: user.uid,
+  });
+
   // Upload all assets to S3
   const uploadedAssets: { images: { name: string; url: string }[]; models: { name: string; url: string; size: number }[] } = {
     images: [],
     models: [],
   };
 
+  log.info(`[MakerWorld] Uploading ${design.assets.length} assets...`);
   for (const asset of design.assets) {
     const ext = asset.file_ext.toLowerCase();
     const { url, size } = await uploadAsset(api, asset, user.uid, appDataPath);
@@ -68,6 +80,7 @@ async function publishToMakerWorld(
       uploadedAssets.models.push({ name: asset.file_name, url, size });
     }
   }
+  log.info(`[MakerWorld] Assets uploaded: ${uploadedAssets.images.length} images, ${uploadedAssets.models.length} models`);
 
   // Get the MakerWorld license key
   const mwLicense = licenseToMakerWorldMap[design.license_key as keyof typeof licenseToMakerWorldMap] || 'Standard Digital File License';
@@ -113,24 +126,32 @@ async function publishToMakerWorld(
   if (isPublished) {
     // For published designs: create a new draft linked to the existing published design
     // This new draft will replace the published version when published
+    log.info(`[MakerWorld] Creating new draft for published design (designId: ${existingDesignId})`);
     const createResult = await api.createDraft(draftData) as { id: number; designId: number };
+    log.info(`[MakerWorld] Draft created for published design:`, createResult);
     result = createResult;
   } else if (existingDraftId) {
     // Update existing draft
+    log.info(`[MakerWorld] Updating existing draft (draftId: ${existingDraftId})`);
     await api.updateDraft(existingDraftId, draftData);
     const draft = await api.getDraftById(existingDraftId);
+    log.info(`[MakerWorld] Draft updated:`, { id: draft.id, designId: draft.designId, status: `${draft.status} (${getMakerWorldStatusName(draft.status)})` });
     result = { id: draft.id, designId: draft.designId };
   } else {
     // Create new draft
+    log.info(`[MakerWorld] Creating new draft`);
     const createResult = await api.createDraft(draftData) as { id: number; designId: number };
+    log.info(`[MakerWorld] New draft created:`, createResult);
     result = createResult;
   }
 
+  log.info(`[MakerWorld] publishToMakerWorld complete: draftId=${result.id}, designId=${result.designId}`);
   return { draftId: result.id, designId: result.designId };
 }
 
 // Record the MakerWorld status in the local database
 async function recordMakerWorldStatus(designId: string, platformDesignId: string | number, status: string) {
+  log.info(`[MakerWorld] Recording status: designId=${designId}, platformDesignId=${platformDesignId}, status=${status}`);
   const response = await fetch('/api/makerworld/model/record', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -139,9 +160,10 @@ async function recordMakerWorldStatus(designId: string, platformDesignId: string
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-    log.error('Failed to record MakerWorld status:', errorData);
+    log.error(`[MakerWorld] Failed to record status:`, errorData);
     throw new Error(errorData.error || 'Failed to record MakerWorld status');
   }
+  log.info(`[MakerWorld] Status recorded successfully`);
 }
 
 export function MakerWorldPublishing(props: PlatformPublishingProps) {
@@ -196,6 +218,8 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
         return true;
       }}
       publishDraft={async ({ design, designID, accessToken }) => {
+        const startTime = Date.now();
+        log.info(`[MakerWorld] === publishDraft START === designID=${designID}, designName="${design.main_name}"`);
         if (!user) throw new Error('Not authenticated to MakerWorld');
 
         const api = new MakerWorldClientAPI();
@@ -204,42 +228,60 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
         // Record in local database
         await recordMakerWorldStatus(designID, draftId, 'draft');
 
+        const elapsed = Date.now() - startTime;
+        log.info(`[MakerWorld] === publishDraft COMPLETE === draftId=${draftId} (${elapsed}ms)`);
         return {
           id: String(draftId),
           url: `https://makerworld.com/en/my/models/drafts/${draftId}/edit`,
         };
       }}
       updateModel={async ({ design, designID, accessToken, platformId, platformStatus }) => {
+        const startTime = Date.now();
+        log.info(`[MakerWorld] === updateModel START === designID=${designID}, platformId=${platformId}, platformStatus=${platformStatus}`);
         if (!user) throw new Error('Not authenticated to MakerWorld');
 
         const api = new MakerWorldClientAPI();
-        const isPublished = platformStatus === 'published';
 
-        if (isPublished) {
-          // For published designs: create new draft, publish it, update stays published
+        // Check actual status on MakerWorld - the local status might be stale
+        // (e.g., design was "published" but is still pending review with designId=0)
+        log.info(`[MakerWorld] Fetching current draft/design status from MakerWorld...`);
+        const currentDraft = await api.getDraftById(platformId);
+        const actualDesignId = currentDraft.designId;
+        const isActuallyPublished = actualDesignId && actualDesignId > 0;
+        log.info(`[MakerWorld] Current status: designId=${actualDesignId}, status=${currentDraft.status} (${getMakerWorldStatusName(currentDraft.status)}), isActuallyPublished=${isActuallyPublished}`);
+
+        if (isActuallyPublished) {
+          // For truly published designs: create new draft linked to the design, publish it
+          log.info(`[MakerWorld] Updating published design (designId: ${actualDesignId})...`);
           const { draftId } = await publishToMakerWorld(api, design, user, {
-            existingDesignId: platformId,
+            existingDesignId: actualDesignId,
             isPublished: true,
           });
 
           // Publish the new draft to update the published design
+          log.info(`[MakerWorld] Submitting draft ${draftId} to update published design...`);
           await api.publishDraft(draftId);
 
-          // Record in local database (keep same platformId since it's the published designId)
-          await recordMakerWorldStatus(designID, platformId, 'published');
+          // Record in local database with the actual design ID
+          await recordMakerWorldStatus(designID, actualDesignId, 'published');
 
+          const elapsed = Date.now() - startTime;
+          log.info(`[MakerWorld] === updateModel COMPLETE === published design updated (${elapsed}ms)`);
           return {
             status: 'published',
-            id: platformId,
-            url: `https://makerworld.com/en/models/${platformId}`,
+            id: String(actualDesignId),
+            url: `https://makerworld.com/en/models/${actualDesignId}`,
           };
         } else {
-          // For drafts: update the existing draft
+          // For drafts (including pending review): update the existing draft
+          log.info(`[MakerWorld] Updating draft (not yet published, status=${getMakerWorldStatusName(currentDraft.status)})...`);
           await publishToMakerWorld(api, design, user, { existingDraftId: platformId });
 
           // Record in local database
           await recordMakerWorldStatus(designID, platformId, 'draft');
 
+          const elapsed = Date.now() - startTime;
+          log.info(`[MakerWorld] === updateModel COMPLETE === draft updated (${elapsed}ms)`);
           return {
             status: 'draft',
             id: platformId,
@@ -248,29 +290,51 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
         }
       }}
       publishPublic={async ({ design, designID, accessToken, platformId }) => {
+        const startTime = Date.now();
+        log.info(`[MakerWorld] === publishPublic START === designID=${designID}, platformId=${platformId}`);
         if (!user) throw new Error('Not authenticated to MakerWorld');
         if (!design) throw new Error('Design data is required');
 
         const api = new MakerWorldClientAPI();
 
         // First update the draft with latest data
+        log.info(`[MakerWorld] Updating draft before publishing...`);
         await publishToMakerWorld(api, design, user, { existingDraftId: platformId });
 
         // Then submit for public publishing
+        log.info(`[MakerWorld] Submitting draft ${platformId} for public publishing...`);
         await api.publishDraft(platformId);
 
-        // Get the published design ID (it changes after publish)
+        // Get the draft to check its status after submission
+        log.info(`[MakerWorld] Fetching draft status after submission...`);
         const draft = await api.getDraftById(platformId);
-        const publishedDesignId = draft.designId;
+        const statusName = getMakerWorldStatusName(draft.status);
+        log.info(`[MakerWorld] Draft after publish:`, {
+          id: draft.id,
+          designId: draft.designId,
+          status: `${draft.status} (${statusName})`,
+          title: draft.title,
+        });
+
+        // If designId is assigned, the design is fully published
+        // If designId is 0, it's pending review (status 6 or 10) - use draft id as identifier
+        const publishedDesignId = (draft.designId && draft.designId > 0) ? draft.designId : draft.id;
+        const isFullyPublished = draft.designId && draft.designId > 0;
+
+        log.info(`[MakerWorld] Publish result: isFullyPublished=${isFullyPublished}, publishedDesignId=${publishedDesignId}, status=${statusName}`);
 
         // Record in local database
-        await recordMakerWorldStatus(designID, publishedDesignId, 'published');
+        await recordMakerWorldStatus(designID, publishedDesignId, isFullyPublished ? 'published' : 'draft');
 
-        log.info(`MakerWorld model published: ${publishedDesignId}`);
+        const elapsed = Date.now() - startTime;
+        log.info(`[MakerWorld] === publishPublic COMPLETE === ${isFullyPublished ? 'published' : `submitted (${statusName})`}: ${publishedDesignId} (${elapsed}ms)`);
 
+        // Return appropriate URL based on publish status
         return {
           id: String(publishedDesignId),
-          url: `https://makerworld.com/en/models/${publishedDesignId}`,
+          url: isFullyPublished
+            ? `https://makerworld.com/en/models/${publishedDesignId}`
+            : `https://makerworld.com/en/my/models/drafts/${publishedDesignId}/edit`,
         };
       }}
     />
