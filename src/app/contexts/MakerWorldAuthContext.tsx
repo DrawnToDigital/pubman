@@ -80,7 +80,7 @@ export function MakerWorldAuthProvider({ children }: { children: ReactNode }) {
   const login = async () => {
     try {
       if (!window.electron?.makerworld?.auth) {
-        throw new Error('MakerWorld auth not available - are you running in Electron?');
+        throw new Error('MakerWorld authentication system not initialized');
       }
 
       // Use Electron IPC to open BrowserWindow for auth
@@ -89,11 +89,29 @@ export function MakerWorldAuthProvider({ children }: { children: ReactNode }) {
 
       if (result.accessToken) {
         // Store token via API for session persistence
-        await fetch('/api/makerworld/auth/token', {
+        const tokenResponse = await fetch('/api/makerworld/auth/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: result.accessToken }),
         });
+
+        if (!tokenResponse.ok) {
+          log.error('Failed to persist MakerWorld token to server:', {
+            status: tokenResponse.status,
+            statusText: tokenResponse.statusText,
+          });
+
+          // Clean up Electron session to avoid inconsistent state
+          if (window.electron?.makerworld?.logout) {
+            try {
+              await window.electron.makerworld.logout();
+            } catch (logoutError) {
+              log.error('Failed to clean up MakerWorld session after token persist failure:', logoutError);
+            }
+          }
+
+          throw new Error('Failed to save authentication token');
+        }
 
         // Refresh auth state
         await checkAuth();
@@ -111,6 +129,8 @@ export function MakerWorldAuthProvider({ children }: { children: ReactNode }) {
       // Also clear Electron session cookies
       if (window.electron?.makerworld?.logout) {
         await window.electron.makerworld.logout();
+      } else {
+        log.warn('MakerWorld Electron IPC logout not available; server token cleared but Electron session cookies may remain');
       }
 
       setUser(null);
