@@ -5,14 +5,16 @@ import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useMakerWorldAuth } from '../../contexts/MakerWorldAuthContext';
 import Link from 'next/link';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import * as React from "react";
+import { MakerWorldSync } from './makerworld-sync';
 
-export function MakerWorldAuth() {
+export function MakerWorldAuth({ onSyncComplete }: { onSyncComplete?: () => void } = {}) {
   const { isAuthenticated, user, login, logout } = useMakerWorldAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isSyncOpen, setIsSyncOpen] = useState(false);
 
   const handleLogin = async () => {
     setIsLoading(true);
@@ -78,6 +80,16 @@ export function MakerWorldAuth() {
 
       {isOpen && (
         <div className="absolute top-15 right-2 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-10 py-1">
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              setIsSyncOpen(true);
+            }}
+            className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Sync Designs from MakerWorld
+          </button>
           <Link
             href={`https://makerworld.com/@${user.handle}`}
             target="_blank"
@@ -94,6 +106,12 @@ export function MakerWorldAuth() {
           </button>
         </div>
       )}
+
+      <MakerWorldSync
+        isOpen={isSyncOpen}
+        onClose={() => setIsSyncOpen(false)}
+        onSyncComplete={onSyncComplete}
+      />
     </div>
   );
 }

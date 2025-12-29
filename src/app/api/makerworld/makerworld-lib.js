@@ -119,6 +119,44 @@ export function isPubmanLicenseSupported(pubmanLicense) {
   return license in makerWorldLicenses;
 }
 
+// Reverse mapping: MakerWorld license to PubMan license
+export const makerWorldLicenseToPubmanMap = {
+  'CC0': 'CC0',                          // Creative Commons Public Domain
+  'BY': 'CC-BY',                         // Creative Commons Attribution
+  'BY-SA': 'CC-BY-SA',                   // Creative Commons Attribution-Share Alike
+  'BY-ND': 'CC-BY-ND',                   // Creative Commons Attribution-NoDerivatives
+  'BY-NC': 'CC-BY-NC',                   // Creative Commons Attribution-Noncommercial
+  'BY-NC-SA': 'CC-BY-NC-SA',             // Creative Commons Attribution-Noncommercial-Share Alike
+  'BY-NC-ND': 'CC-BY-NC-ND',             // Creative Commons Attribution-Noncommercial-NoDerivatives
+  'Standard Digital File License': 'SDFL' // Standard Design File License
+};
+
+/**
+ * Convert MakerWorld license to PubMan license
+ * @param {string} mwLicense - MakerWorld license key
+ * @returns {string} PubMan license key, defaults to 'SDFL' if not found
+ */
+export function makerWorldLicenseToPubman(mwLicense) {
+  return makerWorldLicenseToPubmanMap[mwLicense] || 'SDFL';
+}
+
+// Build reverse mapping: category ID to category name
+const categoryIdToNameMap = {};
+for (const [name, data] of Object.entries(makerWorldCategories)) {
+  if (!data.disabled) {
+    categoryIdToNameMap[data.id] = name;
+  }
+}
+
+/**
+ * Convert MakerWorld category ID to PubMan category name
+ * @param {number} categoryId - MakerWorld category ID
+ * @returns {string|null} PubMan category name, or null if not found
+ */
+export function makerWorldCategoryIdToPubman(categoryId) {
+  return categoryIdToNameMap[categoryId] || null;
+}
+
 // --- Error class ---
 export class MakerWorldAPIError extends Error {
   constructor({ message, url, method, requestBody, responseStatus, responseStatusText, responseBody, validationIssues }) {

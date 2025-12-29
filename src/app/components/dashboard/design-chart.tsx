@@ -70,28 +70,40 @@ export default function DesignsChart() {
     }));
   };
 
-  useEffect(() => {
-    async function fetchDesigns() {
-      try {
-        const response = await fetch(`/api/design`, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch designs");
-        }
-        const data = await response.json();
-        setDesigns(designSchema.array().parse(data));
-      } catch (error) {
-        log.error("Failed to fetch designs:", error);
-        setErrorMessage("Failed to load designs.");
-      } finally {
-        setIsLoading(false);
+  const fetchDesigns = async () => {
+    try {
+      const response = await fetch(`/api/design`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch designs");
       }
+      const data = await response.json();
+      setDesigns(designSchema.array().parse(data));
+    } catch (error) {
+      log.error("Failed to fetch designs:", error);
+      setErrorMessage("Failed to load designs.");
+    } finally {
+      setIsLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchDesigns();
+  }, []);
+
+  // Listen for design updates (e.g., from MakerWorld sync)
+  useEffect(() => {
+    const handleDesignsUpdated = () => {
+      fetchDesigns();
+    };
+
+    window.addEventListener("pubman:designs-updated", handleDesignsUpdated);
+    return () => {
+      window.removeEventListener("pubman:designs-updated", handleDesignsUpdated);
+    };
   }, []);
 
   useEffect(() => {
