@@ -24,15 +24,49 @@ jobs:
             });
             if (!release || !release.data || !release.data.assets) {
               core.setFailed(`Release or assets not found for tag: ${process.env.TAG_NAME}`);
+              return;
             }
+
+            const armDmg = release.data.assets.find(asset => asset.name.includes('arm64.dmg'));
+            const intelDmg = release.data.assets.find(asset => asset.name.includes('.dmg') && !asset.name.includes('arm64'));
+            const appImage = release.data.assets.find(asset => asset.name.includes('.AppImage'));
+
+            if (!armDmg || !intelDmg || !appImage) {
+              core.setFailed(`Missing required assets. Found: arm64.dmg=${!!armDmg}, intel.dmg=${!!intelDmg}, AppImage=${!!appImage}`);
+              return;
+            }
+
             return {
               version: release.data.tag_name.replace('v', ''),
-              shaosxarm: release.data.assets.find(asset => asset.name.includes('arm64.dmg')).digest.replace('sha256:', ''),
-              shaosxintel: release.data.assets.find(asset => asset.name.includes('.dmg') && !asset.name.includes('arm64')).digest.replace('sha256:', ''),
-              shalinux: release.data.assets.find(asset => asset.name.includes('.AppImage')).digest.replace('sha256:', ''),
+              armDmgUrl: armDmg.browser_download_url,
+              intelDmgUrl: intelDmg.browser_download_url,
+              appImageUrl: appImage.browser_download_url,
             };
 
+      - name: Download assets and compute SHA256
+        if: steps.release.outputs.result
+        id: sha256
+        env:
+          ARM_DMG_URL: ${{ fromJson(steps.release.outputs.result).armDmgUrl }}
+          INTEL_DMG_URL: ${{ fromJson(steps.release.outputs.result).intelDmgUrl }}
+          APPIMAGE_URL: ${{ fromJson(steps.release.outputs.result).appImageUrl }}
+        run: |
+          echo "Downloading and computing SHA256 hashes..."
+
+          SHAOSXARM=$(curl -sL "$ARM_DMG_URL" | sha256sum | cut -d' ' -f1)
+          echo "ARM DMG SHA256: $SHAOSXARM"
+          echo "shaosxarm=$SHAOSXARM" >> $GITHUB_OUTPUT
+
+          SHAOSXINTEL=$(curl -sL "$INTEL_DMG_URL" | sha256sum | cut -d' ' -f1)
+          echo "Intel DMG SHA256: $SHAOSXINTEL"
+          echo "shaosxintel=$SHAOSXINTEL" >> $GITHUB_OUTPUT
+
+          SHALINUX=$(curl -sL "$APPIMAGE_URL" | sha256sum | cut -d' ' -f1)
+          echo "AppImage SHA256: $SHALINUX"
+          echo "shalinux=$SHALINUX" >> $GITHUB_OUTPUT
+
       - name: Checkout homebrew-pubman
+        if: steps.release.outputs.result
         uses: actions/checkout@v4
         with:
           repository: DrawnToDigital/homebrew-pubman
@@ -40,15 +74,20 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       - name: Update Cask
+        if: steps.release.outputs.result
         shell: bash
         env:
-          VERSION: ${{ steps.release.outputs.result.version }}
-          SHAOSXARM: ${{ steps.release.outputs.result.shaosxarm }}
-          SHAOSXINTEL: ${{ steps.release.outputs.result.shaosxintel }}
-          SHALINUX: ${{ steps.release.outputs.result.shalinux }}
+          VERSION: ${{ fromJson(steps.release.outputs.result).version }}
+          SHAOSXARM: ${{ steps.sha256.outputs.shaosxarm }}
+          SHAOSXINTEL: ${{ steps.sha256.outputs.shaosxintel }}
+          SHALINUX: ${{ steps.sha256.outputs.shalinux }}
         run: |
           if [[ -z "$VERSION" || -z "$SHAOSXARM" || -z "$SHAOSXINTEL" || -z "$SHALINUX" ]]; then
-            echo "Missing required release info. Failing job."
+            echo "Missing required release info:"
+            echo "  VERSION=$VERSION"
+            echo "  SHAOSXARM=$SHAOSXARM"
+            echo "  SHAOSXINTEL=$SHAOSXINTEL"
+            echo "  SHALINUX=$SHALINUX"
             exit 1
           fi
 
