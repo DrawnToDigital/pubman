@@ -242,15 +242,29 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
 
         const api = new MakerWorldClientAPI();
 
-        // Check actual status on MakerWorld - the local status might be stale
-        // (e.g., design was "published" but is still pending review with designId=0)
-        log.info(`[MakerWorld] Fetching current draft/design status from MakerWorld...`);
-        const currentDraft = await api.getDraftById(platformId);
-        const actualDesignId = currentDraft.designId;
-        const isActuallyPublished = actualDesignId && actualDesignId > 0;
-        log.info(`[MakerWorld] Current status: designId=${actualDesignId}, status=${currentDraft.status} (${getMakerWorldStatusName(currentDraft.status)}), isActuallyPublished=${isActuallyPublished}`);
+        // For published designs (synced from MakerWorld), platformId is the design ID, not a draft ID
+        // We can skip the draft check and go straight to updating
+        let actualDesignId: number | undefined;
+        let isActuallyPublished = false;
+        let draftStatus: number | undefined;
 
-        if (isActuallyPublished) {
+        if (platformStatus === 'published') {
+          // platformId is the design ID for published designs
+          actualDesignId = parseInt(platformId, 10);
+          isActuallyPublished = true;
+          log.info(`[MakerWorld] Design already published (designId=${actualDesignId}), skipping draft check`);
+        } else {
+          // For drafts, check actual status on MakerWorld - the local status might be stale
+          // (e.g., design was "published" but is still pending review with designId=0)
+          log.info(`[MakerWorld] Fetching current draft/design status from MakerWorld...`);
+          const currentDraft = await api.getDraftById(platformId);
+          actualDesignId = currentDraft.designId;
+          draftStatus = currentDraft.status;
+          isActuallyPublished = !!(actualDesignId && actualDesignId > 0);
+          log.info(`[MakerWorld] Current status: designId=${actualDesignId}, status=${draftStatus} (${getMakerWorldStatusName(draftStatus)}), isActuallyPublished=${isActuallyPublished}`);
+        }
+
+        if (isActuallyPublished && actualDesignId) {
           // For truly published designs: create new draft linked to the design, publish it
           log.info(`[MakerWorld] Updating published design (designId: ${actualDesignId})...`);
           const { draftId } = await publishToMakerWorld(api, design, user, {
@@ -274,7 +288,7 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
           };
         } else {
           // For drafts (including pending review): update the existing draft
-          log.info(`[MakerWorld] Updating draft (not yet published, status=${getMakerWorldStatusName(currentDraft.status)})...`);
+          log.info(`[MakerWorld] Updating draft (not yet published, status=${draftStatus !== undefined ? getMakerWorldStatusName(draftStatus) : 'unknown'})...`);
           await publishToMakerWorld(api, design, user, { existingDraftId: platformId });
 
           // Record in local database

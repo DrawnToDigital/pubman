@@ -1206,9 +1206,9 @@ export function MakerWorldSync({
         return { success: false, error: data.error || "Download failed" };
       }
 
-      // Handle zip files that were extracted into multiple files
-      if (data.isZip && data.extractedFiles) {
-        log.info(`[MakerWorld Sync] Zip extracted into ${data.extractedFiles.length} files`);
+      // Handle zip/3mf files that were extracted into multiple files
+      if ((data.isZip || data.is3mf) && data.extractedFiles) {
+        log.info(`[MakerWorld Sync] ${data.isZip ? 'Zip' : '3MF'} extracted into ${data.extractedFiles.length} files`);
         return {
           success: true,
           files: data.extractedFiles.map((f: { fileName: string; fileExt: string; filePath: string; size: number }) => ({
