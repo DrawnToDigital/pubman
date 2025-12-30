@@ -29,6 +29,7 @@ interface AssetData {
 }
 
 interface MergeConfig {
+  syncName: boolean;
   syncDescription: boolean;
   syncLicense: boolean;
   syncCategory: boolean;
@@ -123,14 +124,19 @@ export async function POST(request: NextRequest) {
 
       // Build selective update based on mergeConfig
       // If no mergeConfig, update all fields (backwards compatibility)
+      const shouldSyncName = mergeConfig?.syncName ?? true;
       const shouldSyncDescription = mergeConfig?.syncDescription ?? true;
       const shouldSyncLicense = mergeConfig?.syncLicense ?? true;
       const shouldSyncCategory = mergeConfig?.syncCategory ?? true;
 
       // Build dynamic SET clause
-      const setClauses: string[] = ['main_name = ?', 'updated_at = datetime(\'now\')'];
-      const setValues: (string | number)[] = [design.title];
+      const setClauses: string[] = ['updated_at = datetime(\'now\')'];
+      const setValues: (string | number)[] = [];
 
+      if (shouldSyncName) {
+        setClauses.push('main_name = ?');
+        setValues.push(design.title);
+      }
       if (shouldSyncDescription) {
         setClauses.push('description = ?');
         setValues.push(description);
@@ -152,7 +158,7 @@ export async function POST(request: NextRequest) {
         WHERE id = ? AND designer_id = ?
       `).run(...setValues);
 
-      log.info(`[Sync] Updated design ${designId} with selective fields: description=${shouldSyncDescription}, license=${shouldSyncLicense}, category=${shouldSyncCategory}`);
+      log.info(`[Sync] Updated design ${designId} with selective fields: name=${shouldSyncName}, description=${shouldSyncDescription}, license=${shouldSyncLicense}, category=${shouldSyncCategory}`);
 
       // Check if MakerWorld platform link exists for this design
       const existingPlatformLink = db.prepare(`
@@ -384,6 +390,7 @@ export async function GET(request: NextRequest) {
     // Build design details map (keyed by name for merge preview)
     const designDetails: Record<string, {
       id: number;
+      name: string;
       description: string;
       license: string;
       category: string;
@@ -393,6 +400,7 @@ export async function GET(request: NextRequest) {
     for (const d of allDesigns) {
       designDetails[d.main_name] = {
         id: d.id,
+        name: d.main_name,
         description: d.description || '',
         license: d.license_key || '',
         category: d.makerworld_category || '',

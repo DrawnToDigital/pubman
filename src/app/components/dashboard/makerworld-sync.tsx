@@ -81,6 +81,7 @@ interface CaptchaState {
 // Design details from PubMan (for merge preview)
 interface PubmanDesignDetails {
   id: number;
+  name: string;
   description: string;
   license: string;
   category: string;
@@ -89,6 +90,7 @@ interface PubmanDesignDetails {
 
 // Field comparison for merge preview
 interface FieldComparison {
+  name: { current: string; new: string; changed: boolean };
   description: { current: string; new: string; changed: boolean };
   license: { current: string; new: string; changed: boolean };
   category: { current: string; new: string; changed: boolean };
@@ -106,6 +108,7 @@ interface NameMatchInfo {
 
 // User's merge configuration for a design
 interface MergeConfig {
+  syncName: boolean;
   syncDescription: boolean;
   syncLicense: boolean;
   syncCategory: boolean;
@@ -470,12 +473,20 @@ export function MakerWorldSync({
     const addedTags = newTags.filter(t => !currentTags.includes(t));
     const removedTags = currentTags.filter(t => !newTags.includes(t));
 
+    const newName = design.title;
+    const currentName = pubmanDetails.name || '';
+
     return {
       makerWorldDesignId: design.id,
       pubmanDesignId: pubmanDetails.id,
       pubmanDesignName: design.title,
       pubmanDetails,
       fieldComparison: {
+        name: {
+          current: currentName,
+          new: newName,
+          changed: currentName !== newName,
+        },
         description: {
           current: pubmanDetails.description || '',
           new: newDescription,
@@ -650,6 +661,7 @@ export function MakerWorldSync({
 
   // Get default merge config (all fields enabled)
   const getDefaultMergeConfig = (): MergeConfig => ({
+    syncName: true,
     syncDescription: true,
     syncLicense: true,
     syncCategory: true,
@@ -1026,6 +1038,20 @@ export function MakerWorldSync({
           const nameMatchInfo = getNameMatchInfo(design);
           if (nameMatchInfo) {
             const pubman = nameMatchInfo.pubmanDetails;
+            const syncedName = designData.title;
+
+            // Compare name
+            if (mergeConfig.syncName) {
+              const currentName = pubman.name || '';
+              if (currentName && currentName !== syncedName) {
+                changes.push({
+                  field: 'Name',
+                  from: currentName,
+                  to: syncedName,
+                  action: 'updated',
+                });
+              }
+            }
 
             // Compare description
             if (mergeConfig.syncDescription) {
@@ -1835,6 +1861,7 @@ function MergePreviewDialog({
   onClose: () => void;
 }) {
   const [config, setConfig] = useState<MergeConfig>({
+    syncName: true,
     syncDescription: true,
     syncLicense: true,
     syncCategory: true,
@@ -1850,6 +1877,7 @@ function MergePreviewDialog({
       setConfig(existingConfig);
     } else {
       setConfig({
+        syncName: true,
         syncDescription: true,
         syncLicense: true,
         syncCategory: true,
@@ -1883,6 +1911,30 @@ function MergePreviewDialog({
         </p>
 
         <div className="space-y-4">
+          {/* Name */}
+          <div className={`p-3 rounded-lg border ${fieldComparison.name.changed ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.syncName}
+                onChange={(e) => setConfig(prev => ({ ...prev, syncName: e.target.checked }))}
+                className="h-4 w-4 mt-0.5 text-blue-600"
+              />
+              <div className="flex-1">
+                <div className="font-medium text-sm flex items-center gap-2">
+                  Name
+                  {fieldComparison.name.changed && (
+                    <span className="text-xs text-amber-600 font-normal">Changed</span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  <div>Current: {fieldComparison.name.current || '(none)'}</div>
+                  <div>New: {fieldComparison.name.new || '(none)'}</div>
+                </div>
+              </div>
+            </label>
+          </div>
+
           {/* Description */}
           <div className={`p-3 rounded-lg border ${fieldComparison.description.changed ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}>
             <label className="flex items-start gap-2 cursor-pointer">
