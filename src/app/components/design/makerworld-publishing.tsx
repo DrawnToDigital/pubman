@@ -30,13 +30,15 @@ async function getAppDataPath(): Promise<string> {
 // Upload asset to MakerWorld S3
 async function uploadAsset(
   api: MakerWorldClientAPI,
-  asset: { file_name: string; file_ext: string },
+  asset: { file_name: string; file_ext: string; url: string },
   userId: number,
   appDataPath: string
 ): Promise<{ url: string; size: number }> {
   const fs = getElectronFS();
-  const filePath = joinPath(appDataPath, 'assets', asset.file_name);
-  log.info(`[MakerWorld] Uploading asset: ${asset.file_name}`);
+  // Extract relative path from local:// URL (e.g., "local:///assets/designs/01234/file.jpg" -> "/assets/designs/01234/file.jpg")
+  const relativePath = asset.url.replace(/^local:\/\//, '');
+  const filePath = joinPath(appDataPath, relativePath);
+  log.info(`[MakerWorld] Uploading asset: ${asset.file_name} from ${filePath}`);
   const fileBuffer = await fs.readFile(filePath);
   const result = await api.uploadFile(asset.file_name, fileBuffer, userId);
   log.info(`[MakerWorld] Asset uploaded: ${asset.file_name} (${fileBuffer.byteLength} bytes) -> ${result.url}`);

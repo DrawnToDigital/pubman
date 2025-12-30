@@ -190,8 +190,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get app data path
+    // Files are stored under assets/designs/{designId}/ to match the /assets/ convention
     const appDataPath = process.env.NEXT_PUBLIC_APP_DATA_PATH || path.resolve("appdata");
-    const designDir = path.join(appDataPath, "designs", designId.padStart(5, "0"));
+    const designDir = path.join(appDataPath, "assets", "designs", designId.padStart(5, "0"));
 
     // Ensure directory exists
     await fs.mkdir(designDir, { recursive: true });
