@@ -10,9 +10,38 @@ import {
 } from "../../lib/makerworld-client";
 import { z } from "zod";
 import log from "electron-log/renderer";
+import TurndownService from "turndown";
 import { RefreshCw, Check, X, Download, AlertCircle, ExternalLink } from "lucide-react";
 
 type DraftSummary = z.infer<typeof DraftSummarySchema>;
+
+// Initialize Turndown service for HTML to Markdown conversion
+const turndownService = new TurndownService({
+  headingStyle: 'atx',
+  codeBlockStyle: 'fenced',
+  bulletListMarker: '-',
+});
+
+/**
+ * Convert HTML content to Markdown
+ * Returns the original string if it doesn't appear to contain HTML
+ */
+function htmlToMarkdown(html: string): string {
+  if (!html || typeof html !== 'string') return '';
+
+  // Check if content appears to contain HTML tags
+  const hasHtmlTags = /<[^>]+>/.test(html);
+  if (!hasHtmlTags) {
+    return html;
+  }
+
+  try {
+    return turndownService.turndown(html).trim();
+  } catch (error) {
+    log.warn('[MakerWorld Sync] Failed to convert HTML to Markdown:', error);
+    return html;
+  }
+}
 
 interface SyncedDesign {
   platformDesignId: string;
@@ -34,6 +63,7 @@ interface SyncState {
   isSyncing: boolean;
   designs: DraftSummary[];
   syncedDesigns: SyncedDesign[];
+  allDesignNames: Set<string>;  // All PubMan design names for name-based matching
   selectedIds: Set<number>;
   progress: { current: number; total: number; currentName: string };
   error: string | null;
@@ -58,6 +88,7 @@ export function MakerWorldSync({
     isSyncing: false,
     designs: [],
     syncedDesigns: [],
+    allDesignNames: new Set(),
     selectedIds: new Set(),
     progress: { current: 0, total: 0, currentName: "" },
     error: null,
@@ -74,9 +105,11 @@ export function MakerWorldSync({
       const syncStatusRes = await fetch("/api/makerworld/sync");
       let syncedDesigns: SyncedDesign[] = [];
 
+      let allDesignNames: string[] = [];
       if (syncStatusRes.ok) {
         const syncStatus = await syncStatusRes.json();
         syncedDesigns = syncStatus.syncedDesigns || [];
+        allDesignNames = syncStatus.allDesignNames || [];
       } else {
         // Log but continue - we can still sync even if we can't check existing
         const errorText = await syncStatusRes.text();
@@ -88,10 +121,22 @@ export function MakerWorldSync({
       const designs = await api.getMyPublishedDesigns(userHandle, userId);
 
       // Pre-select designs that haven't been synced yet
+      // Check both by platform_design_id AND by name match
       const syncedIds = new Set(syncedDesigns.map((d) => d.platformDesignId));
+      const existingNames = new Set(allDesignNames);
       const newDesignIds = new Set(
         designs
-          .filter((d) => !syncedIds.has(d.designId.toString()) && !syncedIds.has(d.id.toString()))
+          .filter((d) => {
+            // Check by MakerWorld ID
+            if (syncedIds.has(d.designId.toString()) || syncedIds.has(d.id.toString())) {
+              return false;
+            }
+            // Check by name match
+            if (existingNames.has(d.title)) {
+              return false;
+            }
+            return true;
+          })
           .map((d) => d.id)
       );
 
@@ -100,6 +145,7 @@ export function MakerWorldSync({
         isFetching: false,
         designs,
         syncedDesigns,
+        allDesignNames: existingNames,
         selectedIds: newDesignIds,
       }));
     } catch (error) {
@@ -200,11 +246,16 @@ export function MakerWorldSync({
   };
 
   const isAlreadySynced = (design: DraftSummary) => {
-    return state.syncedDesigns.some(
+    // Check by MakerWorld platform ID
+    const syncedById = state.syncedDesigns.some(
       (s) =>
         s.platformDesignId === design.designId.toString() ||
         s.platformDesignId === design.id.toString()
     );
+    if (syncedById) return true;
+
+    // Check by name match (for designs that exist but aren't linked to MakerWorld)
+    return state.allDesignNames.has(design.title);
   };
 
   const syncDesigns = async () => {
@@ -248,9 +299,10 @@ export function MakerWorldSync({
           designDetails = null;
         }
 
-        // Extract description from details (HTML content) or use summary
+        // Extract description from details (HTML content) and convert to Markdown
         // MakerWorld stores rich description in 'details' field as HTML
-        const description = designDetails?.details || design.summary || '';
+        const htmlDescription = designDetails?.details || design.summary || '';
+        const description = htmlToMarkdown(htmlDescription);
 
         // Build design data with full details
         const designData = {

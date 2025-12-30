@@ -67,13 +67,31 @@ export async function POST(request: NextRequest) {
     const platformDesignId = design.designId > 0 ? design.designId.toString() : design.id.toString();
 
     // Check if design already exists in PubMan (linked to this MakerWorld design)
-    const existingLink = db.prepare(`
+    log.info(`[Sync] Looking for existing design with platform_id=${MAKERWORLD_PLATFORM_ID}, designId=${design.designId}, id=${design.id}`);
+
+    let existingLink = db.prepare(`
       SELECT dp.design_id, d.id as design_exists
       FROM design_platform dp
       LEFT JOIN design d ON d.id = dp.design_id AND d.deleted_at IS NULL
       WHERE dp.platform_id = ? AND (dp.platform_design_id = ? OR dp.platform_design_id = ?)
         AND dp.deleted_at IS NULL
     `).get(MAKERWORLD_PLATFORM_ID, design.designId.toString(), design.id.toString()) as { design_id: number; design_exists: number } | undefined;
+
+    log.info(`[Sync] Existing link by platform_design_id:`, existingLink);
+
+    // Fallback: Check if design with same name already exists (for designs created before sync feature)
+    if (!existingLink || !existingLink.design_exists) {
+      const existingByName = db.prepare(`
+        SELECT d.id as design_id, d.id as design_exists
+        FROM design d
+        WHERE d.designer_id = ? AND d.main_name = ? AND d.deleted_at IS NULL
+      `).get(designer.id, design.title) as { design_id: number; design_exists: number } | undefined;
+
+      if (existingByName) {
+        log.info(`[Sync] Found existing design by name match: ${existingByName.design_id}`);
+        existingLink = existingByName;
+      }
+    }
 
     let designId: number;
 
@@ -100,15 +118,31 @@ export async function POST(request: NextRequest) {
         designer.id
       );
 
-      // Update platform link (in case designId changed from draft to published)
-      db.prepare(`
-        UPDATE design_platform
-        SET platform_design_id = ?,
-            published_status = ?,
-            updated_at = datetime('now'),
-            published_at = CASE WHEN published_at IS NULL THEN datetime('now') ELSE published_at END
-        WHERE platform_id = ? AND design_id = ?
-      `).run(platformDesignId, PUBLISHED_STATUS_PUBLISHED, MAKERWORLD_PLATFORM_ID, designId);
+      // Check if MakerWorld platform link exists for this design
+      const existingPlatformLink = db.prepare(`
+        SELECT id FROM design_platform
+        WHERE platform_id = ? AND design_id = ? AND deleted_at IS NULL
+      `).get(MAKERWORLD_PLATFORM_ID, designId) as { id: number } | undefined;
+
+      if (existingPlatformLink) {
+        // Update existing platform link
+        db.prepare(`
+          UPDATE design_platform
+          SET platform_design_id = ?,
+              published_status = ?,
+              updated_at = datetime('now'),
+              published_at = CASE WHEN published_at IS NULL THEN datetime('now') ELSE published_at END
+          WHERE platform_id = ? AND design_id = ?
+        `).run(platformDesignId, PUBLISHED_STATUS_PUBLISHED, MAKERWORLD_PLATFORM_ID, designId);
+        log.info(`[Sync] Updated platform link for design ${designId}`);
+      } else {
+        // Create new platform link (design existed but wasn't linked to MakerWorld)
+        db.prepare(`
+          INSERT INTO design_platform (platform_id, design_id, platform_design_id, published_status, created_at, updated_at, published_at)
+          VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+        `).run(MAKERWORLD_PLATFORM_ID, designId, platformDesignId, PUBLISHED_STATUS_PUBLISHED);
+        log.info(`[Sync] Created platform link for existing design ${designId}`);
+      }
 
       log.info(`[Sync] Updated design ${designId} from MakerWorld ${platformDesignId}`);
     } else {
@@ -251,7 +285,14 @@ export async function GET(request: NextRequest) {
       updated_at: string;
     }>;
 
+    // Also get all design names (for name-based matching of unlinked designs)
+    const allDesignNames = db.prepare(`
+      SELECT id, main_name FROM design
+      WHERE designer_id = ? AND deleted_at IS NULL
+    `).all(designer.id) as Array<{ id: number; main_name: string }>;
+
     return NextResponse.json({
+      allDesignNames: allDesignNames.map(d => d.main_name),
       syncedDesigns: syncedDesigns.map(d => ({
         platformDesignId: d.platform_design_id,
         designId: d.design_id.toString(),

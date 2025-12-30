@@ -88,7 +88,7 @@ export function MakerWorldAuth({ onSyncComplete }: { onSyncComplete?: () => void
             className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Sync Designs from MakerWorld
+            Sync from MakerWorld
           </button>
           <Link
             href={`https://makerworld.com/@${user.handle}`}
