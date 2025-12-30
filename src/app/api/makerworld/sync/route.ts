@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "../../../lib/betterSqlite3";
 import { makerWorldLicenseToPubman, makerWorldCategoryIdToPubman } from "../makerworld-lib";
+import { PLATFORM_IDS, PUBLISHED_STATUS } from "../../../lib/constants/platforms";
 import log from "electron-log/renderer";
 import path from "path";
 
-const MAKERWORLD_PLATFORM_ID = 5;
-const PUBLISHED_STATUS_PUBLISHED = 2;
-
 interface MakerWorldDesignData {
-  id: number;           // Draft ID
-  designId: number;     // Published design ID
+  id: number;           // MakerWorld internal ID (used for drafts and API calls)
+  designId: number;     // MakerWorld public design ID (shown in URLs, 0 if unpublished)
   title: string;
-  // Note: MakerWorld doesn't have a PubMan summary equivalent
   categoryId: number;
   tags: string[];
   license: string;
@@ -42,9 +39,8 @@ interface MergeConfig {
 interface SyncRequestBody {
   design: MakerWorldDesignData;
   assets?: AssetData[];
-  description?: string;  // Optional description (MakerWorld uses details field)
-  appendTags?: boolean;  // If true, append tags instead of replacing
-  mergeConfig?: MergeConfig;  // Optional config for selective field sync
+  description?: string;  // HTML description (MakerWorld calls this "details")
+  mergeConfig?: MergeConfig;  // Config for selective field sync
 }
 
 /**
@@ -55,7 +51,7 @@ interface SyncRequestBody {
 export async function POST(request: NextRequest) {
   try {
     const body: SyncRequestBody = await request.json();
-    const { design, assets = [], description = "", appendTags = false, mergeConfig } = body;
+    const { design, assets = [], description = "", mergeConfig } = body;
 
     // If mergeConfig.skip is true, return early
     if (mergeConfig?.skip) {
@@ -90,7 +86,7 @@ export async function POST(request: NextRequest) {
     const platformDesignId = design.designId > 0 ? design.designId.toString() : design.id.toString();
 
     // Check if design already exists in PubMan (linked to this MakerWorld design)
-    log.info(`[Sync] Looking for existing design with platform_id=${MAKERWORLD_PLATFORM_ID}, designId=${design.designId}, id=${design.id}`);
+    log.info(`[Sync] Looking for existing design with platform_id=${PLATFORM_IDS.MAKERWORLD}, designId=${design.designId}, id=${design.id}`);
 
     let existingLink = db.prepare(`
       SELECT dp.design_id, d.id as design_exists
@@ -98,7 +94,7 @@ export async function POST(request: NextRequest) {
       LEFT JOIN design d ON d.id = dp.design_id AND d.deleted_at IS NULL
       WHERE dp.platform_id = ? AND (dp.platform_design_id = ? OR dp.platform_design_id = ?)
         AND dp.deleted_at IS NULL
-    `).get(MAKERWORLD_PLATFORM_ID, design.designId.toString(), design.id.toString()) as { design_id: number; design_exists: number } | undefined;
+    `).get(PLATFORM_IDS.MAKERWORLD, design.designId.toString(), design.id.toString()) as { design_id: number; design_exists: number } | undefined;
 
     log.info(`[Sync] Existing link by platform_design_id:`, existingLink);
 
@@ -164,7 +160,7 @@ export async function POST(request: NextRequest) {
       const existingPlatformLink = db.prepare(`
         SELECT id FROM design_platform
         WHERE platform_id = ? AND design_id = ? AND deleted_at IS NULL
-      `).get(MAKERWORLD_PLATFORM_ID, designId) as { id: number } | undefined;
+      `).get(PLATFORM_IDS.MAKERWORLD, designId) as { id: number } | undefined;
 
       if (existingPlatformLink) {
         // Update existing platform link
@@ -175,14 +171,14 @@ export async function POST(request: NextRequest) {
               updated_at = datetime('now'),
               published_at = CASE WHEN published_at IS NULL THEN datetime('now') ELSE published_at END
           WHERE platform_id = ? AND design_id = ?
-        `).run(platformDesignId, PUBLISHED_STATUS_PUBLISHED, MAKERWORLD_PLATFORM_ID, designId);
+        `).run(platformDesignId, PUBLISHED_STATUS.PUBLISHED, PLATFORM_IDS.MAKERWORLD, designId);
         log.info(`[Sync] Updated platform link for design ${designId}`);
       } else {
         // Create new platform link (design existed but wasn't linked to MakerWorld)
         db.prepare(`
           INSERT INTO design_platform (platform_id, design_id, platform_design_id, published_status, created_at, updated_at, published_at)
           VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
-        `).run(MAKERWORLD_PLATFORM_ID, designId, platformDesignId, PUBLISHED_STATUS_PUBLISHED);
+        `).run(PLATFORM_IDS.MAKERWORLD, designId, platformDesignId, PUBLISHED_STATUS.PUBLISHED);
         log.info(`[Sync] Created platform link for existing design ${designId}`);
       }
 
@@ -213,7 +209,7 @@ export async function POST(request: NextRequest) {
       db.prepare(`
         INSERT INTO design_platform (platform_id, design_id, platform_design_id, published_status, created_at, updated_at, published_at)
         VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
-      `).run(MAKERWORLD_PLATFORM_ID, designId, platformDesignId, PUBLISHED_STATUS_PUBLISHED);
+      `).run(PLATFORM_IDS.MAKERWORLD, designId, platformDesignId, PUBLISHED_STATUS.PUBLISHED);
 
       log.info(`[Sync] Created design ${designId} from MakerWorld ${platformDesignId}`);
     }
@@ -222,7 +218,7 @@ export async function POST(request: NextRequest) {
     const isNewDesign = !existingLink || !existingLink.design_exists;
     const shouldSyncTags = isNewDesign || (mergeConfig?.syncTags ?? true);
     if (shouldSyncTags) {
-      const effectiveAppendTags = mergeConfig?.appendTags ?? appendTags;
+      const effectiveAppendTags = mergeConfig?.appendTags ?? false;
       syncTags(db, designId, design.tags, effectiveAppendTags);
     }
 
@@ -255,7 +251,7 @@ function syncTags(db: ReturnType<typeof getDatabase>, designId: number, tags: st
     db.prepare(`
       UPDATE design_tag SET deleted_at = datetime('now')
       WHERE design_id = ? AND platform_id = ? AND deleted_at IS NULL
-    `).run(designId, MAKERWORLD_PLATFORM_ID);
+    `).run(designId, PLATFORM_IDS.MAKERWORLD);
   }
 
   // Get existing tags to avoid duplicates when appending
@@ -264,7 +260,7 @@ function syncTags(db: ReturnType<typeof getDatabase>, designId: number, tags: st
     const existing = db.prepare(`
       SELECT tag FROM design_tag
       WHERE design_id = ? AND platform_id = ? AND deleted_at IS NULL
-    `).all(designId, MAKERWORLD_PLATFORM_ID) as Array<{ tag: string }>;
+    `).all(designId, PLATFORM_IDS.MAKERWORLD) as Array<{ tag: string }>;
     existing.forEach((t) => existingTags.add(t.tag.toLowerCase()));
   }
 
@@ -281,7 +277,7 @@ function syncTags(db: ReturnType<typeof getDatabase>, designId: number, tags: st
       if (appendTags && existingTags.has(normalizedTag.toLowerCase())) {
         continue;
       }
-      insertTag.run(designId, normalizedTag, MAKERWORLD_PLATFORM_ID);
+      insertTag.run(designId, normalizedTag, PLATFORM_IDS.MAKERWORLD);
     }
   }
 }
@@ -351,7 +347,7 @@ export async function GET(request: NextRequest) {
       WHERE dp.platform_id = ?
         AND dp.deleted_at IS NULL
         AND d.designer_id = ?
-    `).all(MAKERWORLD_PLATFORM_ID, designer.id) as Array<{
+    `).all(PLATFORM_IDS.MAKERWORLD, designer.id) as Array<{
       platform_design_id: string;
       design_id: number;
       main_name: string;

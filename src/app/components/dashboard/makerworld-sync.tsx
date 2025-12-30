@@ -983,9 +983,8 @@ export function MakerWorldSync({
           body: JSON.stringify({
             design: designData,
             assets,
-            description, // Pass the full description/details
-            appendTags: mergeConfig?.appendTags ?? state.syncOptions.appendTags,
-            mergeConfig: mergeConfig,
+            description,
+            mergeConfig,
           }),
         });
 
