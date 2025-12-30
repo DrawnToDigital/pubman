@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../ui/dialog";
 import { useMakerWorldAuth } from "../../contexts/MakerWorldAuthContext";
 import {
   MakerWorldClientAPI,
@@ -10,7 +17,7 @@ import {
 } from "../../lib/makerworld-client";
 import { z } from "zod";
 import log from "electron-log/renderer";
-import { RefreshCw, Check, Download, AlertCircle, ExternalLink } from "lucide-react";
+import { RefreshCw, Check, Download, AlertCircle, ExternalLink, GitMerge, ChevronDown, Settings2 } from "lucide-react";
 
 type DraftSummary = z.infer<typeof DraftSummarySchema>;
 
@@ -31,7 +38,7 @@ function normalizeDescription(html: string): string {
 
   try {
     // Clean up: strip inline styles and class attributes
-    let cleaned = html
+    const cleaned = html
       .replace(/\s*style="[^"]*"/gi, '')
       .replace(/\s*class="[^"]*"/gi, '')
       .trim();
@@ -69,19 +76,52 @@ interface CaptchaState {
   designName: string;
 }
 
+type MergeDecision = 'merge' | 'create-new' | 'skip';
+
+interface SyncOptions {
+  downloadCoverImages: boolean;
+  downloadModelFiles: boolean;
+  appendTags: boolean;
+}
+
+interface SyncResult {
+  id: number;
+  name: string;
+  isNew: boolean;
+}
+
 interface SyncState {
   isOpen: boolean;
   isFetching: boolean;
   isSyncing: boolean;
   designs: DraftSummary[];
   syncedDesigns: SyncedDesign[];
-  allDesignNames: Set<string>;  // All PubMan design names for name-based matching
+  allDesignNames: Set<string>;
   selectedIds: Set<number>;
-  progress: { current: number; total: number; currentName: string };
+  progress: {
+    designsCurrent: number;
+    designsTotal: number;
+    designName: string;
+    filesCurrent: number;
+    filesTotal: number;
+    fileName: string;
+  };
   error: string | null;
-  completed: string[];
+  completed: SyncResult[];
   failed: Array<{ id: number; name: string; error: string }>;
+  skipped: Array<{ id: number; name: string; reason: string }>;
   captcha: CaptchaState | null;
+  // Sync options
+  syncOptions: SyncOptions;
+  // Merge handling
+  mergeDecisions: Map<number, MergeDecision>;
+  // Cancel support
+  syncCancelled: boolean;
+  // Dialogs
+  showConflictPreview: number | null;
+  showSummary: boolean;
+  // UI state
+  optionsExpanded: boolean;
 }
 
 export function MakerWorldSync({
@@ -102,12 +142,33 @@ export function MakerWorldSync({
     syncedDesigns: [],
     allDesignNames: new Set(),
     selectedIds: new Set(),
-    progress: { current: 0, total: 0, currentName: "" },
+    progress: {
+      designsCurrent: 0,
+      designsTotal: 0,
+      designName: "",
+      filesCurrent: 0,
+      filesTotal: 0,
+      fileName: "",
+    },
     error: null,
     completed: [],
     failed: [],
+    skipped: [],
     captcha: null,
+    syncOptions: {
+      downloadCoverImages: true,
+      downloadModelFiles: true,
+      appendTags: false,
+    },
+    mergeDecisions: new Map(),
+    syncCancelled: false,
+    showConflictPreview: null,
+    showSummary: false,
+    optionsExpanded: false,
   });
+
+  // Ref to track cancellation (needed because state is stale in async loops)
+  const cancelledRef = useRef(false);
 
   const fetchDesigns = useCallback(async (userHandle: string, userId?: number) => {
     setState((prev) => ({ ...prev, isFetching: true, error: null }));
@@ -132,21 +193,18 @@ export function MakerWorldSync({
       const api = new MakerWorldClientAPI();
       const designs = await api.getMyPublishedDesigns(userHandle, userId);
 
-      // Pre-select designs that haven't been synced yet
-      // Check both by platform_design_id AND by name match
+      // Pre-select designs that haven't been synced yet (by platform link)
+      // Name matches ARE selected - they'll be merged with existing designs
       const syncedIds = new Set(syncedDesigns.map((d) => d.platformDesignId));
       const existingNames = new Set(allDesignNames);
       const newDesignIds = new Set(
         designs
           .filter((d) => {
-            // Check by MakerWorld ID
+            // Check by MakerWorld ID - if already synced via platform link, don't pre-select
             if (syncedIds.has(d.designId.toString()) || syncedIds.has(d.id.toString())) {
               return false;
             }
-            // Check by name match
-            if (existingNames.has(d.title)) {
-              return false;
-            }
+            // Name matches ARE pre-selected (they'll be merged)
             return true;
           })
           .map((d) => d.id)
@@ -174,11 +232,16 @@ export function MakerWorldSync({
   // Fetch designs when dialog opens and reset status
   useEffect(() => {
     if (isOpen && isAuthenticated && user?.handle) {
-      // Reset completed/failed status when modal opens
+      // Reset status when modal opens
       setState((prev) => ({
         ...prev,
         completed: [],
         failed: [],
+        skipped: [],
+        syncCancelled: false,
+        mergeDecisions: new Map(),
+        showSummary: false,
+        showConflictPreview: null,
       }));
       fetchDesigns(user.handle, user.uid);
     }
@@ -208,6 +271,32 @@ export function MakerWorldSync({
       ...prev,
       selectedIds: new Set(),
     }));
+  };
+
+  const toggleOptionsPanel = () => {
+    setState((prev) => ({
+      ...prev,
+      optionsExpanded: !prev.optionsExpanded,
+    }));
+  };
+
+  const updateSyncOption = (key: keyof SyncOptions, value: boolean) => {
+    setState((prev) => ({
+      ...prev,
+      syncOptions: {
+        ...prev.syncOptions,
+        [key]: value,
+      },
+    }));
+  };
+
+  const cancelSync = () => {
+    cancelledRef.current = true;
+    setState((prev) => ({
+      ...prev,
+      syncCancelled: true,
+    }));
+    log.info(`[MakerWorld Sync] User requested cancellation`);
   };
 
   const dismissCaptcha = () => {
@@ -265,14 +354,16 @@ export function MakerWorldSync({
 
   const isAlreadySynced = (design: DraftSummary) => {
     // Check by MakerWorld platform ID
-    const syncedById = state.syncedDesigns.some(
+    return state.syncedDesigns.some(
       (s) =>
         s.platformDesignId === design.designId.toString() ||
         s.platformDesignId === design.id.toString()
     );
-    if (syncedById) return true;
+  };
 
-    // Check by name match (for designs that exist but aren't linked to MakerWorld)
+  const hasNameMatch = (design: DraftSummary) => {
+    // Check if name matches an existing design but NOT already synced via platform link
+    if (isAlreadySynced(design)) return false;
     return state.allDesignNames.has(design.title);
   };
 
@@ -282,20 +373,63 @@ export function MakerWorldSync({
     setState((prev) => ({
       ...prev,
       isSyncing: true,
-      progress: { current: 0, total: prev.selectedIds.size, currentName: "" },
+      syncCancelled: false,
+    }));
+    cancelledRef.current = false;
+
+    setState((prev) => ({
+      ...prev,
+      progress: {
+        designsCurrent: 0,
+        designsTotal: prev.selectedIds.size,
+        designName: "",
+        filesCurrent: 0,
+        filesTotal: 0,
+        fileName: "",
+      },
       completed: [],
       failed: [],
+      skipped: [],
       error: null,
     }));
 
     const designsToSync = state.designs.filter((d) => state.selectedIds.has(d.id));
     let current = 0;
 
-    for (const design of designsToSync) {
+    for (let i = 0; i < designsToSync.length; i++) {
+      const design = designsToSync[i];
+
+      // Check for cancellation
+      if (cancelledRef.current) {
+        log.info(`[MakerWorld Sync] Sync cancelled by user`);
+        // Add remaining designs to skipped
+        const remainingDesigns = designsToSync.slice(i);
+        setState((prev) => ({
+          ...prev,
+          skipped: [
+            ...prev.skipped,
+            ...remainingDesigns.map((d) => ({
+              id: d.id,
+              name: d.title,
+              reason: "Cancelled by user",
+            })),
+          ],
+        }));
+        break;
+      }
+
       current++;
       setState((prev) => ({
         ...prev,
-        progress: { current, total: designsToSync.length, currentName: design.title },
+        progress: {
+          ...prev.progress,
+          designsCurrent: current,
+          designsTotal: designsToSync.length,
+          designName: design.title,
+          filesCurrent: 0,
+          filesTotal: 0,
+          fileName: "",
+        },
       }));
 
       try {
@@ -340,13 +474,31 @@ export function MakerWorldSync({
         log.info(`[MakerWorld Sync] Design data:`, JSON.stringify(designData));
         log.info(`[MakerWorld Sync] License from MakerWorld: ${designData.license}`);
 
-        // Download files (model files and images)
+        // Download files (model files and images) - based on sync options
         const assets: Array<{ fileName: string; fileExt: string; filePath: string; fileSize?: number }> = [];
         let downloadsFailed = false;
         let captchaRequired = false;
 
-        // 1. Download cover image
-        if (designData.cover) {
+        // Estimate total files for progress tracking
+        const instances = designDetails?.instances || [];
+        let estimatedFiles = 0;
+        if (state.syncOptions.downloadCoverImages && designData.cover) estimatedFiles++;
+        if (state.syncOptions.downloadModelFiles) estimatedFiles++; // model zip
+        if (state.syncOptions.downloadModelFiles) estimatedFiles += instances.length; // instance 3mf files
+        let filesCurrent = 0;
+
+        // 1. Download cover image (if enabled)
+        if (state.syncOptions.downloadCoverImages && designData.cover) {
+          filesCurrent++;
+          setState((prev) => ({
+            ...prev,
+            progress: {
+              ...prev.progress,
+              filesCurrent,
+              filesTotal: estimatedFiles,
+              fileName: 'cover.jpg',
+            },
+          }));
           log.info(`[MakerWorld Sync] Downloading cover image: ${designData.cover}`);
           const coverResult = await downloadFile(designData.cover, designData.designId.toString(), 'cover.jpg', 'image');
           if (coverResult.success && coverResult.files) {
@@ -357,6 +509,8 @@ export function MakerWorldSync({
             log.warn(`[MakerWorld Sync] Failed to download cover image: ${coverResult.error}`);
             downloadsFailed = true;
           }
+        } else if (!state.syncOptions.downloadCoverImages) {
+          log.info(`[MakerWorld Sync] Skipping cover image download (disabled in options)`);
         }
 
         // If captcha required, pause and prompt user
@@ -374,33 +528,47 @@ export function MakerWorldSync({
           throw new Error("Captcha required - please complete the captcha in your browser and retry");
         }
 
-        // 2. Download model files (all.zip containing STL/3MF files)
-        try {
-          log.info(`[MakerWorld Sync] Fetching model download URL for design ${design.id}`);
-          const modelDownload = await api.getModelDownloadUrl(design.id);
-          if (modelDownload.url) {
-            const fileName = modelDownload.name || 'model_files.zip';
-            log.info(`[MakerWorld Sync] Downloading model files: ${fileName}`);
-            const modelResult = await downloadFile(modelDownload.url, designData.designId.toString(), fileName, 'model');
-            if (modelResult.success && modelResult.files) {
-              assets.push(...modelResult.files);
-              log.info(`[MakerWorld Sync] Added ${modelResult.files.length} model files`);
-            } else if (modelResult.requiresCaptcha) {
+        // 2. Download model files (all.zip containing STL/3MF files) - if enabled
+        if (state.syncOptions.downloadModelFiles) {
+          try {
+            filesCurrent++;
+            log.info(`[MakerWorld Sync] Fetching model download URL for design ${design.id}`);
+            const modelDownload = await api.getModelDownloadUrl(design.id);
+            if (modelDownload.url) {
+              const fileName = modelDownload.name || 'model_files.zip';
+              setState((prev) => ({
+                ...prev,
+                progress: {
+                  ...prev.progress,
+                  filesCurrent,
+                  filesTotal: estimatedFiles,
+                  fileName,
+                },
+              }));
+              log.info(`[MakerWorld Sync] Downloading model files: ${fileName}`);
+              const modelResult = await downloadFile(modelDownload.url, designData.designId.toString(), fileName, 'model');
+              if (modelResult.success && modelResult.files) {
+                assets.push(...modelResult.files);
+                log.info(`[MakerWorld Sync] Added ${modelResult.files.length} model files`);
+              } else if (modelResult.requiresCaptcha) {
+                captchaRequired = true;
+              } else {
+                log.warn(`[MakerWorld Sync] Failed to download model files: ${modelResult.error}`);
+                downloadsFailed = true;
+              }
+            }
+          } catch (modelError) {
+            // Check if this is a 418 captcha error from the API
+            if (isCaptchaError(modelError)) {
+              log.warn(`[MakerWorld Sync] Captcha required for model download URL`);
               captchaRequired = true;
             } else {
-              log.warn(`[MakerWorld Sync] Failed to download model files: ${modelResult.error}`);
+              log.warn(`[MakerWorld Sync] Failed to fetch model download URL:`, modelError);
               downloadsFailed = true;
             }
           }
-        } catch (modelError) {
-          // Check if this is a 418 captcha error from the API
-          if (isCaptchaError(modelError)) {
-            log.warn(`[MakerWorld Sync] Captcha required for model download URL`);
-            captchaRequired = true;
-          } else {
-            log.warn(`[MakerWorld Sync] Failed to fetch model download URL:`, modelError);
-            downloadsFailed = true;
-          }
+        } else {
+          log.info(`[MakerWorld Sync] Skipping model files download (disabled in options)`);
         }
 
         // If captcha required, pause and prompt user
@@ -418,36 +586,47 @@ export function MakerWorldSync({
           throw new Error("Captcha required - please complete the captcha in your browser and retry");
         }
 
-        // 3. Download instance (print profile) 3MF files
-        const instances = designDetails?.instances || [];
-        for (const instance of instances) {
-          if (instance.id) {
-            try {
-              log.info(`[MakerWorld Sync] Fetching instance ${instance.id} 3MF download URL`);
-              const instanceDownload = await api.getInstanceDownloadUrl(instance.id);
-              if (instanceDownload.url) {
-                const fileName = instanceDownload.name || `profile_${instance.id}.3mf`;
-                log.info(`[MakerWorld Sync] Downloading instance 3MF: ${fileName}`);
-                const instanceResult = await downloadFile(instanceDownload.url, designData.designId.toString(), fileName, 'model');
-                if (instanceResult.success && instanceResult.files) {
-                  assets.push(...instanceResult.files);
-                } else if (instanceResult.requiresCaptcha) {
+        // 3. Download instance (print profile) 3MF files - if model downloads enabled
+        if (state.syncOptions.downloadModelFiles) {
+          for (const instance of instances) {
+            if (instance.id) {
+              try {
+                filesCurrent++;
+                log.info(`[MakerWorld Sync] Fetching instance ${instance.id} 3MF download URL`);
+                const instanceDownload = await api.getInstanceDownloadUrl(instance.id);
+                if (instanceDownload.url) {
+                  const fileName = instanceDownload.name || `profile_${instance.id}.3mf`;
+                  setState((prev) => ({
+                    ...prev,
+                    progress: {
+                      ...prev.progress,
+                      filesCurrent,
+                      filesTotal: estimatedFiles,
+                      fileName,
+                    },
+                  }));
+                  log.info(`[MakerWorld Sync] Downloading instance 3MF: ${fileName}`);
+                  const instanceResult = await downloadFile(instanceDownload.url, designData.designId.toString(), fileName, 'model');
+                  if (instanceResult.success && instanceResult.files) {
+                    assets.push(...instanceResult.files);
+                  } else if (instanceResult.requiresCaptcha) {
+                    captchaRequired = true;
+                    break;
+                  } else {
+                    log.warn(`[MakerWorld Sync] Failed to download instance 3MF: ${instanceResult.error}`);
+                    downloadsFailed = true;
+                  }
+                }
+              } catch (instanceError) {
+                // Check if this is a 418 captcha error from the API
+                if (isCaptchaError(instanceError)) {
+                  log.warn(`[MakerWorld Sync] Captcha required for instance ${instance.id} 3MF download URL`);
                   captchaRequired = true;
                   break;
                 } else {
-                  log.warn(`[MakerWorld Sync] Failed to download instance 3MF: ${instanceResult.error}`);
+                  log.warn(`[MakerWorld Sync] Failed to fetch instance ${instance.id} 3MF:`, instanceError);
                   downloadsFailed = true;
                 }
-              }
-            } catch (instanceError) {
-              // Check if this is a 418 captcha error from the API
-              if (isCaptchaError(instanceError)) {
-                log.warn(`[MakerWorld Sync] Captcha required for instance ${instance.id} 3MF download URL`);
-                captchaRequired = true;
-                break;
-              } else {
-                log.warn(`[MakerWorld Sync] Failed to fetch instance ${instance.id} 3MF:`, instanceError);
-                downloadsFailed = true;
               }
             }
           }
@@ -484,6 +663,7 @@ export function MakerWorldSync({
             design: designData,
             assets,
             description, // Pass the full description/details
+            appendTags: state.syncOptions.appendTags,
           }),
         });
 
@@ -501,11 +681,20 @@ export function MakerWorldSync({
           throw new Error(errorMessage);
         }
 
+        // Parse response to check if this was a new design or update
+        let isNew = true;
+        try {
+          const responseData = JSON.parse(responseText);
+          isNew = responseData.isNew ?? true;
+        } catch {
+          // Ignore parse errors, default to isNew
+        }
+
         setState((prev) => ({
           ...prev,
-          completed: [...prev.completed, design.title],
+          completed: [...prev.completed, { id: design.id, name: design.title, isNew }],
         }));
-        log.info(`[MakerWorld Sync] Successfully synced ${design.title}`);
+        log.info(`[MakerWorld Sync] Successfully synced ${design.title} (${isNew ? 'new' : 'updated'})`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         log.error(`[MakerWorld Sync] Failed to sync ${design.title}:`, error);
@@ -516,7 +705,7 @@ export function MakerWorldSync({
       }
     }
 
-    setState((prev) => ({ ...prev, isSyncing: false }));
+    setState((prev) => ({ ...prev, isSyncing: false, showSummary: true }));
 
     // Refresh synced designs list
     if (user?.handle) {
@@ -530,6 +719,10 @@ export function MakerWorldSync({
 
     // Dispatch custom event for dashboard to refresh
     window.dispatchEvent(new CustomEvent("pubman:designs-updated"));
+  };
+
+  const closeSummary = () => {
+    setState((prev) => ({ ...prev, showSummary: false }));
   };
 
   interface DownloadResult {
@@ -631,28 +824,64 @@ export function MakerWorldSync({
 
           {/* Progress bar - shown during sync */}
           {state.isSyncing && (
-            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm">
-                  Syncing {state.progress.current} of {state.progress.total}...
-                </span>
-                <span className="text-sm text-gray-600 truncate ml-2 max-w-[200px]">
-                  {state.progress.currentName}
-                </span>
+            <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-3">
+              {/* Design-level progress */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium">
+                    Design {state.progress.designsCurrent} of {state.progress.designsTotal}
+                  </span>
+                  <span className="text-sm text-gray-600 truncate ml-2 max-w-[200px]">
+                    {state.progress.designName}
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 transition-all"
+                    style={{
+                      width: `${state.progress.designsTotal > 0 ? (state.progress.designsCurrent / state.progress.designsTotal) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 transition-all"
-                  style={{
-                    width: `${(state.progress.current / state.progress.total) * 100}%`,
-                  }}
-                />
+
+              {/* File-level progress */}
+              {state.progress.filesTotal > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-500">
+                      Downloading file {state.progress.filesCurrent} of {state.progress.filesTotal}
+                    </span>
+                    <span className="text-xs text-gray-500 truncate ml-2 max-w-[200px]">
+                      {state.progress.fileName}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 transition-all"
+                      style={{
+                        width: `${(state.progress.filesCurrent / state.progress.filesTotal) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelSync}
+                  className="text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  Cancel Sync
+                </Button>
               </div>
             </div>
           )}
 
           {/* Results summary - shown after sync */}
-          {!state.isSyncing && (state.completed.length > 0 || state.failed.length > 0) && (
+          {!state.isSyncing && (state.completed.length > 0 || state.failed.length > 0 || state.skipped.length > 0) && (
             <div className="mt-3 p-3 bg-gray-50 rounded-lg flex items-center gap-4">
               {state.completed.length > 0 && (
                 <span className="text-green-600 flex items-center text-sm">
@@ -664,6 +893,11 @@ export function MakerWorldSync({
                 <span className="text-red-500 flex items-center text-sm">
                   <AlertCircle className="h-4 w-4 mr-1" />
                   {state.failed.length} failed
+                </span>
+              )}
+              {state.skipped.length > 0 && (
+                <span className="text-gray-500 flex items-center text-sm">
+                  {state.skipped.length} skipped
                 </span>
               )}
             </div>
@@ -688,6 +922,56 @@ export function MakerWorldSync({
             </div>
           ) : (
             <>
+              {/* Sync Options Panel */}
+              <div className="mb-4 border rounded-lg">
+                <button
+                  type="button"
+                  onClick={toggleOptionsPanel}
+                  className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium">Sync Options</span>
+                  </div>
+                  <ChevronDown
+                    className={`h-4 w-4 text-gray-500 transition-transform ${
+                      state.optionsExpanded ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {state.optionsExpanded && (
+                  <div className="px-3 pb-3 space-y-2 border-t">
+                    <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={state.syncOptions.downloadCoverImages}
+                        onChange={(e) => updateSyncOption("downloadCoverImages", e.target.checked)}
+                        className="h-4 w-4 text-blue-600"
+                      />
+                      <span className="text-sm">Download cover images</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={state.syncOptions.downloadModelFiles}
+                        onChange={(e) => updateSyncOption("downloadModelFiles", e.target.checked)}
+                        className="h-4 w-4 text-blue-600"
+                      />
+                      <span className="text-sm">Download model files (3MF, STL)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={state.syncOptions.appendTags}
+                        onChange={(e) => updateSyncOption("appendTags", e.target.checked)}
+                        className="h-4 w-4 text-blue-600"
+                      />
+                      <span className="text-sm">Append tags (instead of replacing)</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
               {/* Selection controls */}
               <div className="flex items-center justify-between mb-4">
                 <div className="text-sm text-gray-600">
@@ -707,9 +991,11 @@ export function MakerWorldSync({
               <div className="space-y-2">
                 {state.designs.map((design) => {
                   const synced = isAlreadySynced(design);
+                  const nameMatch = hasNameMatch(design);
                   const selected = state.selectedIds.has(design.id);
-                  const completed = state.completed.includes(design.title);
+                  const completedResult = state.completed.find((c) => c.id === design.id);
                   const failed = state.failed.find((f) => f.id === design.id);
+                  const skipped = state.skipped.find((s) => s.id === design.id);
 
                   return (
                     <div
@@ -738,9 +1024,9 @@ export function MakerWorldSync({
                         <div className="text-sm text-gray-500 truncate">{design.summary}</div>
                       </div>
                       <div className="ml-4 flex items-center flex-shrink-0">
-                        {completed ? (
+                        {completedResult ? (
                           <span className="text-green-600 flex items-center">
-                            <Check className="h-4 w-4 mr-1" /> Synced
+                            <Check className="h-4 w-4 mr-1" /> {completedResult.isNew ? 'Created' : 'Updated'}
                           </span>
                         ) : failed ? (
                           <div className="text-red-500">
@@ -751,8 +1037,14 @@ export function MakerWorldSync({
                               {failed.error}
                             </span>
                           </div>
+                        ) : skipped ? (
+                          <span className="text-gray-500 text-sm">Skipped</span>
                         ) : synced ? (
                           <span className="text-gray-500 text-sm">Already synced</span>
+                        ) : nameMatch ? (
+                          <span className="text-amber-600 flex items-center text-sm">
+                            <GitMerge className="h-4 w-4 mr-1" /> Exists - Merge
+                          </span>
                         ) : (
                           <span className="text-blue-500 text-sm">New</span>
                         )}
@@ -805,6 +1097,96 @@ export function MakerWorldSync({
           )}
         </div>
       </div>
+
+      {/* Success Summary Dialog */}
+      <Dialog open={state.showSummary} onOpenChange={(open) => !open && closeSummary()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sync Complete</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Summary counts */}
+            <div className="flex flex-wrap gap-4">
+              {state.completed.length > 0 && (
+                <div className="flex items-center text-green-600">
+                  <Check className="h-5 w-5 mr-2" />
+                  <span className="font-medium">{state.completed.length}</span>
+                  <span className="ml-1">synced</span>
+                </div>
+              )}
+              {state.failed.length > 0 && (
+                <div className="flex items-center text-red-500">
+                  <AlertCircle className="h-5 w-5 mr-2" />
+                  <span className="font-medium">{state.failed.length}</span>
+                  <span className="ml-1">failed</span>
+                </div>
+              )}
+              {state.skipped.length > 0 && (
+                <div className="flex items-center text-gray-500">
+                  <span className="font-medium">{state.skipped.length}</span>
+                  <span className="ml-1">skipped</span>
+                </div>
+              )}
+            </div>
+
+            {/* Synced designs list */}
+            {state.completed.length > 0 && (
+              <div className="border rounded-lg p-3 bg-green-50">
+                <h4 className="text-sm font-medium text-green-800 mb-2">Synced</h4>
+                <ul className="space-y-1 max-h-32 overflow-y-auto">
+                  {state.completed.map((item) => (
+                    <li key={item.id} className="text-sm text-green-700 flex items-center">
+                      <Check className="h-3 w-3 mr-2 flex-shrink-0" />
+                      <span className="truncate">{item.name}</span>
+                      <span className="ml-2 text-xs text-green-600">
+                        ({item.isNew ? 'new' : 'updated'})
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Failed designs list */}
+            {state.failed.length > 0 && (
+              <div className="border rounded-lg p-3 bg-red-50">
+                <h4 className="text-sm font-medium text-red-800 mb-2">Failed</h4>
+                <ul className="space-y-1 max-h-32 overflow-y-auto">
+                  {state.failed.map((item) => (
+                    <li key={item.id} className="text-sm text-red-700">
+                      <div className="flex items-center">
+                        <AlertCircle className="h-3 w-3 mr-2 flex-shrink-0" />
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                      <span className="text-xs text-red-600 ml-5 block truncate" title={item.error}>
+                        {item.error}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Skipped designs list */}
+            {state.skipped.length > 0 && (
+              <div className="border rounded-lg p-3 bg-gray-50">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Skipped</h4>
+                <ul className="space-y-1 max-h-32 overflow-y-auto">
+                  {state.skipped.map((item) => (
+                    <li key={item.id} className="text-sm text-gray-600 flex items-center">
+                      <span className="truncate">{item.name}</span>
+                      <span className="ml-2 text-xs text-gray-500">({item.reason})</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={closeSummary}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

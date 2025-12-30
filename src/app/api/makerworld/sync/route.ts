@@ -32,6 +32,7 @@ interface SyncRequestBody {
   design: MakerWorldDesignData;
   assets?: AssetData[];
   description?: string;  // Optional description (MakerWorld uses details field)
+  appendTags?: boolean;  // If true, append tags instead of replacing
 }
 
 /**
@@ -42,7 +43,7 @@ interface SyncRequestBody {
 export async function POST(request: NextRequest) {
   try {
     const body: SyncRequestBody = await request.json();
-    const { design, assets = [], description = "" } = body;
+    const { design, assets = [], description = "", appendTags = false } = body;
 
     if (!design || !design.id) {
       return NextResponse.json({ error: "Missing design data" }, { status: 400 });
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Sync tags
-    syncTags(db, designId, design.tags);
+    syncTags(db, designId, design.tags, appendTags);
 
     // Create asset records for downloaded files
     for (const asset of assets) {
@@ -197,13 +198,26 @@ export async function POST(request: NextRequest) {
 
 /**
  * Sync tags from MakerWorld to PubMan
+ * @param appendTags - If true, add new tags without removing existing ones
  */
-function syncTags(db: ReturnType<typeof getDatabase>, designId: number, tags: string[]) {
-  // Delete existing MakerWorld tags for this design
-  db.prepare(`
-    UPDATE design_tag SET deleted_at = datetime('now')
-    WHERE design_id = ? AND platform_id = ? AND deleted_at IS NULL
-  `).run(designId, MAKERWORLD_PLATFORM_ID);
+function syncTags(db: ReturnType<typeof getDatabase>, designId: number, tags: string[], appendTags: boolean = false) {
+  if (!appendTags) {
+    // Delete existing MakerWorld tags for this design (replace mode)
+    db.prepare(`
+      UPDATE design_tag SET deleted_at = datetime('now')
+      WHERE design_id = ? AND platform_id = ? AND deleted_at IS NULL
+    `).run(designId, MAKERWORLD_PLATFORM_ID);
+  }
+
+  // Get existing tags to avoid duplicates when appending
+  const existingTags = new Set<string>();
+  if (appendTags) {
+    const existing = db.prepare(`
+      SELECT tag FROM design_tag
+      WHERE design_id = ? AND platform_id = ? AND deleted_at IS NULL
+    `).all(designId, MAKERWORLD_PLATFORM_ID) as Array<{ tag: string }>;
+    existing.forEach((t) => existingTags.add(t.tag.toLowerCase()));
+  }
 
   // Insert new tags
   const insertTag = db.prepare(`
@@ -213,7 +227,12 @@ function syncTags(db: ReturnType<typeof getDatabase>, designId: number, tags: st
 
   for (const tag of tags) {
     if (tag && tag.trim()) {
-      insertTag.run(designId, tag.trim(), MAKERWORLD_PLATFORM_ID);
+      const normalizedTag = tag.trim();
+      // Skip if already exists (when appending)
+      if (appendTags && existingTags.has(normalizedTag.toLowerCase())) {
+        continue;
+      }
+      insertTag.run(designId, normalizedTag, MAKERWORLD_PLATFORM_ID);
     }
   }
 }
