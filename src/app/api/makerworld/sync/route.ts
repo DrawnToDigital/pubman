@@ -25,6 +25,7 @@ interface AssetData {
   fileExt: string;
   filePath: string;      // Absolute path where file was saved
   originalUrl?: string;  // Original URL from MakerWorld
+  fileSize?: number;     // File size in bytes
 }
 
 interface SyncRequestBody {
@@ -203,9 +204,16 @@ function createAssetRecord(
 
   if (!existing) {
     db.prepare(`
-      INSERT INTO design_asset (design_id, designer_id, file_name, file_ext, file_path, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-    `).run(designId, designerId, asset.fileName, asset.fileExt, filePath);
+      INSERT INTO design_asset (design_id, designer_id, file_name, file_ext, file_path, original_file_size, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    `).run(designId, designerId, asset.fileName, asset.fileExt, filePath, asset.fileSize || null);
+  } else {
+    // Update file size if it was missing
+    if (asset.fileSize) {
+      db.prepare(`
+        UPDATE design_asset SET original_file_size = ? WHERE design_id = ? AND file_path = ? AND deleted_at IS NULL
+      `).run(asset.fileSize, designId, filePath);
+    }
   }
 }
 

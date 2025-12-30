@@ -29,7 +29,56 @@ export const DraftSummarySchema = z.object({
   updateTime: z.string(),
   createTime: z.string(),
   status: z.number(),
+  license: z.string().optional(),
 }).passthrough();
+
+// Schema for published design from __NEXT_DATA__ (has different field names)
+export const PublishedDesignSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  coverUrl: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  license: z.string().optional(),
+  createTime: z.string().optional(),
+  publishTime: z.string().optional(),
+  instances: z.array(z.object({
+    id: z.number(),
+    title: z.string().optional(),
+    cover: z.string().optional(),
+    summary: z.string().optional(),
+  }).passthrough()).optional(),
+}).passthrough();
+
+// Schema for design detail response (from /design/{id} API)
+export const DesignDetailSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  summary: z.string().optional(),
+  details: z.string().optional(), // HTML description
+  categoryId: z.number().optional(),
+  tags: z.array(z.string()).optional(),
+  license: z.string().optional(),
+  cover: z.string().optional(),
+  nsfw: z.boolean().optional(),
+  instances: z.array(z.object({
+    id: z.number(),
+    title: z.string().optional(),
+    cover: z.string().optional(),
+    summary: z.string().optional(),
+  }).passthrough()).optional(),
+}).passthrough();
+
+// Schema for model download response
+export const ModelDownloadSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+});
+
+// Schema for instance 3MF download response
+export const Instance3MFDownloadSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+});
 
 export const GetDraftsResponseSchema = z.object({
   hits: z.array(DraftSummarySchema),
@@ -593,8 +642,9 @@ export class MakerWorldClientAPI {
         const extractedTitle = (m.title as string) || (m.name as string) || '';
         const extractedSummary = (m.summary as string) || (m.description as string) || '';
         const extractedCover = (m.cover as string) || (m.coverUrl as string) || (m.thumbnail as string) || '';
+        const extractedLicense = (m.license as string) || '';
 
-        log.info(`[MakerWorld API] Extracted design: id=${extractedId}, title="${extractedTitle}"`);
+        log.info(`[MakerWorld API] Extracted design: id=${extractedId}, title="${extractedTitle}", license="${extractedLicense}"`);
 
         allDesigns.push({
           id: extractedId,
@@ -607,12 +657,47 @@ export class MakerWorldClientAPI {
           updateTime: (m.updateTime as string) || (m.publishTime as string) || (m.updatedAt as string) || '',
           createTime: (m.createTime as string) || (m.publishTime as string) || (m.createdAt as string) || '',
           status: 3,
+          license: extractedLicense,
         });
       }
     }
 
     log.info(`[MakerWorld API] Returning ${allDesigns.length} published designs`);
     return allDesigns;
+  }
+
+  /**
+   * Fetch full design details from public API
+   * @param designId The published design ID
+   */
+  async getDesignDetails(designId: number): Promise<z.infer<typeof DesignDetailSchema>> {
+    const url = `${this.mwApiUrl}/v1/design-service/design/${designId}`;
+    log.info(`[MakerWorld API] Fetching design details: ${url}`);
+    const res = await this.fetch(url);
+    return res as z.infer<typeof DesignDetailSchema>;
+  }
+
+  /**
+   * Get model download URL for a design
+   * @param designId The published design ID
+   * @param modelType Type of model files to download (default: 'all')
+   */
+  async getModelDownloadUrl(designId: number, modelType = 'all'): Promise<z.infer<typeof ModelDownloadSchema>> {
+    const url = `${this.mwApiUrl}/v1/design-service/design/${designId}/model?modelType=${modelType}&type=download`;
+    log.info(`[MakerWorld API] Fetching model download URL: ${url}`);
+    const res = await this.fetch(url);
+    return res as z.infer<typeof ModelDownloadSchema>;
+  }
+
+  /**
+   * Get instance (print profile) 3MF download URL
+   * @param instanceId The instance/profile ID
+   */
+  async getInstanceDownloadUrl(instanceId: number): Promise<z.infer<typeof Instance3MFDownloadSchema>> {
+    const url = `${this.mwApiUrl}/v1/design-service/instance/${instanceId}/f3mf?type=download&fileType=`;
+    log.info(`[MakerWorld API] Fetching instance 3MF download URL: ${url}`);
+    const res = await this.fetch(url);
+    return res as z.infer<typeof Instance3MFDownloadSchema>;
   }
 
 }

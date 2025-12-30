@@ -174,27 +174,43 @@ export function MakerWorldSync({
           throw new Error(`Invalid design ID: ${design.id}. The design data from MakerWorld may have an unexpected format.`);
         }
 
-        // We already have design data from __NEXT_DATA__, use it directly
-        // The design.id from __NEXT_DATA__ is the published design ID
+        // Fetch full design details from MakerWorld API
+        const api = new MakerWorldClientAPI();
+        let designDetails;
+        try {
+          designDetails = await api.getDesignDetails(design.id);
+          log.info(`[MakerWorld Sync] Fetched design details:`, JSON.stringify(designDetails));
+        } catch (detailsError) {
+          log.warn(`[MakerWorld Sync] Failed to fetch design details, using basic data:`, detailsError);
+          designDetails = null;
+        }
+
+        // Extract description from details (HTML content) or use summary
+        // MakerWorld stores rich description in 'details' field as HTML
+        const description = designDetails?.details || design.summary || '';
+
+        // Build design data with full details
         const designData = {
           id: design.id,
           designId: design.designId || design.id,
-          title: design.title || `Design ${design.id}`,
-          summary: design.summary || '',
-          categoryId: design.categoryId || 0,
-          tags: design.tags || [],
-          license: (design as Record<string, unknown>).license as string || 'BY',
-          cover: design.cover || '',
+          title: designDetails?.title || design.title || `Design ${design.id}`,
+          summary: designDetails?.summary || design.summary || '',
+          categoryId: designDetails?.categoryId || design.categoryId || 0,
+          tags: designDetails?.tags || design.tags || [],
+          license: designDetails?.license || design.license || 'BY',
+          cover: designDetails?.cover || design.cover || '',
           createTime: design.createTime || '',
           updateTime: design.updateTime || '',
         };
 
         log.info(`[MakerWorld Sync] Design data:`, JSON.stringify(designData));
+        log.info(`[MakerWorld Sync] License from MakerWorld: ${designData.license}`);
 
-        // Download files (model files and images) - we need to get these from the model page
-        const assets: Array<{ fileName: string; fileExt: string; filePath: string }> = [];
+        // Download files (model files and images)
+        const assets: Array<{ fileName: string; fileExt: string; filePath: string; fileSize?: number }> = [];
+
+        // 1. Download cover image
         try {
-          // For now, just download the cover image if available
           if (designData.cover) {
             log.info(`[MakerWorld Sync] Downloading cover image: ${designData.cover}`);
             const coverResult = await downloadFile(designData.cover, designData.designId.toString(), 'cover.jpg', 'image');
@@ -203,8 +219,44 @@ export function MakerWorldSync({
             }
           }
         } catch (downloadError) {
-          log.warn(`[MakerWorld Sync] Failed to download files for ${design.title}:`, downloadError);
-          // Continue with sync even if file download fails
+          log.warn(`[MakerWorld Sync] Failed to download cover image:`, downloadError);
+        }
+
+        // 2. Download model files (all.zip containing STL/3MF files)
+        try {
+          log.info(`[MakerWorld Sync] Fetching model download URL for design ${design.id}`);
+          const modelDownload = await api.getModelDownloadUrl(design.id);
+          if (modelDownload.url) {
+            const fileName = modelDownload.name || 'model_files.zip';
+            log.info(`[MakerWorld Sync] Downloading model files: ${fileName}`);
+            const modelResult = await downloadFile(modelDownload.url, designData.designId.toString(), fileName, 'model');
+            if (modelResult) {
+              assets.push(modelResult);
+            }
+          }
+        } catch (modelError) {
+          log.warn(`[MakerWorld Sync] Failed to download model files:`, modelError);
+        }
+
+        // 3. Download instance (print profile) 3MF files
+        const instances = designDetails?.instances || [];
+        for (const instance of instances) {
+          try {
+            if (instance.id) {
+              log.info(`[MakerWorld Sync] Fetching instance ${instance.id} 3MF download URL`);
+              const instanceDownload = await api.getInstanceDownloadUrl(instance.id);
+              if (instanceDownload.url) {
+                const fileName = instanceDownload.name || `profile_${instance.id}.3mf`;
+                log.info(`[MakerWorld Sync] Downloading instance 3MF: ${fileName}`);
+                const instanceResult = await downloadFile(instanceDownload.url, designData.designId.toString(), fileName, 'model');
+                if (instanceResult) {
+                  assets.push(instanceResult);
+                }
+              }
+            }
+          } catch (instanceError) {
+            log.warn(`[MakerWorld Sync] Failed to download instance ${instance.id} 3MF:`, instanceError);
+          }
         }
 
         log.info(`[MakerWorld Sync] Downloaded ${assets.length} assets`);
@@ -217,6 +269,7 @@ export function MakerWorldSync({
           body: JSON.stringify({
             design: designData,
             assets,
+            description, // Pass the full description/details
           }),
         });
 
@@ -270,7 +323,7 @@ export function MakerWorldSync({
     designId: string,
     fileName: string,
     fileType: "model" | "image"
-  ): Promise<{ fileName: string; fileExt: string; filePath: string } | null> => {
+  ): Promise<{ fileName: string; fileExt: string; filePath: string; fileSize?: number } | null> => {
     try {
       const response = await fetch("/api/makerworld/sync/download", {
         method: "POST",
@@ -288,6 +341,7 @@ export function MakerWorldSync({
         fileName: data.fileName,
         fileExt: data.fileExt,
         filePath: data.filePath,
+        fileSize: data.size, // Include file size from download response
       };
     } catch (error) {
       log.error(`[MakerWorld Sync] Download failed for ${fileName}:`, error);
