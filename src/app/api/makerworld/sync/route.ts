@@ -11,7 +11,7 @@ interface MakerWorldDesignData {
   id: number;           // Draft ID
   designId: number;     // Published design ID
   title: string;
-  summary: string;
+  // Note: MakerWorld doesn't have a PubMan summary equivalent
   categoryId: number;
   tags: string[];
   license: string;
@@ -99,10 +99,10 @@ export async function POST(request: NextRequest) {
       // Update existing design
       designId = existingLink.design_id;
 
+      // Update existing design (don't touch summary - MakerWorld doesn't have one)
       db.prepare(`
         UPDATE design
         SET main_name = ?,
-            summary = ?,
             description = ?,
             license_key = ?,
             makerworld_category = ?,
@@ -110,7 +110,6 @@ export async function POST(request: NextRequest) {
         WHERE id = ? AND designer_id = ?
       `).run(
         design.title,
-        design.summary,
         description,
         pubmanLicense,
         pubmanCategory,
@@ -147,13 +146,19 @@ export async function POST(request: NextRequest) {
       log.info(`[Sync] Updated design ${designId} from MakerWorld ${platformDesignId}`);
     } else {
       // Create new design
+      // Generate summary from description (first 200 chars) or use placeholder
+      let summary = description ? description.replace(/<[^>]+>/g, '').substring(0, 200).trim() : '';
+      if (!summary) {
+        summary = 'Imported from MakerWorld';
+      }
+
       const insertResult = db.prepare(`
         INSERT INTO design (designer_id, main_name, summary, description, license_key, makerworld_category, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       `).run(
         designer.id,
         design.title,
-        design.summary,
+        summary,
         description,
         pubmanLicense,
         pubmanCategory

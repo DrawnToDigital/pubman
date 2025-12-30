@@ -10,36 +10,48 @@ import {
 } from "../../lib/makerworld-client";
 import { z } from "zod";
 import log from "electron-log/renderer";
-import TurndownService from "turndown";
-import { RefreshCw, Check, X, Download, AlertCircle, ExternalLink } from "lucide-react";
+import { RefreshCw, Check, Download, AlertCircle, ExternalLink } from "lucide-react";
 
 type DraftSummary = z.infer<typeof DraftSummarySchema>;
 
-// Initialize Turndown service for HTML to Markdown conversion
-const turndownService = new TurndownService({
-  headingStyle: 'atx',
-  codeBlockStyle: 'fenced',
-  bulletListMarker: '-',
-});
-
 /**
- * Convert HTML content to Markdown
- * Returns the original string if it doesn't appear to contain HTML
+ * Normalize HTML content from MakerWorld
+ * - Single paragraphs with no block elements: unwrap <p> tag
+ * - Multi-paragraph or complex content: keep HTML structure
+ * - Strip inline styles and MakerWorld-specific attributes
  */
-function htmlToMarkdown(html: string): string {
+function normalizeDescription(html: string): string {
   if (!html || typeof html !== 'string') return '';
 
-  // Check if content appears to contain HTML tags
+  // No HTML tags? Return as-is
   const hasHtmlTags = /<[^>]+>/.test(html);
   if (!hasHtmlTags) {
-    return html;
+    return html.trim();
   }
 
   try {
-    return turndownService.turndown(html).trim();
+    // Clean up: strip inline styles and class attributes
+    let cleaned = html
+      .replace(/\s*style="[^"]*"/gi, '')
+      .replace(/\s*class="[^"]*"/gi, '')
+      .trim();
+
+    // Check if content is a single paragraph with no nested block elements
+    // Use [\s\S] instead of . with 's' flag for cross-line matching
+    const singleParagraphMatch = cleaned.match(/^<p>([\s\S]+)<\/p>$/);
+    if (singleParagraphMatch) {
+      const innerContent = singleParagraphMatch[1];
+      // If inner content has no block elements, unwrap the <p>
+      const hasBlockElements = /<(p|div|ul|ol|li|h[1-6]|blockquote|pre)/i.test(innerContent);
+      if (!hasBlockElements) {
+        return innerContent.trim();
+      }
+    }
+
+    return cleaned;
   } catch (error) {
-    log.warn('[MakerWorld Sync] Failed to convert HTML to Markdown:', error);
-    return html;
+    log.warn('[MakerWorld Sync] Failed to normalize description:', error);
+    return html.replace(/<[^>]+>/g, '').trim(); // Fallback: strip all tags
   }
 }
 
@@ -159,9 +171,15 @@ export function MakerWorldSync({
     }
   }, []);
 
-  // Fetch designs when dialog opens
+  // Fetch designs when dialog opens and reset status
   useEffect(() => {
     if (isOpen && isAuthenticated && user?.handle) {
+      // Reset completed/failed status when modal opens
+      setState((prev) => ({
+        ...prev,
+        completed: [],
+        failed: [],
+      }));
       fetchDesigns(user.handle, user.uid);
     }
   }, [isOpen, isAuthenticated, user?.handle, user?.uid, fetchDesigns]);
@@ -299,17 +317,18 @@ export function MakerWorldSync({
           designDetails = null;
         }
 
-        // Extract description from details (HTML content) and convert to Markdown
-        // MakerWorld stores rich description in 'details' field as HTML
-        const htmlDescription = designDetails?.details || design.summary || '';
-        const description = htmlToMarkdown(htmlDescription);
+        // Extract and normalize description
+        // MakerWorld calls its description field "summary" (confusingly)
+        // MakerWorld has no equivalent for PubMan's "summary" field
+        const rawDescription = designDetails?.summary || design.summary || '';
+        const description = normalizeDescription(rawDescription);
 
         // Build design data with full details
+        // Note: MakerWorld doesn't have a PubMan summary equivalent, so we don't set it
         const designData = {
           id: design.id,
           designId: design.designId || design.id,
           title: designDetails?.title || design.title || `Design ${design.id}`,
-          summary: designDetails?.summary || design.summary || '',
           categoryId: designDetails?.categoryId || design.categoryId || 0,
           tags: designDetails?.tags || design.tags || [],
           license: designDetails?.license || design.license || 'BY',
@@ -581,12 +600,74 @@ export function MakerWorldSync({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col my-auto">
-        {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Sync from MakerWorld</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="h-5 w-5" />
-          </button>
+        {/* Header with action buttons and status */}
+        <div className="px-6 py-4 border-b">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold">Sync from MakerWorld</h2>
+            <div className="flex items-center gap-2">
+              {state.designs.length > 0 && (
+                <Button
+                  onClick={syncDesigns}
+                  disabled={state.isSyncing || state.selectedIds.size === 0}
+                >
+                  {state.isSyncing ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Sync {state.selectedIds.size} Design(s)
+                    </>
+                  )}
+                </Button>
+              )}
+              <Button variant="outline" onClick={onClose} disabled={state.isSyncing}>
+                {state.completed.length > 0 || state.failed.length > 0 ? "Close" : "Cancel"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Progress bar - shown during sync */}
+          {state.isSyncing && (
+            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm">
+                  Syncing {state.progress.current} of {state.progress.total}...
+                </span>
+                <span className="text-sm text-gray-600 truncate ml-2 max-w-[200px]">
+                  {state.progress.currentName}
+                </span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 transition-all"
+                  style={{
+                    width: `${(state.progress.current / state.progress.total) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Results summary - shown after sync */}
+          {!state.isSyncing && (state.completed.length > 0 || state.failed.length > 0) && (
+            <div className="mt-3 p-3 bg-gray-50 rounded-lg flex items-center gap-4">
+              {state.completed.length > 0 && (
+                <span className="text-green-600 flex items-center text-sm">
+                  <Check className="h-4 w-4 mr-1" />
+                  {state.completed.length} synced
+                </span>
+              )}
+              {state.failed.length > 0 && (
+                <span className="text-red-500 flex items-center text-sm">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {state.failed.length} failed
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -720,73 +801,7 @@ export function MakerWorldSync({
                   </div>
                 </div>
               )}
-
-              {/* Progress */}
-              {state.isSyncing && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                    <span>
-                      Syncing {state.progress.current} of {state.progress.total}...
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-600 truncate">
-                    {state.progress.currentName}
-                  </div>
-                  <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500 transition-all"
-                      style={{
-                        width: `${(state.progress.current / state.progress.total) * 100}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Results */}
-              {!state.isSyncing && (state.completed.length > 0 || state.failed.length > 0) && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  {state.completed.length > 0 && (
-                    <div className="text-green-600 mb-2">
-                      <Check className="h-4 w-4 inline mr-1" />
-                      Successfully synced {state.completed.length} design(s)
-                    </div>
-                  )}
-                  {state.failed.length > 0 && (
-                    <div className="text-red-500">
-                      <AlertCircle className="h-4 w-4 inline mr-1" />
-                      Failed to sync {state.failed.length} design(s)
-                    </div>
-                  )}
-                </div>
-              )}
             </>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={state.isSyncing}>
-            {state.completed.length > 0 || state.failed.length > 0 ? "Close" : "Cancel"}
-          </Button>
-          {state.designs.length > 0 && (
-            <Button
-              onClick={syncDesigns}
-              disabled={state.isSyncing || state.selectedIds.size === 0}
-            >
-              {state.isSyncing ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                  Syncing...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Sync {state.selectedIds.size} Design(s)
-                </>
-              )}
-            </Button>
           )}
         </div>
       </div>
