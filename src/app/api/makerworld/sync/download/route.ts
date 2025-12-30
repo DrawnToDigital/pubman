@@ -13,6 +13,9 @@ const ALLOWED_CDN_DOMAINS = [
   "makerworld-model-files.bambulab.com",
   "makerworld.bblmw.com",
   "public-cdn.bambulab.com",
+  "bblmw.com",
+  "makerworld-us.bblmw.com",
+  "makerworld-eu.bblmw.com",
 ];
 
 interface DownloadRequest {

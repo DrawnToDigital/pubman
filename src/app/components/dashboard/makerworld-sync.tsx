@@ -6,14 +6,12 @@ import { useMakerWorldAuth } from "../../contexts/MakerWorldAuthContext";
 import {
   MakerWorldClientAPI,
   DraftSummarySchema,
-  DraftDetailResponseSchema,
 } from "../../lib/makerworld-client";
 import { z } from "zod";
 import log from "electron-log/renderer";
 import { RefreshCw, Check, X, Download, AlertCircle } from "lucide-react";
 
 type DraftSummary = z.infer<typeof DraftSummarySchema>;
-type DraftDetail = z.infer<typeof DraftDetailResponseSchema>;
 
 interface SyncedDesign {
   platformDesignId: string;
@@ -44,7 +42,7 @@ export function MakerWorldSync({
   onClose: () => void;
   onSyncComplete?: () => void;
 }) {
-  const { isAuthenticated } = useMakerWorldAuth();
+  const { isAuthenticated, user } = useMakerWorldAuth();
   const [state, setState] = useState<SyncState>({
     isOpen: false,
     isFetching: false,
@@ -60,23 +58,31 @@ export function MakerWorldSync({
 
   // Fetch designs when dialog opens
   useEffect(() => {
-    if (isOpen && isAuthenticated) {
-      fetchDesigns();
+    if (isOpen && isAuthenticated && user?.handle) {
+      fetchDesigns(user.handle, user.uid);
     }
-  }, [isOpen, isAuthenticated]);
+  }, [isOpen, isAuthenticated, user?.handle, user?.uid]);
 
-  const fetchDesigns = async () => {
+  const fetchDesigns = async (userHandle: string, userId?: number) => {
     setState((prev) => ({ ...prev, isFetching: true, error: null }));
 
     try {
       // Fetch already synced designs from PubMan
       const syncStatusRes = await fetch("/api/makerworld/sync");
-      const syncStatus = await syncStatusRes.json();
-      const syncedDesigns: SyncedDesign[] = syncStatus.syncedDesigns || [];
+      let syncedDesigns: SyncedDesign[] = [];
 
-      // Fetch published designs from MakerWorld
+      if (syncStatusRes.ok) {
+        const syncStatus = await syncStatusRes.json();
+        syncedDesigns = syncStatus.syncedDesigns || [];
+      } else {
+        // Log but continue - we can still sync even if we can't check existing
+        const errorText = await syncStatusRes.text();
+        log.warn("[MakerWorld Sync] Failed to fetch sync status:", syncStatusRes.status, errorText);
+      }
+
+      // Fetch published designs from MakerWorld using the user's handle and UID
       const api = new MakerWorldClientAPI();
-      const designs = await api.getMyPublishedDesigns();
+      const designs = await api.getMyPublishedDesigns(userHandle, userId);
 
       // Pre-select designs that haven't been synced yet
       const syncedIds = new Set(syncedDesigns.map((d) => d.platformDesignId));
@@ -150,7 +156,6 @@ export function MakerWorldSync({
       error: null,
     }));
 
-    const api = new MakerWorldClientAPI();
     const designsToSync = state.designs.filter((d) => state.selectedIds.has(d.id));
     let current = 0;
 
@@ -162,42 +167,78 @@ export function MakerWorldSync({
       }));
 
       try {
-        // Fetch full design details
-        const details = await api.getDraftById(design.id);
+        log.info(`[MakerWorld Sync] Starting sync for design: id=${design.id}, designId=${design.designId}, title="${design.title}"`);
 
-        // Download files
-        const assets = await downloadDesignFiles(details, design.id.toString());
+        // Validate design ID
+        if (!design.id || design.id <= 0) {
+          throw new Error(`Invalid design ID: ${design.id}. The design data from MakerWorld may have an unexpected format.`);
+        }
+
+        // We already have design data from __NEXT_DATA__, use it directly
+        // The design.id from __NEXT_DATA__ is the published design ID
+        const designData = {
+          id: design.id,
+          designId: design.designId || design.id,
+          title: design.title || `Design ${design.id}`,
+          summary: design.summary || '',
+          categoryId: design.categoryId || 0,
+          tags: design.tags || [],
+          license: (design as Record<string, unknown>).license as string || 'BY',
+          cover: design.cover || '',
+          createTime: design.createTime || '',
+          updateTime: design.updateTime || '',
+        };
+
+        log.info(`[MakerWorld Sync] Design data:`, JSON.stringify(designData));
+
+        // Download files (model files and images) - we need to get these from the model page
+        const assets: Array<{ fileName: string; fileExt: string; filePath: string }> = [];
+        try {
+          // For now, just download the cover image if available
+          if (designData.cover) {
+            log.info(`[MakerWorld Sync] Downloading cover image: ${designData.cover}`);
+            const coverResult = await downloadFile(designData.cover, designData.designId.toString(), 'cover.jpg', 'image');
+            if (coverResult) {
+              assets.push(coverResult);
+            }
+          }
+        } catch (downloadError) {
+          log.warn(`[MakerWorld Sync] Failed to download files for ${design.title}:`, downloadError);
+          // Continue with sync even if file download fails
+        }
+
+        log.info(`[MakerWorld Sync] Downloaded ${assets.length} assets`);
 
         // Sync to PubMan
+        log.info(`[MakerWorld Sync] Sending sync request to API`);
         const response = await fetch("/api/makerworld/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            design: {
-              id: details.id,
-              designId: details.designId,
-              title: details.title,
-              summary: details.summary,
-              categoryId: details.categoryId,
-              tags: details.tags,
-              license: details.license,
-              cover: details.cover,
-              createTime: details.createTime,
-              updateTime: details.updateTime,
-            },
+            design: designData,
             assets,
           }),
         });
 
+        const responseText = await response.text();
+        log.info(`[MakerWorld Sync] API response: ${response.status} ${responseText}`);
+
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Sync failed");
+          let errorMessage = "Sync failed";
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.error || errorMessage;
+          } catch {
+            errorMessage = responseText || errorMessage;
+          }
+          throw new Error(errorMessage);
         }
 
         setState((prev) => ({
           ...prev,
           completed: [...prev.completed, design.title],
         }));
+        log.info(`[MakerWorld Sync] Successfully synced ${design.title}`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         log.error(`[MakerWorld Sync] Failed to sync ${design.title}:`, error);
@@ -211,7 +252,9 @@ export function MakerWorldSync({
     setState((prev) => ({ ...prev, isSyncing: false }));
 
     // Refresh synced designs list
-    await fetchDesigns();
+    if (user?.handle) {
+      await fetchDesigns(user.handle, user.uid);
+    }
 
     // Notify parent to refresh
     if (onSyncComplete) {
@@ -220,58 +263,6 @@ export function MakerWorldSync({
 
     // Dispatch custom event for dashboard to refresh
     window.dispatchEvent(new CustomEvent("pubman:designs-updated"));
-  };
-
-  const downloadDesignFiles = async (
-    details: DraftDetail,
-    designId: string
-  ): Promise<Array<{ fileName: string; fileExt: string; filePath: string }>> => {
-    const assets: Array<{ fileName: string; fileExt: string; filePath: string }> = [];
-
-    // Download model files
-    if (details.modelFiles) {
-      for (const file of details.modelFiles) {
-        if (!file.modelUrl) continue;
-        try {
-          const result = await downloadFile(file.modelUrl, designId, file.modelName, "model");
-          if (result) {
-            assets.push(result);
-          }
-        } catch (error) {
-          log.warn(`[MakerWorld Sync] Failed to download model file ${file.modelName}:`, error);
-        }
-      }
-    }
-
-    // Download design pictures
-    if (details.designPictures) {
-      for (const pic of details.designPictures) {
-        if (!pic.url) continue;
-        try {
-          const result = await downloadFile(pic.url, designId, pic.name, "image");
-          if (result) {
-            assets.push(result);
-          }
-        } catch (error) {
-          log.warn(`[MakerWorld Sync] Failed to download image ${pic.name}:`, error);
-        }
-      }
-    }
-
-    // Download cover image
-    if (details.cover) {
-      try {
-        const coverName = "cover.jpg";
-        const result = await downloadFile(details.cover, designId, coverName, "image");
-        if (result) {
-          assets.push(result);
-        }
-      } catch (error) {
-        log.warn("[MakerWorld Sync] Failed to download cover image:", error);
-      }
-    }
-
-    return assets;
   };
 
   const downloadFile = async (
@@ -384,15 +375,20 @@ export function MakerWorldSync({
                         <div className="font-medium truncate">{design.title}</div>
                         <div className="text-sm text-gray-500 truncate">{design.summary}</div>
                       </div>
-                      <div className="ml-4 flex items-center">
+                      <div className="ml-4 flex items-center flex-shrink-0">
                         {completed ? (
                           <span className="text-green-600 flex items-center">
                             <Check className="h-4 w-4 mr-1" /> Synced
                           </span>
                         ) : failed ? (
-                          <span className="text-red-500 flex items-center" title={failed.error}>
-                            <AlertCircle className="h-4 w-4 mr-1" /> Failed
-                          </span>
+                          <div className="text-red-500">
+                            <span className="flex items-center">
+                              <AlertCircle className="h-4 w-4 mr-1" /> Failed
+                            </span>
+                            <span className="text-xs block max-w-[200px] truncate" title={failed.error}>
+                              {failed.error}
+                            </span>
+                          </div>
                         ) : synced ? (
                           <span className="text-gray-500 text-sm">Already synced</span>
                         ) : (

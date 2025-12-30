@@ -379,6 +379,7 @@ export class MakerWorldClientAPI {
   async getMyDrafts(limit = 100, offset = 0): Promise<z.infer<typeof GetDraftsResponseSchema>> {
     const url = `${this.mwApiUrl}/v1/design-service/my/drafts?limit=${limit}&offset=${offset}`;
     const res = await this.fetch(url);
+    log.info('[MakerWorld API] getMyDrafts response:', JSON.stringify(res));
     const parsed = GetDraftsResponseSchema.safeParse(res);
     if (!parsed.success) {
       log.warn('Drafts list validation issues:', parsed.error.issues);
@@ -387,26 +388,230 @@ export class MakerWorldClientAPI {
   }
 
   /**
-   * Fetch all user's published designs (filters drafts for published status)
-   * Published designs have status=3 or designId > 0
+   * Fetch the upload page HTML and parse embedded design data
+   * MakerWorld embeds design data in the page (Next.js __NEXT_DATA__ or similar)
    */
-  async getMyPublishedDesigns(): Promise<z.infer<typeof DraftSummarySchema>[]> {
-    const allDesigns: z.infer<typeof DraftSummarySchema>[] = [];
-    let offset = 0;
-    const limit = 100;
-    let hasMore = true;
+  private async fetchDesignsFromUploadPage(userHandle: string): Promise<{ hits: unknown[]; total: number } | null> {
+    const url = `https://makerworld.com/en/@${userHandle}/upload`;
+    log.info(`[MakerWorld API] Fetching upload page: ${url}`);
 
-    while (hasMore) {
-      const response = await this.getMyDrafts(limit, offset);
-
-      // Filter for published designs (status=3 or designId > 0)
-      const published = response.hits.filter(d => d.status === 3 || d.designId > 0);
-      allDesigns.push(...published);
-
-      offset += limit;
-      hasMore = offset < response.total;
+    if (!window.electron?.makerworld?.fetch) {
+      throw new Error('MakerWorld IPC not available');
     }
 
+    const response = await window.electron.makerworld.fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/html',
+      },
+    });
+
+    if (!response.ok) {
+      log.error(`[MakerWorld API] Failed to fetch upload page: ${response.status}`);
+      return null;
+    }
+
+    const html = response.body;
+    log.info(`[MakerWorld API] Got HTML page, length: ${html.length}`);
+
+    // Try to find __NEXT_DATA__ script tag (common in Next.js apps)
+    const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+    if (nextDataMatch) {
+      try {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        log.info('[MakerWorld API] Found __NEXT_DATA__');
+
+        // Navigate the Next.js data structure to find designs
+        const pageProps = nextData?.props?.pageProps;
+        if (pageProps) {
+          // Log the pageProps keys to help debug
+          log.info('[MakerWorld API] pageProps keys:', Object.keys(pageProps).join(', '));
+
+          // Look for designs in various possible locations
+          let designs = pageProps.designs || pageProps.models || pageProps.data?.designs ||
+                       pageProps.data?.models || pageProps.initialData?.designs ||
+                       pageProps.userDesigns || pageProps.publishedDesigns ||
+                       pageProps.list || pageProps.items;
+
+          // Also try nested structures
+          if (!designs && pageProps.data) {
+            log.info('[MakerWorld API] pageProps.data keys:', Object.keys(pageProps.data).join(', '));
+            designs = pageProps.data.list || pageProps.data.items || pageProps.data.hits;
+          }
+
+          if (Array.isArray(designs)) {
+            log.info(`[MakerWorld API] Found ${designs.length} designs in __NEXT_DATA__`);
+            // Log the first design structure to understand the data format
+            if (designs.length > 0) {
+              log.info('[MakerWorld API] First design structure:', JSON.stringify(designs[0]));
+            }
+            return { hits: designs, total: designs.length };
+          }
+
+          // If still not found, log the full pageProps structure (truncated)
+          const propsStr = JSON.stringify(pageProps);
+          log.info('[MakerWorld API] pageProps (first 2000 chars):', propsStr.substring(0, 2000));
+        }
+      } catch (e) {
+        log.error('[MakerWorld API] Failed to parse __NEXT_DATA__:', e);
+      }
+    }
+
+    // Try to find design IDs from model links in the HTML
+    const modelLinks = html.matchAll(/href="\/en\/models\/(\d+)[^"]*"/g);
+    const designIds: number[] = [];
+    for (const match of modelLinks) {
+      const id = parseInt(match[1], 10);
+      if (!designIds.includes(id)) {
+        designIds.push(id);
+      }
+    }
+
+    if (designIds.length > 0) {
+      log.info(`[MakerWorld API] Found ${designIds.length} design IDs from HTML links: ${designIds.join(', ')}`);
+      // Return minimal design objects with just IDs - we'll fetch full details later
+      const hits = designIds.map(id => ({
+        id,
+        designId: id,
+        title: `Design ${id}`, // Placeholder - will be fetched later
+        status: 3,
+      }));
+      return { hits, total: designIds.length };
+    }
+
+    log.error('[MakerWorld API] Could not find designs in upload page');
+    return null;
+  }
+
+  /**
+   * Fetch all user's published designs
+   * @param userHandle The user's MakerWorld handle (from auth context)
+   * @param userId The user's MakerWorld UID (from auth context)
+   */
+  async getMyPublishedDesigns(userHandle: string, userId?: number): Promise<z.infer<typeof DraftSummarySchema>[]> {
+    log.info(`[MakerWorld API] Fetching published designs for handle: ${userHandle}, uid: ${userId}`);
+
+    // Try to fetch designs from the upload page HTML
+    const response = await this.fetchDesignsFromUploadPage(userHandle);
+
+    if (!response || response.hits.length === 0) {
+      log.error('[MakerWorld API] Could not find designs from upload page');
+      throw new MakerWorldClientAPIError({
+        message: 'Could not fetch published designs from MakerWorld',
+      });
+    }
+
+    log.info(`[MakerWorld API] Found ${response.hits.length} designs`);
+
+    const allDesigns: z.infer<typeof DraftSummarySchema>[] = [];
+
+    // For each design found, fetch full details if we only have ID
+    for (const model of response.hits) {
+      const m = model as Record<string, unknown>;
+      const designId = (m.designId as number) || (m.id as number) || 0;
+
+      // If we only have minimal data (from HTML parsing), try to get full details
+      if (!m.title || m.title === `Design ${designId}`) {
+        try {
+          // Try to get draft details using the design ID
+          // The draft ID might be different from the published design ID
+          log.info(`[MakerWorld API] Fetching details for design ${designId}`);
+
+          // Try fetching the model page to get details
+          const modelUrl = `https://makerworld.com/en/models/${designId}`;
+          const modelResponse = await window.electron!.makerworld!.fetch(modelUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'text/html' },
+          });
+
+          if (modelResponse.ok) {
+            const modelHtml = modelResponse.body;
+            // Parse title from the page
+            const titleMatch = modelHtml.match(/<title>([^<]*)<\/title>/);
+            const title = titleMatch ? titleMatch[1].replace(' - MakerWorld', '').trim() : `Design ${designId}`;
+
+            // Try to find cover image
+            const coverMatch = modelHtml.match(/og:image"[^>]*content="([^"]*)"/);
+            const cover = coverMatch ? coverMatch[1] : '';
+
+            // Try to find description/summary
+            const descMatch = modelHtml.match(/og:description"[^>]*content="([^"]*)"/);
+            const summary = descMatch ? descMatch[1] : '';
+
+            allDesigns.push({
+              id: designId,
+              designId: designId,
+              title,
+              summary,
+              categoryId: 0,
+              tags: [],
+              cover,
+              updateTime: '',
+              createTime: '',
+              status: 3,
+            });
+
+            log.info(`[MakerWorld API] Got details for design ${designId}: "${title}"`);
+          } else {
+            // Fallback to minimal data
+            allDesigns.push({
+              id: designId,
+              designId: designId,
+              title: `Design ${designId}`,
+              summary: '',
+              categoryId: 0,
+              tags: [],
+              cover: '',
+              updateTime: '',
+              createTime: '',
+              status: 3,
+            });
+          }
+        } catch (e) {
+          log.warn(`[MakerWorld API] Failed to get details for design ${designId}:`, e);
+          allDesigns.push({
+            id: designId,
+            designId: designId,
+            title: `Design ${designId}`,
+            summary: '',
+            categoryId: 0,
+            tags: [],
+            cover: '',
+            updateTime: '',
+            createTime: '',
+            status: 3,
+          });
+        }
+      } else {
+        // We have full data already - handle various field name conventions from __NEXT_DATA__
+        // MakerWorld uses different field names in different contexts:
+        // - designId/id for the design identifier
+        // - title/name for the design name
+        // - summary/description for the short description
+        // - cover/coverUrl/thumbnail for the cover image
+        const extractedId = (m.designId as number) || (m.id as number) || (m.modelId as number) || 0;
+        const extractedTitle = (m.title as string) || (m.name as string) || '';
+        const extractedSummary = (m.summary as string) || (m.description as string) || '';
+        const extractedCover = (m.cover as string) || (m.coverUrl as string) || (m.thumbnail as string) || '';
+
+        log.info(`[MakerWorld API] Extracted design: id=${extractedId}, title="${extractedTitle}"`);
+
+        allDesigns.push({
+          id: extractedId,
+          designId: extractedId,
+          title: extractedTitle,
+          summary: extractedSummary,
+          categoryId: (m.categoryId as number) || (m.category as number) || 0,
+          tags: (m.tags as string[]) || [],
+          cover: extractedCover,
+          updateTime: (m.updateTime as string) || (m.publishTime as string) || (m.updatedAt as string) || '',
+          createTime: (m.createTime as string) || (m.publishTime as string) || (m.createdAt as string) || '',
+          status: 3,
+        });
+      }
+    }
+
+    log.info(`[MakerWorld API] Returning ${allDesigns.length} published designs`);
     return allDesigns;
   }
 
