@@ -10,7 +10,7 @@ import Image from 'next/image';
 import * as React from "react";
 import { MakerWorldSync } from './makerworld-sync';
 
-export function MakerWorldAuth({ onSyncComplete }: { onSyncComplete?: () => void } = {}) {
+export function MakerWorldAuth({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const { isAuthenticated, user, login, logout } = useMakerWorldAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);

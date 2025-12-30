@@ -7,6 +7,8 @@ import AdmZip from "adm-zip";
 import crypto from "crypto";
 import { getDatabase } from "../../../../lib/betterSqlite3";
 
+// Length of random prefix for unique filenames (6 hex chars = 16M combinations)
+const FILENAME_RANDOM_LENGTH = 6;
 const nanoid = customAlphabet("1234567890abcdef", 10);
 
 /**
@@ -133,6 +135,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
     }
 
+    // Validate designId to prevent directory traversal attacks
+    if (!/^\d+$/.test(designId)) {
+      log.warn(`[Download] Invalid designId rejected: ${designId}`);
+      return NextResponse.json({ error: "Invalid design ID" }, { status: 400 });
+    }
+
     // Validate URL domain
     let parsedUrl: URL;
     try {
@@ -147,7 +155,10 @@ export async function POST(request: NextRequest) {
 
     if (!isAllowedDomain) {
       log.warn(`[Download] Blocked download from unauthorized domain: ${parsedUrl.hostname}`);
-      return NextResponse.json({ error: "Unauthorized domain" }, { status: 403 });
+      return NextResponse.json(
+        { error: "File download blocked: URL domain is not an authorized MakerWorld CDN" },
+        { status: 403 }
+      );
     }
 
     // Get app data path
@@ -250,9 +261,13 @@ export async function POST(request: NextRequest) {
 
     // Generate unique storage filename and clean display name
     const baseName = path.basename(fileName, path.extname(fileName));
-    const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
+    let sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
+    // Fallback if sanitized name has no meaningful content
+    if (!/[a-zA-Z0-9]/.test(sanitizedBaseName)) {
+      sanitizedBaseName = fileType === "model" ? "model" : "image";
+    }
     const displayName = `${sanitizedBaseName}.${fileExt}`;
-    const uniqueFileName = `${nanoid(6)}_${sanitizedBaseName}.${fileExt}`;
+    const uniqueFileName = `${nanoid(FILENAME_RANDOM_LENGTH)}_${sanitizedBaseName}.${fileExt}`;
     const filePath = path.join(designDir, uniqueFileName);
 
     // Write file to disk
@@ -356,9 +371,13 @@ async function extractZipFile(zipPath: string, destDir: string, validFileNames: 
 
     // Generate unique storage filename and clean display name
     const baseName = path.basename(entryName, path.extname(entryName));
-    const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
+    let sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
+    // Fallback if sanitized name has no meaningful content
+    if (!/[a-zA-Z0-9]/.test(sanitizedBaseName)) {
+      sanitizedBaseName = "file";
+    }
     const displayName = `${sanitizedBaseName}.${ext}`;
-    const uniqueFileName = `${nanoid(6)}_${sanitizedBaseName}.${ext}`;
+    const uniqueFileName = `${nanoid(FILENAME_RANDOM_LENGTH)}_${sanitizedBaseName}.${ext}`;
     const extractPath = path.join(destDir, uniqueFileName);
 
     // Extract the file

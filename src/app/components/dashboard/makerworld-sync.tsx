@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "../ui/button";
 import { useMakerWorldAuth } from "../../contexts/MakerWorldAuthContext";
 import {
@@ -66,14 +66,7 @@ export function MakerWorldSync({
     captcha: null,
   });
 
-  // Fetch designs when dialog opens
-  useEffect(() => {
-    if (isOpen && isAuthenticated && user?.handle) {
-      fetchDesigns(user.handle, user.uid);
-    }
-  }, [isOpen, isAuthenticated, user?.handle, user?.uid]);
-
-  const fetchDesigns = async (userHandle: string, userId?: number) => {
+  const fetchDesigns = useCallback(async (userHandle: string, userId?: number) => {
     setState((prev) => ({ ...prev, isFetching: true, error: null }));
 
     try {
@@ -118,7 +111,14 @@ export function MakerWorldSync({
         error: errorMessage,
       }));
     }
-  };
+  }, []);
+
+  // Fetch designs when dialog opens
+  useEffect(() => {
+    if (isOpen && isAuthenticated && user?.handle) {
+      fetchDesigns(user.handle, user.uid);
+    }
+  }, [isOpen, isAuthenticated, user?.handle, user?.uid, fetchDesigns]);
 
   const toggleDesign = (id: number) => {
     setState((prev) => {

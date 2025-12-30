@@ -432,8 +432,10 @@ export class MakerWorldClientAPI {
     const parsed = GetDraftsResponseSchema.safeParse(res);
     if (!parsed.success) {
       log.warn('Drafts list validation issues:', parsed.error.issues);
+      // Return empty result instead of potentially invalid data
+      return { hits: [], total: 0 };
     }
-    return (res || { hits: [], total: 0 }) as z.infer<typeof GetDraftsResponseSchema>;
+    return parsed.data;
   }
 
   /**

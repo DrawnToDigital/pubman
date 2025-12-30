@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import {designSchema, DesignSchema} from "../design/types";
@@ -70,7 +70,7 @@ export default function DesignsChart() {
     }));
   };
 
-  const fetchDesigns = async () => {
+  const fetchDesigns = useCallback(async () => {
     try {
       const response = await fetch(`/api/design`, {
         headers: {
@@ -88,11 +88,11 @@ export default function DesignsChart() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDesigns();
-  }, []);
+  }, [fetchDesigns]);
 
   // Listen for design updates (e.g., from MakerWorld sync)
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function DesignsChart() {
     return () => {
       window.removeEventListener("pubman:designs-updated", handleDesignsUpdated);
     };
-  }, []);
+  }, [fetchDesigns]);
 
   useEffect(() => {
     const filteredDesigns = designs.filter(design => {
