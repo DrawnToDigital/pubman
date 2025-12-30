@@ -254,15 +254,16 @@ function syncTags(db: ReturnType<typeof getDatabase>, designId: number, tags: st
     `).run(designId, PLATFORM_IDS.MAKERWORLD);
   }
 
-  // Get existing tags to avoid duplicates when appending
-  const existingTags = new Set<string>();
-  if (appendTags) {
-    const existing = db.prepare(`
-      SELECT tag FROM design_tag
-      WHERE design_id = ? AND platform_id = ? AND deleted_at IS NULL
-    `).all(designId, PLATFORM_IDS.MAKERWORLD) as Array<{ tag: string }>;
-    existing.forEach((t) => existingTags.add(t.tag.toLowerCase()));
-  }
+  // Track tags to avoid duplicates (both from DB and within the incoming array)
+  const seenTags = new Set<string>();
+
+  // Get ALL existing tags (any platform) to avoid duplicates
+  // This prevents duplicates when merging MakerWorld tags into a design that already has tags from PubMan or other platforms
+  const existing = db.prepare(`
+    SELECT tag FROM design_tag
+    WHERE design_id = ? AND deleted_at IS NULL
+  `).all(designId) as Array<{ tag: string }>;
+  existing.forEach((t) => seenTags.add(t.tag.toLowerCase()));
 
   // Insert new tags
   const insertTag = db.prepare(`
@@ -273,10 +274,12 @@ function syncTags(db: ReturnType<typeof getDatabase>, designId: number, tags: st
   for (const tag of tags) {
     if (tag && tag.trim()) {
       const normalizedTag = tag.trim();
-      // Skip if already exists (when appending)
-      if (appendTags && existingTags.has(normalizedTag.toLowerCase())) {
+      const lowerTag = normalizedTag.toLowerCase();
+      // Skip if already seen (deduplicates both DB tags and incoming duplicates)
+      if (seenTags.has(lowerTag)) {
         continue;
       }
+      seenTags.add(lowerTag);
       insertTag.run(designId, normalizedTag, PLATFORM_IDS.MAKERWORLD);
     }
   }
