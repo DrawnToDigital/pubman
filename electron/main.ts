@@ -393,12 +393,97 @@ app.whenReady().then(() => {
     });
   });
 
-  // Clear MakerWorld session cookies for logout
+  // Clear MakerWorld session data for logout
   ipcMain.handle("makerworld:logout", async () => {
     const sess = session.fromPartition("persist:makerworld");
-    await sess.clearStorageData({ storages: ["cookies"] });
-    log.info("MakerWorld session cookies cleared");
+    // Clear all storage: cookies, cache, localStorage, etc.
+    await sess.clearStorageData();
+    log.info("MakerWorld session data cleared (cookies, cache, storage)");
     return { success: true };
+  });
+
+  // Open MakerWorld in a window for captcha completion
+  // Uses the same session partition so captcha completion applies to API requests
+  ipcMain.handle("makerworld:openCaptcha", async (event, designId?: number) => {
+    // Open the specific design page so user can trigger download and complete captcha
+    const url = designId
+      ? `https://makerworld.com/en/models/${designId}`
+      : "https://makerworld.com/en";
+
+    log.info(`Opening MakerWorld for captcha completion: ${url}`);
+
+    const captchaWindow = new BrowserWindow({
+      width: 500,
+      height: 600,
+      title: "MakerWorld - Complete Captcha",
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        partition: "persist:makerworld", // Same session as API requests
+      },
+    });
+
+    // Return a promise that resolves when captcha is completed (download attempted) or window closed
+    return new Promise<{ success: boolean; captchaCompleted: boolean }>((resolve) => {
+      let resolved = false;
+
+      // Detect download attempt - this means captcha was completed successfully
+      const sess = session.fromPartition("persist:makerworld");
+      const downloadHandler = (
+        downloadEvent: Electron.Event,
+        item: Electron.DownloadItem
+      ) => {
+        log.info(`[Captcha] Download detected: ${item.getFilename()} - captcha completed!`);
+        // Cancel the download - we don't need the file from the browser
+        item.cancel();
+        // Remove our handler
+        sess.off("will-download", downloadHandler);
+        // Close the window
+        if (!captchaWindow.isDestroyed()) {
+          captchaWindow.close();
+        }
+        // Resolve with captcha completed
+        if (!resolved) {
+          resolved = true;
+          resolve({ success: true, captchaCompleted: true });
+        }
+      };
+      sess.on("will-download", downloadHandler);
+
+      // Handle window being closed manually
+      captchaWindow.on("closed", () => {
+        sess.off("will-download", downloadHandler);
+        if (!resolved) {
+          resolved = true;
+          // User closed window - may or may not have completed captcha
+          resolve({ success: true, captchaCompleted: false });
+        }
+      });
+
+      captchaWindow.loadURL(url);
+
+      // Inject minimal CSS for banner positioning only (don't break page styles)
+      captchaWindow.webContents.on("did-finish-load", () => {
+        captchaWindow.webContents.insertCSS(`
+          /* Add padding for our banner */
+          body {
+            padding-top: 50px !important;
+          }
+        `);
+
+        // Add instruction banner
+        captchaWindow.webContents.executeJavaScript(`
+          (function() {
+            // Add instruction banner
+            const banner = document.createElement('div');
+            banner.id = 'pubman-captcha-banner';
+            banner.innerHTML = '<strong>PubMan:</strong> Click "Download 3MF", complete the captcha. Window will close automatically.';
+            banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#1e40af;color:white;padding:14px 20px;text-align:center;font-family:system-ui,-apple-system,sans-serif;font-size:14px;z-index:2147483645;box-shadow:0 2px 12px rgba(0,0,0,0.5);';
+            document.body.prepend(banner);
+          })();
+        `);
+      });
+    });
   });
 
   // MakerWorld API fetch using the authenticated session
