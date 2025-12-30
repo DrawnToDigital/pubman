@@ -140,6 +140,48 @@ export function makerWorldLicenseToPubman(mwLicense) {
   return makerWorldLicenseToPubmanMap[mwLicense] || 'SDFL';
 }
 
+/**
+ * Normalize any license key to MakerWorld format for comparison
+ * @param {string} license - License key (PubMan or MakerWorld format)
+ * @returns {string} MakerWorld format license key
+ */
+export function normalizeLicenseKey(license) {
+  if (!license) return '';
+  // If it's a PubMan format, convert to MakerWorld
+  if (licenseToMakerWorldMap[license]) {
+    return licenseToMakerWorldMap[license];
+  }
+  // Already MakerWorld format or unknown
+  return license;
+}
+
+/**
+ * Get display name for a license key (works with both PubMan and MakerWorld formats)
+ * @param {string} license - License key
+ * @returns {string} Human-readable license name
+ */
+export function getLicenseDisplayName(license) {
+  if (!license) return '(none)';
+  // Normalize to MakerWorld format first
+  const normalized = normalizeLicenseKey(license);
+  // Look up display name
+  if (makerWorldLicenses[normalized]) {
+    return makerWorldLicenses[normalized].name;
+  }
+  // Fallback to the key itself
+  return license;
+}
+
+/**
+ * Check if two license keys are equivalent (handles both PubMan and MakerWorld formats)
+ * @param {string} license1 - First license key
+ * @param {string} license2 - Second license key
+ * @returns {boolean} True if licenses are equivalent
+ */
+export function licensesAreEqual(license1, license2) {
+  return normalizeLicenseKey(license1) === normalizeLicenseKey(license2);
+}
+
 // Build reverse mapping: category ID to category name
 const categoryIdToNameMap = {};
 for (const [name, data] of Object.entries(makerWorldCategories)) {

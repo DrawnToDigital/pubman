@@ -123,6 +123,63 @@ export const DraftDetailResponseSchema = z.object({
   designPictures: z.array(DesignPictureSchema).optional(),
 }).passthrough();
 
+// License mappings and utilities
+// These mirror the mappings in makerworld-lib.js for client-side use
+
+const makerWorldLicenseNames: Record<string, string> = {
+  'CC0': 'Creative Commons Public Domain',
+  'BY': 'Creative Commons Attribution',
+  'BY-SA': 'Creative Commons Attribution-Share Alike',
+  'BY-ND': 'Creative Commons Attribution-NoDerivatives',
+  'BY-NC': 'Creative Commons Attribution-Noncommercial',
+  'BY-NC-SA': 'Creative Commons Attribution-Noncommercial-Share Alike',
+  'BY-NC-ND': 'Creative Commons Attribution-Noncommercial-NoDerivatives',
+  'Standard Digital File License': 'Standard Digital File License',
+};
+
+const pubmanToMakerWorldLicense: Record<string, string> = {
+  'CC-BY': 'BY',
+  'CC-BY-SA': 'BY-SA',
+  'CC-BY-ND': 'BY-ND',
+  'CC-BY-NC': 'BY-NC',
+  'CC-BY-NC-SA': 'BY-NC-SA',
+  'CC-BY-NC-ND': 'BY-NC-ND',
+  'CC': 'CC0',
+  'CC0': 'CC0',
+  'SDFL': 'Standard Digital File License',
+};
+
+/**
+ * Normalize any license key to MakerWorld format for comparison
+ */
+export function normalizeLicenseKey(license: string): string {
+  if (!license) return '';
+  // If it's a PubMan format, convert to MakerWorld
+  if (pubmanToMakerWorldLicense[license]) {
+    return pubmanToMakerWorldLicense[license];
+  }
+  // Already MakerWorld format or unknown
+  return license;
+}
+
+/**
+ * Get display name for a license key (works with both PubMan and MakerWorld formats)
+ */
+export function getLicenseDisplayName(license: string): string {
+  if (!license) return '(none)';
+  // Normalize to MakerWorld format first
+  const normalized = normalizeLicenseKey(license);
+  // Look up display name
+  return makerWorldLicenseNames[normalized] || license;
+}
+
+/**
+ * Check if two license keys are equivalent (handles both PubMan and MakerWorld formats)
+ */
+export function licensesAreEqual(license1: string, license2: string): boolean {
+  return normalizeLicenseKey(license1) === normalizeLicenseKey(license2);
+}
+
 export class MakerWorldClientAPIError extends Error {
   url?: string;
   method?: string;

@@ -28,11 +28,22 @@ interface AssetData {
   fileSize?: number;     // File size in bytes
 }
 
+interface MergeConfig {
+  syncDescription: boolean;
+  syncLicense: boolean;
+  syncCategory: boolean;
+  syncTags: boolean;
+  appendTags: boolean;
+  syncAssets: boolean;
+  skip: boolean;
+}
+
 interface SyncRequestBody {
   design: MakerWorldDesignData;
   assets?: AssetData[];
   description?: string;  // Optional description (MakerWorld uses details field)
   appendTags?: boolean;  // If true, append tags instead of replacing
+  mergeConfig?: MergeConfig;  // Optional config for selective field sync
 }
 
 /**
@@ -43,7 +54,17 @@ interface SyncRequestBody {
 export async function POST(request: NextRequest) {
   try {
     const body: SyncRequestBody = await request.json();
-    const { design, assets = [], description = "", appendTags = false } = body;
+    const { design, assets = [], description = "", appendTags = false, mergeConfig } = body;
+
+    // If mergeConfig.skip is true, return early
+    if (mergeConfig?.skip) {
+      return NextResponse.json({
+        success: true,
+        designId: "0",
+        isNew: false,
+        skipped: true,
+      });
+    }
 
     if (!design || !design.id) {
       return NextResponse.json({ error: "Missing design data" }, { status: 400 });
@@ -100,23 +121,38 @@ export async function POST(request: NextRequest) {
       // Update existing design
       designId = existingLink.design_id;
 
-      // Update existing design (don't touch summary - MakerWorld doesn't have one)
+      // Build selective update based on mergeConfig
+      // If no mergeConfig, update all fields (backwards compatibility)
+      const shouldSyncDescription = mergeConfig?.syncDescription ?? true;
+      const shouldSyncLicense = mergeConfig?.syncLicense ?? true;
+      const shouldSyncCategory = mergeConfig?.syncCategory ?? true;
+
+      // Build dynamic SET clause
+      const setClauses: string[] = ['main_name = ?', 'updated_at = datetime(\'now\')'];
+      const setValues: (string | number)[] = [design.title];
+
+      if (shouldSyncDescription) {
+        setClauses.push('description = ?');
+        setValues.push(description);
+      }
+      if (shouldSyncLicense) {
+        setClauses.push('license_key = ?');
+        setValues.push(pubmanLicense || '');
+      }
+      if (shouldSyncCategory) {
+        setClauses.push('makerworld_category = ?');
+        setValues.push(pubmanCategory || '');
+      }
+
+      setValues.push(designId, designer.id);
+
       db.prepare(`
         UPDATE design
-        SET main_name = ?,
-            description = ?,
-            license_key = ?,
-            makerworld_category = ?,
-            updated_at = datetime('now')
+        SET ${setClauses.join(', ')}
         WHERE id = ? AND designer_id = ?
-      `).run(
-        design.title,
-        description,
-        pubmanLicense,
-        pubmanCategory,
-        designId,
-        designer.id
-      );
+      `).run(...setValues);
+
+      log.info(`[Sync] Updated design ${designId} with selective fields: description=${shouldSyncDescription}, license=${shouldSyncLicense}, category=${shouldSyncCategory}`);
 
       // Check if MakerWorld platform link exists for this design
       const existingPlatformLink = db.prepare(`
@@ -176,18 +212,25 @@ export async function POST(request: NextRequest) {
       log.info(`[Sync] Created design ${designId} from MakerWorld ${platformDesignId}`);
     }
 
-    // Sync tags
-    syncTags(db, designId, design.tags, appendTags);
+    // Sync tags (if enabled or new design)
+    const isNewDesign = !existingLink || !existingLink.design_exists;
+    const shouldSyncTags = isNewDesign || (mergeConfig?.syncTags ?? true);
+    if (shouldSyncTags) {
+      const effectiveAppendTags = mergeConfig?.appendTags ?? appendTags;
+      syncTags(db, designId, design.tags, effectiveAppendTags);
+    }
 
-    // Create asset records for downloaded files
+    // Create asset records for downloaded files (if enabled or new design)
+    const shouldSyncAssets = isNewDesign || (mergeConfig?.syncAssets ?? true);
     for (const asset of assets) {
+      if (!shouldSyncAssets) break;
       createAssetRecord(db, designId, designer.id, asset);
     }
 
     return NextResponse.json({
       success: true,
       designId: designId.toString(),
-      isNew: !existingLink || !existingLink.design_exists,
+      isNew: isNewDesign,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -309,20 +352,63 @@ export async function GET(request: NextRequest) {
       updated_at: string;
     }>;
 
-    // Also get all design names (for name-based matching of unlinked designs)
-    const allDesignNames = db.prepare(`
-      SELECT id, main_name FROM design
+    // Get all designs with full details (for name-based matching and merge preview)
+    const allDesigns = db.prepare(`
+      SELECT id, main_name, description, license_key, makerworld_category
+      FROM design
       WHERE designer_id = ? AND deleted_at IS NULL
-    `).all(designer.id) as Array<{ id: number; main_name: string }>;
+    `).all(designer.id) as Array<{
+      id: number;
+      main_name: string;
+      description: string | null;
+      license_key: string | null;
+      makerworld_category: string | null;
+    }>;
+
+    // Get tags for each design
+    const designTags = db.prepare(`
+      SELECT design_id, tag FROM design_tag
+      WHERE design_id IN (SELECT id FROM design WHERE designer_id = ? AND deleted_at IS NULL)
+        AND deleted_at IS NULL
+    `).all(designer.id) as Array<{ design_id: number; tag: string }>;
+
+    // Group tags by design
+    const tagsByDesign = new Map<number, string[]>();
+    for (const dt of designTags) {
+      if (!tagsByDesign.has(dt.design_id)) {
+        tagsByDesign.set(dt.design_id, []);
+      }
+      tagsByDesign.get(dt.design_id)!.push(dt.tag);
+    }
+
+    // Build design details map (keyed by name for merge preview)
+    const designDetails: Record<string, {
+      id: number;
+      description: string;
+      license: string;
+      category: string;
+      tags: string[];
+    }> = {};
+
+    for (const d of allDesigns) {
+      designDetails[d.main_name] = {
+        id: d.id,
+        description: d.description || '',
+        license: d.license_key || '',
+        category: d.makerworld_category || '',
+        tags: tagsByDesign.get(d.id) || [],
+      };
+    }
 
     return NextResponse.json({
-      allDesignNames: allDesignNames.map(d => d.main_name),
+      allDesignNames: allDesigns.map(d => d.main_name),
       syncedDesigns: syncedDesigns.map(d => ({
         platformDesignId: d.platform_design_id,
         designId: d.design_id.toString(),
         name: d.main_name,
         lastSynced: d.updated_at,
       })),
+      designDetails,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
