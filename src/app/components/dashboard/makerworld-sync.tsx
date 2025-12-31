@@ -13,56 +13,21 @@ import { useMakerWorldAuth } from "../../contexts/MakerWorldAuthContext";
 import {
   MakerWorldClientAPI,
   MakerWorldClientAPIError,
-  DraftSummarySchema,
   getLicenseDisplayName,
   licensesAreEqual,
 } from "../../lib/makerworld-client";
-import { z } from "zod";
 import log from "electron-log/renderer";
 import { RefreshCw, Check, Download, AlertCircle, ExternalLink, GitMerge, ChevronDown, Settings2 } from "lucide-react";
-
-type DraftSummary = z.infer<typeof DraftSummarySchema>;
-
-/**
- * Normalize HTML content from MakerWorld
- * - Single paragraphs with no block elements: unwrap <p> tag
- * - Multi-paragraph or complex content: keep HTML structure
- * - Strip inline styles and MakerWorld-specific attributes
- */
-function normalizeDescription(html: string): string {
-  if (!html || typeof html !== 'string') return '';
-
-  // No HTML tags? Return as-is
-  const hasHtmlTags = /<[^>]+>/.test(html);
-  if (!hasHtmlTags) {
-    return html.trim();
-  }
-
-  try {
-    // Clean up: strip inline styles and class attributes
-    const cleaned = html
-      .replace(/\s*style="[^"]*"/gi, '')
-      .replace(/\s*class="[^"]*"/gi, '')
-      .trim();
-
-    // Check if content is a single paragraph with no nested block elements
-    // Use [\s\S] instead of . with 's' flag for cross-line matching
-    const singleParagraphMatch = cleaned.match(/^<p>([\s\S]+)<\/p>$/);
-    if (singleParagraphMatch) {
-      const innerContent = singleParagraphMatch[1];
-      // If inner content has no block elements, unwrap the <p>
-      const hasBlockElements = /<(p|div|ul|ol|li|h[1-6]|blockquote|pre)/i.test(innerContent);
-      if (!hasBlockElements) {
-        return innerContent.trim();
-      }
-    }
-
-    return cleaned;
-  } catch (error) {
-    log.warn('[MakerWorld Sync] Failed to normalize description:', error);
-    return html.replace(/<[^>]+>/g, '').trim(); // Fallback: strip all tags
-  }
-}
+import {
+  DraftSummary,
+  PubmanDesignDetails,
+  NameMatchInfo,
+  MergeConfig,
+  MWDesignDetails,
+  normalizeDescription,
+} from "./sync";
+import { NewDesignPreviewDialog } from "./sync/new-design-preview-dialog";
+import { MergePreviewDialog } from "./sync/merge-preview-dialog";
 
 interface SyncedDesign {
   platformDesignId: string;
@@ -76,46 +41,6 @@ interface CaptchaState {
   designId: number;
   makerWorldDesignId: number; // The published design ID on MakerWorld
   designName: string;
-}
-
-// Design details from PubMan (for merge preview)
-interface PubmanDesignDetails {
-  id: number;
-  name: string;
-  description: string;
-  license: string;
-  category: string;
-  tags: string[];
-}
-
-// Field comparison for merge preview
-interface FieldComparison {
-  name: { current: string; new: string; changed: boolean };
-  description: { current: string; new: string; changed: boolean };
-  license: { current: string; new: string; changed: boolean };
-  category: { current: string; new: string; changed: boolean };
-  tags: { current: string[]; new: string[]; added: string[]; removed: string[] };
-}
-
-// Info about a name match for merge preview
-interface NameMatchInfo {
-  makerWorldDesignId: number;
-  pubmanDesignId: number;
-  pubmanDesignName: string;
-  pubmanDetails: PubmanDesignDetails;
-  fieldComparison: FieldComparison;
-}
-
-// User's merge configuration for a design
-interface MergeConfig {
-  syncName: boolean;
-  syncDescription: boolean;
-  syncLicense: boolean;
-  syncCategory: boolean;
-  syncTags: boolean;
-  appendTags: boolean;
-  syncAssets: boolean;
-  skip: boolean;
 }
 
 interface SyncOptions {
@@ -147,7 +72,6 @@ interface SyncResult {
 }
 
 interface SyncState {
-  isOpen: boolean;
   isFetching: boolean;
   isSyncing: boolean;
   designs: DraftSummary[];
@@ -182,7 +106,7 @@ interface SyncState {
   optionsExpanded: boolean;
   expandedSummaryIds: Set<number>;  // Design IDs with expanded details in summary
   // Cache of fetched MakerWorld design details (for merge preview)
-  mwDesignDetails: Map<number, { summary: string; categoryName: string; license: string; tags: string[] }>;
+  mwDesignDetails: Map<number, MWDesignDetails>;
   isFetchingDetails: boolean;
 }
 
@@ -197,7 +121,6 @@ export function MakerWorldSync({
 }) {
   const { isAuthenticated, user } = useMakerWorldAuth();
   const [state, setState] = useState<SyncState>({
-    isOpen: false,
     isFetching: false,
     isSyncing: false,
     designs: [],
@@ -1808,335 +1731,5 @@ export function MakerWorldSync({
         onClose={closeNewDesignPreview}
       />
     </div>
-  );
-}
-
-// New Design Preview Dialog Component
-function NewDesignPreviewDialog({
-  design,
-  details,
-  isSelected,
-  onConfirm,
-  onClose,
-}: {
-  design: DraftSummary | null;
-  details?: { summary: string; categoryName: string; license: string; tags: string[] };
-  isSelected: boolean;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  if (!design) return null;
-
-  const description = details?.summary ? normalizeDescription(details.summary) : design.summary || '';
-  const category = details?.categoryName || '(loading...)';
-  const license = details?.license || design.license || '';
-  const tags = details?.tags || design.tags || [];
-
-  // Truncate long text for display
-  const truncate = (text: string, maxLen: number) =>
-    text.length > maxLen ? text.substring(0, maxLen) + '...' : text;
-
-  return (
-    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Preview: {design.title}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            This design will be created as a new entry in PubMan.
-          </p>
-
-          <div className="space-y-3 max-h-80 overflow-y-auto">
-            {/* Description */}
-            <div className="border-b pb-2">
-              <div className="text-sm font-medium text-gray-700">Description</div>
-              <div className="text-sm text-gray-600 mt-1">
-                {description ? truncate(description.replace(/<[^>]+>/g, ''), 200) : '(empty)'}
-              </div>
-            </div>
-
-            {/* License */}
-            <div className="border-b pb-2">
-              <div className="text-sm font-medium text-gray-700">License</div>
-              <div className="text-sm text-gray-600 mt-1">
-                {license || '(not set)'}
-              </div>
-            </div>
-
-            {/* Category */}
-            <div className="border-b pb-2">
-              <div className="text-sm font-medium text-gray-700">Category</div>
-              <div className="text-sm text-gray-600 mt-1">
-                {category || '(not set)'}
-              </div>
-            </div>
-
-            {/* Tags */}
-            <div>
-              <div className="text-sm font-medium text-gray-700">Tags</div>
-              <div className="text-sm text-gray-600 mt-1">
-                {tags.length > 0 ? tags.join(', ') : '(no tags)'}
-              </div>
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={onConfirm} disabled={isSelected}>
-            {isSelected ? 'Already Selected' : 'Add to Sync'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// Merge Preview Dialog Component
-function MergePreviewDialog({
-  design,
-  matchInfo,
-  existingConfig,
-  defaultAppendTags,
-  onConfirm,
-  onSkip,
-  onClose,
-}: {
-  design: DraftSummary | null;
-  matchInfo: NameMatchInfo | null;
-  existingConfig?: MergeConfig;
-  defaultAppendTags: boolean;
-  onConfirm: (config: MergeConfig) => void;
-  onSkip: () => void;
-  onClose: () => void;
-}) {
-  const [config, setConfig] = useState<MergeConfig>({
-    syncName: true,
-    syncDescription: true,
-    syncLicense: true,
-    syncCategory: true,
-    syncTags: true,
-    appendTags: defaultAppendTags,
-    syncAssets: true,
-    skip: false,
-  });
-
-  // Reset config when dialog opens with new design
-  useEffect(() => {
-    if (existingConfig) {
-      setConfig(existingConfig);
-    } else {
-      setConfig({
-        syncName: true,
-        syncDescription: true,
-        syncLicense: true,
-        syncCategory: true,
-        syncTags: true,
-        appendTags: defaultAppendTags,
-        syncAssets: true,
-        skip: false,
-      });
-    }
-  }, [design?.id, existingConfig, defaultAppendTags]);
-
-  if (!design || !matchInfo) return null;
-
-  const { fieldComparison } = matchInfo;
-
-  // Truncate long text for display
-  const truncate = (text: string, maxLen: number = 100) => {
-    if (!text) return '(empty)';
-    if (text.length <= maxLen) return text;
-    return text.substring(0, maxLen) + '...';
-  };
-
-  return (
-    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Preview Merge: {design.title}</DialogTitle>
-        </DialogHeader>
-        <p className="text-sm text-gray-600 mb-4">
-          This design exists in PubMan. Select which fields to update:
-        </p>
-
-        <div className="space-y-4">
-          {/* Name */}
-          <div className={`p-3 rounded-lg border ${fieldComparison.name.changed ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}>
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={config.syncName}
-                onChange={(e) => setConfig(prev => ({ ...prev, syncName: e.target.checked }))}
-                className="h-4 w-4 mt-0.5 text-blue-600"
-              />
-              <div className="flex-1">
-                <div className="font-medium text-sm flex items-center gap-2">
-                  Name
-                  {fieldComparison.name.changed && (
-                    <span className="text-xs text-amber-600 font-normal">Changed</span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  <div>Current: {fieldComparison.name.current || '(none)'}</div>
-                  <div>New: {fieldComparison.name.new || '(none)'}</div>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          {/* Description */}
-          <div className={`p-3 rounded-lg border ${fieldComparison.description.changed ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}>
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={config.syncDescription}
-                onChange={(e) => setConfig(prev => ({ ...prev, syncDescription: e.target.checked }))}
-                className="h-4 w-4 mt-0.5 text-blue-600"
-              />
-              <div className="flex-1">
-                <div className="font-medium text-sm flex items-center gap-2">
-                  Description
-                  {fieldComparison.description.changed && (
-                    <span className="text-xs text-amber-600 font-normal">Changed</span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  <div>Current: {truncate(fieldComparison.description.current)}</div>
-                  <div>New: {truncate(fieldComparison.description.new)}</div>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          {/* License */}
-          <div className={`p-3 rounded-lg border ${fieldComparison.license.changed ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}>
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={config.syncLicense}
-                onChange={(e) => setConfig(prev => ({ ...prev, syncLicense: e.target.checked }))}
-                className="h-4 w-4 mt-0.5 text-blue-600"
-              />
-              <div className="flex-1">
-                <div className="font-medium text-sm flex items-center gap-2">
-                  License
-                  {fieldComparison.license.changed && (
-                    <span className="text-xs text-amber-600 font-normal">Changed</span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  <div>Current: {fieldComparison.license.current || '(none)'}</div>
-                  <div>New: {fieldComparison.license.new || '(none)'}</div>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          {/* Category */}
-          <div className={`p-3 rounded-lg border ${fieldComparison.category.changed ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}>
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={config.syncCategory}
-                onChange={(e) => setConfig(prev => ({ ...prev, syncCategory: e.target.checked }))}
-                className="h-4 w-4 mt-0.5 text-blue-600"
-              />
-              <div className="flex-1">
-                <div className="font-medium text-sm flex items-center gap-2">
-                  Category
-                  {fieldComparison.category.changed && (
-                    <span className="text-xs text-amber-600 font-normal">Changed</span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  <div>Current: {fieldComparison.category.current || '(none)'}</div>
-                  <div>New: {fieldComparison.category.new || '(none)'}</div>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          {/* Tags */}
-          <div className={`p-3 rounded-lg border ${(fieldComparison.tags.added.length > 0 || fieldComparison.tags.removed.length > 0) ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}>
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={config.syncTags}
-                onChange={(e) => setConfig(prev => ({ ...prev, syncTags: e.target.checked }))}
-                className="h-4 w-4 mt-0.5 text-blue-600"
-              />
-              <div className="flex-1">
-                <div className="font-medium text-sm flex items-center gap-2">
-                  Tags
-                  {(fieldComparison.tags.added.length > 0 || fieldComparison.tags.removed.length > 0) && (
-                    <span className="text-xs text-amber-600 font-normal">
-                      +{fieldComparison.tags.added.length} / -{fieldComparison.tags.removed.length}
-                    </span>
-                  )}
-                </div>
-                {config.syncTags && (
-                  <div className="mt-2 flex gap-4">
-                    <label className="flex items-center gap-1 text-xs cursor-pointer">
-                      <input
-                        type="radio"
-                        name="tagMode"
-                        checked={!config.appendTags}
-                        onChange={() => setConfig(prev => ({ ...prev, appendTags: false }))}
-                        className="h-3 w-3"
-                      />
-                      Replace all
-                    </label>
-                    <label className="flex items-center gap-1 text-xs cursor-pointer">
-                      <input
-                        type="radio"
-                        name="tagMode"
-                        checked={config.appendTags}
-                        onChange={() => setConfig(prev => ({ ...prev, appendTags: true }))}
-                        className="h-3 w-3"
-                      />
-                      Append new only
-                    </label>
-                  </div>
-                )}
-                <div className="text-xs text-gray-500 mt-1">
-                  <div>Current: {fieldComparison.tags.current.join(', ') || '(none)'}</div>
-                  <div>New: {fieldComparison.tags.new.join(', ') || '(none)'}</div>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          {/* Assets */}
-          <div className="p-3 rounded-lg border border-gray-200">
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={config.syncAssets}
-                onChange={(e) => setConfig(prev => ({ ...prev, syncAssets: e.target.checked }))}
-                className="h-4 w-4 mt-0.5 text-blue-600"
-              />
-              <div className="flex-1">
-                <div className="font-medium text-sm">Assets</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Files will be added (existing files are not replaced)
-                </div>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={onSkip}>
-            Skip This Design
-          </Button>
-          <Button onClick={() => onConfirm(config)}>
-            Confirm Merge
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
