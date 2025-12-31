@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import {designSchema, DesignSchema} from "../design/types";
@@ -70,29 +70,41 @@ export default function DesignsChart() {
     }));
   };
 
-  useEffect(() => {
-    async function fetchDesigns() {
-      try {
-        const response = await fetch(`/api/design`, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch designs");
-        }
-        const data = await response.json();
-        setDesigns(designSchema.array().parse(data));
-      } catch (error) {
-        log.error("Failed to fetch designs:", error);
-        setErrorMessage("Failed to load designs.");
-      } finally {
-        setIsLoading(false);
+  const fetchDesigns = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/design`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch designs");
       }
+      const data = await response.json();
+      setDesigns(designSchema.array().parse(data));
+    } catch (error) {
+      log.error("Failed to fetch designs:", error);
+      setErrorMessage("Failed to load designs.");
+    } finally {
+      setIsLoading(false);
     }
-
-    fetchDesigns();
   }, []);
+
+  useEffect(() => {
+    fetchDesigns();
+  }, [fetchDesigns]);
+
+  // Listen for design updates (e.g., from MakerWorld sync)
+  useEffect(() => {
+    const handleDesignsUpdated = () => {
+      fetchDesigns();
+    };
+
+    window.addEventListener("pubman:designs-updated", handleDesignsUpdated);
+    return () => {
+      window.removeEventListener("pubman:designs-updated", handleDesignsUpdated);
+    };
+  }, [fetchDesigns]);
 
   useEffect(() => {
     const filteredDesigns = designs.filter(design => {
@@ -417,16 +429,16 @@ export default function DesignsChart() {
                       <div className="flex items-center gap-3">
                         {visibleColumns.thumbnail && (
                           design.thumbnail ? (
-                            <div className="h-16 w-16 overflow-hidden rounded-md border text-xs">
+                            <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border bg-gray-100">
                               <Image
-                                src={design.thumbnail} alt="Thumbnail" width={64} height={64} className="h-full w-full object-cover"
+                                src={design.thumbnail} alt="Thumbnail" width={64} height={64} className="h-full w-full object-contain"
                                 onError={({currentTarget}) => {
                                   currentTarget.src = "/default-thumbnail.png";
                                 }}
                               />
                             </div>
                           ) : (
-                            <div className="h-16 w-16 flex items-center justify-center bg-muted rounded-md border">
+                            <div className="h-16 w-16 flex-shrink-0 flex items-center justify-center bg-muted rounded-md border">
                               <span className="text-muted-foreground text-xs">No image</span>
                             </div>
                           )

@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld("electron", {
     logout: () => ipcRenderer.invoke("makerworld:logout"),
     fetch: (url: string, options: { method?: string; headers?: Record<string, string>; body?: string }) =>
       ipcRenderer.invoke("makerworld:fetch", url, options),
+    openCaptcha: (designId?: number) => ipcRenderer.invoke("makerworld:openCaptcha", designId),
   },
   getDBPath: () => ipcRenderer.invoke("get-db-path"),
   getAppDataPath: () => ipcRenderer.invoke("get-app-data-path"),

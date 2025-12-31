@@ -18,6 +18,7 @@ declare global {
           statusText: string;
           body: string;
         }>;
+        openCaptcha: (designId?: number) => Promise<{ success: boolean; captchaCompleted: boolean }>;
       };
       fs?: {
         readFile: (filePath: string) => Promise<ArrayBuffer>;
