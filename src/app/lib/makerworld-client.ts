@@ -522,19 +522,18 @@ export class MakerWorldClientAPI {
     const html = response.body;
     log.info(`[MakerWorld API] Got HTML page, length: ${html.length}`);
 
+    // Try to find total count from "Published Models (N)" pattern
+    const totalCountMatch = html.match(/Published Models\s*\((\d+)\)/i);
+
     // Try to find __NEXT_DATA__ script tag (common in Next.js apps)
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
     if (nextDataMatch) {
       try {
         const nextData = JSON.parse(nextDataMatch[1]);
-        log.info('[MakerWorld API] Found __NEXT_DATA__');
 
         // Navigate the Next.js data structure to find designs
         const pageProps = nextData?.props?.pageProps;
         if (pageProps) {
-          // Log the pageProps keys to help debug
-          log.info('[MakerWorld API] pageProps keys:', Object.keys(pageProps).join(', '));
-
           // Look for designs in various possible locations
           let designs = pageProps.designs || pageProps.models || pageProps.data?.designs ||
                        pageProps.data?.models || pageProps.initialData?.designs ||
@@ -543,29 +542,38 @@ export class MakerWorldClientAPI {
 
           // Also try nested structures
           if (!designs && pageProps.data) {
-            log.info('[MakerWorld API] pageProps.data keys:', Object.keys(pageProps.data).join(', '));
             designs = pageProps.data.list || pageProps.data.items || pageProps.data.hits;
           }
 
-          if (Array.isArray(designs)) {
-            log.info(`[MakerWorld API] Found ${designs.length} designs in __NEXT_DATA__`);
-            // Log the first design structure to understand the data format
-            if (designs.length > 0) {
-              log.info('[MakerWorld API] First design structure:', JSON.stringify(designs[0]));
+          // Check for publishedModels object which might have total
+          if (pageProps.publishedModels) {
+            if (pageProps.publishedModels.hits) {
+              designs = pageProps.publishedModels.hits;
             }
-            return { hits: designs, total: designs.length };
+            if (pageProps.publishedModels.list) {
+              designs = pageProps.publishedModels.list;
+            }
           }
 
-          // If still not found, log the full pageProps structure (truncated)
-          const propsStr = JSON.stringify(pageProps);
-          log.info('[MakerWorld API] pageProps (first 2000 chars):', propsStr.substring(0, 2000));
+          if (Array.isArray(designs)) {
+            // Determine total - use explicit total field if available, otherwise use designs.length
+            const total = pageProps.publishedModels?.total ||
+                         pageProps.data?.total ||
+                         pageProps.total ||
+                         (totalCountMatch ? parseInt(totalCountMatch[1], 10) : designs.length);
+            log.info(`[MakerWorld API] Found ${designs.length} designs in page data (total: ${total})`);
+            return { hits: designs, total };
+          }
+
+          // If still not found, log the pageProps structure for debugging
+          log.warn('[MakerWorld API] Could not find designs in __NEXT_DATA__, pageProps keys:', Object.keys(pageProps).join(', '));
         }
       } catch (e) {
         log.error('[MakerWorld API] Failed to parse __NEXT_DATA__:', e);
       }
     }
 
-    // Try to find design IDs from model links in the HTML
+    // Fallback: Try to find design IDs from model links in the HTML
     const modelLinks = html.matchAll(/href="\/en\/models\/(\d+)[^"]*"/g);
     const designIds: number[] = [];
     for (const match of modelLinks) {
@@ -576,7 +584,7 @@ export class MakerWorldClientAPI {
     }
 
     if (designIds.length > 0) {
-      log.info(`[MakerWorld API] Found ${designIds.length} design IDs from HTML links: ${designIds.join(', ')}`);
+      log.info(`[MakerWorld API] Found ${designIds.length} design IDs from HTML links`);
       // Return minimal design objects with just IDs - we'll fetch full details later
       const hits = designIds.map(id => ({
         id,
@@ -584,11 +592,52 @@ export class MakerWorldClientAPI {
         title: `Design ${id}`, // Placeholder - will be fetched later
         status: 3,
       }));
-      return { hits, total: designIds.length };
+      const total = totalCountMatch ? parseInt(totalCountMatch[1], 10) : designIds.length;
+      return { hits, total };
     }
 
     log.error('[MakerWorld API] Could not find designs in upload page');
     return null;
+  }
+
+  /**
+   * Fetch additional pages of published designs
+   * @param userHandle The user's handle for page-based fetching
+   * @param offset Starting offset for pagination
+   * @param limit Number of items per page
+   */
+  private async fetchPublishedDesignsPage(userHandle: string, offset: number, limit: number): Promise<{ hits: unknown[]; total: number } | null> {
+    // Primary method: fetch upload page with offset query param
+    const url = `https://makerworld.com/en/@${userHandle}/upload?offset=${offset}&limit=${limit}`;
+
+    try {
+      const response = await window.electron!.makerworld!.fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'text/html' },
+      });
+
+      if (!response.ok) {
+        log.warn(`[MakerWorld API] Pagination request failed: ${response.status}`);
+        return null;
+      }
+
+      const html = response.body;
+      const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+      if (nextDataMatch) {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        const designs = nextData?.props?.pageProps?.designs;
+        const total = nextData?.props?.pageProps?.total || 0;
+        if (Array.isArray(designs) && designs.length > 0) {
+          return { hits: designs, total };
+        }
+      }
+
+      log.warn(`[MakerWorld API] No designs found at offset ${offset}`);
+      return null;
+    } catch (e) {
+      log.error(`[MakerWorld API] Pagination failed at offset ${offset}:`, e);
+      return null;
+    }
   }
 
   /**
@@ -609,12 +658,33 @@ export class MakerWorldClientAPI {
       });
     }
 
-    log.info(`[MakerWorld API] Found ${response.hits.length} designs`);
+    // Collect all designs - start with what we got from the page
+    let allHits = [...response.hits];
+
+    // Check if there are more designs than what we fetched - if so, use pagination
+    if (response.total > response.hits.length) {
+      log.info(`[MakerWorld API] Fetching remaining ${response.total - response.hits.length} of ${response.total} designs...`);
+
+      const limit = 20;
+      let offset = response.hits.length;
+
+      while (offset < response.total) {
+        const page = await this.fetchPublishedDesignsPage(userHandle, offset, limit);
+        if (!page || page.hits.length === 0) {
+          log.warn(`[MakerWorld API] Pagination stopped at offset ${offset}`);
+          break;
+        }
+        allHits = [...allHits, ...page.hits];
+        offset += page.hits.length;
+      }
+    }
+
+    log.info(`[MakerWorld API] Fetched ${allHits.length} published designs`);
 
     const allDesigns: z.infer<typeof DraftSummarySchema>[] = [];
 
     // For each design found, fetch full details if we only have ID
-    for (const model of response.hits) {
+    for (const model of allHits) {
       const m = model as Record<string, unknown>;
       const designId = (m.designId as number) || (m.id as number) || 0;
 

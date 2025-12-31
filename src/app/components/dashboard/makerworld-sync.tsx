@@ -236,6 +236,8 @@ export function MakerWorldSync({
 
   // Ref to track cancellation (needed because state is stale in async loops)
   const cancelledRef = useRef(false);
+  // Ref to track if captcha was required (to break out of sync loop)
+  const captchaRequiredRef = useRef(false);
 
   const fetchDesigns = useCallback(async (userHandle: string, userId?: number) => {
     setState((prev) => ({ ...prev, isFetching: true, error: null }));
@@ -680,6 +682,7 @@ export function MakerWorldSync({
       syncCancelled: false,
     }));
     cancelledRef.current = false;
+    captchaRequiredRef.current = false;
 
     setState((prev) => ({
       ...prev,
@@ -792,7 +795,7 @@ export function MakerWorldSync({
 
         // Download files (model files and images) - based on sync options
         const assets: Array<{ fileName: string; fileExt: string; filePath: string; fileSize?: number }> = [];
-        let downloadsFailed = false;
+        const failedDownloads: string[] = [];  // Track which files failed to download
         let captchaRequired = false;
 
         // Estimate total files for progress tracking
@@ -823,14 +826,15 @@ export function MakerWorldSync({
             captchaRequired = true;
           } else {
             log.warn(`[MakerWorld Sync] Failed to download cover image: ${coverResult.error}`);
-            downloadsFailed = true;
+            failedDownloads.push(`cover.jpg: ${coverResult.error || 'unknown error'}`);
           }
         } else if (!state.syncOptions.downloadCoverImages) {
           log.info(`[MakerWorld Sync] Skipping cover image download (disabled in options)`);
         }
 
-        // If captcha required, pause and prompt user
+        // If captcha required, pause and prompt user - break out of sync loop
         if (captchaRequired) {
+          captchaRequiredRef.current = true;
           setState((prev) => ({
             ...prev,
             isSyncing: false,
@@ -841,7 +845,7 @@ export function MakerWorldSync({
               designName: design.title,
             },
           }));
-          throw new Error("Captcha required - please complete the captcha in your browser and retry");
+          throw new Error("CAPTCHA_REQUIRED");
         }
 
         // 2. Download model files (all.zip containing STL/3MF files) - if enabled
@@ -870,7 +874,7 @@ export function MakerWorldSync({
                 captchaRequired = true;
               } else {
                 log.warn(`[MakerWorld Sync] Failed to download model files: ${modelResult.error}`);
-                downloadsFailed = true;
+                failedDownloads.push(`model files: ${modelResult.error || 'unknown error'}`);
               }
             }
           } catch (modelError) {
@@ -878,17 +882,22 @@ export function MakerWorldSync({
             if (isCaptchaError(modelError)) {
               log.warn(`[MakerWorld Sync] Captcha required for model download URL`);
               captchaRequired = true;
+            } else if (modelError instanceof MakerWorldClientAPIError && modelError.responseStatus === 404) {
+              // 404 means no model files available - this is OK, instance downloads will provide files
+              log.info(`[MakerWorld Sync] No model files available for design ${design.id} (404) - will use instance downloads`);
             } else {
+              const errorMsg = modelError instanceof Error ? modelError.message : 'unknown error';
               log.warn(`[MakerWorld Sync] Failed to fetch model download URL:`, modelError);
-              downloadsFailed = true;
+              failedDownloads.push(`model files: ${errorMsg}`);
             }
           }
         } else {
           log.info(`[MakerWorld Sync] Skipping model files download (disabled in options)`);
         }
 
-        // If captcha required, pause and prompt user
+        // If captcha required, pause and prompt user - break out of sync loop
         if (captchaRequired) {
+          captchaRequiredRef.current = true;
           setState((prev) => ({
             ...prev,
             isSyncing: false,
@@ -899,7 +908,7 @@ export function MakerWorldSync({
               designName: design.title,
             },
           }));
-          throw new Error("Captcha required - please complete the captcha in your browser and retry");
+          throw new Error("CAPTCHA_REQUIRED");
         }
 
         // 3. Download instance (print profile) 3MF files - if model downloads enabled
@@ -930,7 +939,7 @@ export function MakerWorldSync({
                     break;
                   } else {
                     log.warn(`[MakerWorld Sync] Failed to download instance 3MF: ${instanceResult.error}`);
-                    downloadsFailed = true;
+                    failedDownloads.push(`instance ${instance.id}: ${instanceResult.error || 'unknown error'}`);
                   }
                 }
               } catch (instanceError) {
@@ -940,8 +949,9 @@ export function MakerWorldSync({
                   captchaRequired = true;
                   break;
                 } else {
+                  const errorMsg = instanceError instanceof Error ? instanceError.message : 'unknown error';
                   log.warn(`[MakerWorld Sync] Failed to fetch instance ${instance.id} 3MF:`, instanceError);
-                  downloadsFailed = true;
+                  failedDownloads.push(`instance ${instance.id}: ${errorMsg}`);
                 }
               }
             }
@@ -950,6 +960,7 @@ export function MakerWorldSync({
 
         // If captcha required, pause and prompt user
         if (captchaRequired) {
+          captchaRequiredRef.current = true;
           setState((prev) => ({
             ...prev,
             isSyncing: false,
@@ -960,12 +971,12 @@ export function MakerWorldSync({
               designName: design.title,
             },
           }));
-          throw new Error("Captcha required - please complete the captcha in your browser and retry");
+          throw new Error("CAPTCHA_REQUIRED");
         }
 
         // If any required downloads failed, don't mark as synced
-        if (downloadsFailed) {
-          throw new Error("Some file downloads failed - sync incomplete");
+        if (failedDownloads.length > 0) {
+          throw new Error(`Download failed: ${failedDownloads.join('; ')}`);
         }
 
         log.info(`[MakerWorld Sync] Downloaded ${assets.length} assets`);
@@ -1133,6 +1144,26 @@ export function MakerWorldSync({
         log.info(`[MakerWorld Sync] Successfully synced ${design.title} (${isNew ? 'new' : 'updated'})`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+        // Check if this was a captcha error - if so, skip remaining designs and break
+        if (captchaRequiredRef.current || errorMessage === "CAPTCHA_REQUIRED") {
+          log.info(`[MakerWorld Sync] Captcha required - pausing sync`);
+          // Add remaining designs (including current) to skipped
+          const remainingDesigns = designsToSync.slice(i);
+          setState((prev) => ({
+            ...prev,
+            skipped: [
+              ...prev.skipped,
+              ...remainingDesigns.map((d) => ({
+                id: d.id,
+                name: d.title,
+                reason: "Captcha required - sync paused",
+              })),
+            ],
+          }));
+          break;
+        }
+
         log.error(`[MakerWorld Sync] Failed to sync ${design.title}:`, error);
         setState((prev) => ({
           ...prev,
@@ -1141,7 +1172,10 @@ export function MakerWorldSync({
       }
     }
 
-    setState((prev) => ({ ...prev, isSyncing: false, showSummary: true }));
+    // Only show summary if we didn't pause for captcha
+    if (!captchaRequiredRef.current) {
+      setState((prev) => ({ ...prev, isSyncing: false, showSummary: true }));
+    }
 
     // Refresh synced designs list
     if (user?.handle) {
@@ -1351,6 +1385,46 @@ export function MakerWorldSync({
               )}
             </div>
           )}
+
+          {/* Captcha Required Alert - shown at top when captcha is needed */}
+          {state.captcha && (
+            <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 text-amber-600 mr-3 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-medium text-amber-800">Captcha Required</h3>
+                  <p className="text-sm text-amber-700 mt-1">
+                    MakerWorld requires you to complete a captcha verification.
+                    Click the button below to open the design page, then click
+                    &quot;Download 3MF&quot; to trigger and complete the captcha.
+                    The window will close automatically and sync will resume.
+                  </p>
+                  <p className="text-sm text-amber-600 mt-2">
+                    Design: <strong>{state.captcha.designName}</strong>
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={openMakerWorldForCaptcha}
+                      className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      Open Design Page
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={dismissCaptcha}
+                      className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -1544,45 +1618,6 @@ export function MakerWorldSync({
                 })}
               </div>
 
-              {/* Captcha Required Alert */}
-              {state.captcha && (
-                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex items-start">
-                    <AlertCircle className="h-5 w-5 text-amber-600 mr-3 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="font-medium text-amber-800">Captcha Required</h3>
-                      <p className="text-sm text-amber-700 mt-1">
-                        MakerWorld requires you to complete a captcha verification.
-                        Click the button below to open the design page, then click
-                        &quot;Download 3MF&quot; to trigger and complete the captcha.
-                        The window will close automatically and sync will resume.
-                      </p>
-                      <p className="text-sm text-amber-600 mt-2">
-                        Design: <strong>{state.captcha.designName}</strong>
-                      </p>
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={openMakerWorldForCaptcha}
-                          className="border-amber-300 text-amber-700 hover:bg-amber-100"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          Open Design Page
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={dismissCaptcha}
-                          className="border-amber-300 text-amber-700 hover:bg-amber-100"
-                        >
-                          Dismiss
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -1675,18 +1710,33 @@ export function MakerWorldSync({
             {state.failed.length > 0 && (
               <div className="border rounded-lg p-3 bg-red-50">
                 <h4 className="text-sm font-medium text-red-800 mb-2">Failed</h4>
-                <ul className="space-y-1 max-h-32 overflow-y-auto">
-                  {state.failed.map((item) => (
-                    <li key={item.id} className="text-sm text-red-700">
-                      <div className="flex items-center">
-                        <AlertCircle className="h-3 w-3 mr-2 flex-shrink-0" />
-                        <span className="truncate">{item.name}</span>
-                      </div>
-                      <span className="text-xs text-red-600 ml-5 block truncate" title={item.error}>
-                        {item.error}
-                      </span>
-                    </li>
-                  ))}
+                <ul className="space-y-2 max-h-48 overflow-y-auto">
+                  {state.failed.map((item) => {
+                    const isExpanded = state.expandedSummaryIds.has(item.id);
+                    const errorIsLong = item.error.length > 60;
+                    return (
+                      <li key={item.id} className="text-sm text-red-700">
+                        <div className="flex items-center">
+                          <AlertCircle className="h-3 w-3 mr-2 flex-shrink-0" />
+                          <span className="truncate flex-1">{item.name}</span>
+                          {errorIsLong && (
+                            <button
+                              onClick={() => toggleSummaryExpanded(item.id)}
+                              className="ml-2 text-xs text-red-500 hover:text-red-700 underline flex-shrink-0"
+                            >
+                              {isExpanded ? 'Hide' : 'Details'}
+                            </button>
+                          )}
+                        </div>
+                        <div
+                          className={`text-xs text-red-600 ml-5 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'truncate'}`}
+                          title={!isExpanded ? item.error : undefined}
+                        >
+                          {item.error}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}

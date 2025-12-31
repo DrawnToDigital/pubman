@@ -205,13 +205,19 @@ export async function POST(request: NextRequest) {
 
       designId = insertResult.lastInsertRowid as number;
 
-      // Create platform link
+      // Create PubMan platform link (marks design as Published in PubMan)
+      db.prepare(`
+        INSERT INTO design_platform (platform_id, design_id, platform_design_id, published_status, created_at, updated_at, published_at)
+        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+      `).run(PLATFORM_IDS.PUBMAN, designId, designId.toString(), PUBLISHED_STATUS.PUBLISHED);
+
+      // Create MakerWorld platform link
       db.prepare(`
         INSERT INTO design_platform (platform_id, design_id, platform_design_id, published_status, created_at, updated_at, published_at)
         VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
       `).run(PLATFORM_IDS.MAKERWORLD, designId, platformDesignId, PUBLISHED_STATUS.PUBLISHED);
 
-      log.info(`[Sync] Created design ${designId} from MakerWorld ${platformDesignId}`);
+      log.info(`[Sync] Created design ${designId} from MakerWorld ${platformDesignId} (PubMan status: Published)`);
     }
 
     // Sync tags (if enabled or new design)
