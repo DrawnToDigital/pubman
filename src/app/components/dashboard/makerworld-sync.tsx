@@ -800,9 +800,12 @@ export function MakerWorldSync({
 
         // Estimate total files for progress tracking
         const instances = designDetails?.instances || [];
+        // Model files are in designExtension.model_files for public design details
+        const designExt = (designDetails as Record<string, unknown>)?.designExtension as Record<string, unknown> | undefined;
+        const modelFiles = (designExt?.model_files as unknown[]) || [];
         let estimatedFiles = 0;
         if (state.syncOptions.downloadCoverImages && designData.cover) estimatedFiles++;
-        if (state.syncOptions.downloadModelFiles) estimatedFiles++; // model zip
+        if (state.syncOptions.downloadModelFiles && modelFiles.length > 0) estimatedFiles++; // model zip (only if has model files)
         if (state.syncOptions.downloadModelFiles) estimatedFiles += instances.length; // instance 3mf files
         let filesCurrent = 0;
 
@@ -849,12 +852,13 @@ export function MakerWorldSync({
         }
 
         // 2. Download model files (all.zip containing STL/3MF files) - if enabled
-        if (state.syncOptions.downloadModelFiles) {
+        // Check if design has model files before attempting download (avoids expected 404)
+        if (state.syncOptions.downloadModelFiles && modelFiles.length > 0) {
           try {
             filesCurrent++;
             log.info(`[MakerWorld Sync] Fetching model download URL for design ${design.id}`);
             const modelDownload = await api.getModelDownloadUrl(design.id);
-            if (modelDownload.url) {
+            if (modelDownload && modelDownload.url) {
               const fileName = modelDownload.name || 'model_files.zip';
               setState((prev) => ({
                 ...prev,
@@ -882,15 +886,14 @@ export function MakerWorldSync({
             if (isCaptchaError(modelError)) {
               log.warn(`[MakerWorld Sync] Captcha required for model download URL`);
               captchaRequired = true;
-            } else if (modelError instanceof MakerWorldClientAPIError && modelError.responseStatus === 404) {
-              // 404 means no model files available - this is OK, instance downloads will provide files
-              log.info(`[MakerWorld Sync] No model files available for design ${design.id} (404) - will use instance downloads`);
             } else {
               const errorMsg = modelError instanceof Error ? modelError.message : 'unknown error';
               log.warn(`[MakerWorld Sync] Failed to fetch model download URL:`, modelError);
               failedDownloads.push(`model files: ${errorMsg}`);
             }
           }
+        } else if (state.syncOptions.downloadModelFiles && modelFiles.length === 0) {
+          log.info(`[MakerWorld Sync] No model files in design ${design.id} - will use instance downloads`);
         } else {
           log.info(`[MakerWorld Sync] Skipping model files download (disabled in options)`);
         }
