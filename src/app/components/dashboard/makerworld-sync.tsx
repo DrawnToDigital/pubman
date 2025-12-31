@@ -1625,7 +1625,7 @@ export function MakerWorldSync({
 
       {/* Success Summary Dialog */}
       <Dialog open={state.showSummary} onOpenChange={(open) => !open && closeSummary()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Sync Complete</DialogTitle>
           </DialogHeader>
@@ -1656,24 +1656,24 @@ export function MakerWorldSync({
 
             {/* Synced designs list */}
             {state.completed.length > 0 && (
-              <div className="border rounded-lg p-3 bg-green-50">
+              <div className="border rounded-lg p-3 bg-green-50 overflow-hidden">
                 <h4 className="text-sm font-medium text-green-800 mb-2">Synced</h4>
-                <ul className="space-y-2 max-h-48 overflow-y-auto">
+                <ul className="space-y-2 max-h-64 overflow-y-auto">
                   {state.completed.map((item) => {
                     const hasDetails = item.changes?.length || item.assetsAdded;
                     const isExpanded = state.expandedSummaryIds.has(item.id);
                     return (
                       <li key={item.id} className="text-sm text-green-700">
-                        <div className="flex items-center">
-                          <Check className="h-3 w-3 mr-2 flex-shrink-0" />
-                          <span className="truncate flex-1">{item.name}</span>
-                          <span className="ml-2 text-xs text-green-600">
+                        <div className="flex items-start gap-1">
+                          <Check className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                          <span className="break-words min-w-0 flex-1">{item.name}</span>
+                          <span className="text-xs text-green-600 flex-shrink-0 whitespace-nowrap">
                             ({item.isNew ? 'new' : 'updated'})
                           </span>
                           {hasDetails && (
                             <button
                               onClick={() => toggleSummaryExpanded(item.id)}
-                              className="ml-2 text-xs text-green-600 hover:text-green-800 underline"
+                              className="text-xs text-green-600 hover:text-green-800 underline flex-shrink-0 whitespace-nowrap"
                             >
                               {isExpanded ? 'Hide' : 'Details'}
                             </button>
@@ -1708,7 +1708,7 @@ export function MakerWorldSync({
 
             {/* Failed designs list */}
             {state.failed.length > 0 && (
-              <div className="border rounded-lg p-3 bg-red-50">
+              <div className="border rounded-lg p-3 bg-red-50 overflow-hidden">
                 <h4 className="text-sm font-medium text-red-800 mb-2">Failed</h4>
                 <ul className="space-y-2 max-h-48 overflow-y-auto">
                   {state.failed.map((item) => {
@@ -1716,20 +1716,20 @@ export function MakerWorldSync({
                     const errorIsLong = item.error.length > 60;
                     return (
                       <li key={item.id} className="text-sm text-red-700">
-                        <div className="flex items-center">
-                          <AlertCircle className="h-3 w-3 mr-2 flex-shrink-0" />
-                          <span className="truncate flex-1">{item.name}</span>
+                        <div className="flex items-start gap-1">
+                          <AlertCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                          <span className="break-words min-w-0 flex-1">{item.name}</span>
                           {errorIsLong && (
                             <button
                               onClick={() => toggleSummaryExpanded(item.id)}
-                              className="ml-2 text-xs text-red-500 hover:text-red-700 underline flex-shrink-0"
+                              className="text-xs text-red-500 hover:text-red-700 underline flex-shrink-0 whitespace-nowrap"
                             >
                               {isExpanded ? 'Hide' : 'Details'}
                             </button>
                           )}
                         </div>
                         <div
-                          className={`text-xs text-red-600 ml-5 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'truncate'}`}
+                          className={`text-xs text-red-600 ml-4 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'truncate'}`}
                           title={!isExpanded ? item.error : undefined}
                         >
                           {item.error}
@@ -1743,13 +1743,13 @@ export function MakerWorldSync({
 
             {/* Skipped designs list */}
             {state.skipped.length > 0 && (
-              <div className="border rounded-lg p-3 bg-gray-50">
+              <div className="border rounded-lg p-3 bg-gray-50 overflow-hidden">
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Skipped</h4>
                 <ul className="space-y-1 max-h-32 overflow-y-auto">
                   {state.skipped.map((item) => (
-                    <li key={item.id} className="text-sm text-gray-600 flex items-center">
-                      <span className="truncate">{item.name}</span>
-                      <span className="ml-2 text-xs text-gray-500">({item.reason})</span>
+                    <li key={item.id} className="text-sm text-gray-600 flex items-start gap-1">
+                      <span className="break-words min-w-0 flex-1">{item.name}</span>
+                      <span className="text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">({item.reason})</span>
                     </li>
                   ))}
                 </ul>
