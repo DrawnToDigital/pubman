@@ -609,6 +609,7 @@ export class MakerWorldClientAPI {
   private async fetchPublishedDesignsPage(userHandle: string, offset: number, limit: number): Promise<{ hits: unknown[]; total: number } | null> {
     // Primary method: fetch upload page with offset query param
     const url = `https://makerworld.com/en/@${userHandle}/upload?offset=${offset}&limit=${limit}`;
+    log.info(`[MakerWorld API] Fetching page: ${url}`);
 
     try {
       const response = await window.electron!.makerworld!.fetch(url, {
@@ -628,6 +629,7 @@ export class MakerWorldClientAPI {
         const designs = nextData?.props?.pageProps?.designs;
         const total = nextData?.props?.pageProps?.total || 0;
         if (Array.isArray(designs) && designs.length > 0) {
+          log.info(`[MakerWorld API] Got ${designs.length} designs from page at offset ${offset}`);
           return { hits: designs, total };
         }
       }
