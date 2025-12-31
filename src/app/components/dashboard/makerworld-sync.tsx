@@ -626,14 +626,14 @@ export function MakerWorldSync({
     const designsToSync = state.designs.filter((d) => state.selectedIds.has(d.id));
     let current = 0;
 
-    for (let i = 0; i < designsToSync.length; i++) {
-      const design = designsToSync[i];
+    for (let designIndex = 0; designIndex < designsToSync.length; designIndex++) {
+      const design = designsToSync[designIndex];
 
       // Check for cancellation
       if (cancelledRef.current) {
         log.info(`[MakerWorld Sync] Sync cancelled by user`);
-        // Add remaining designs to skipped
-        const remainingDesigns = designsToSync.slice(i);
+        // Add remaining designs (including current) to skipped list
+        const remainingDesigns = designsToSync.slice(designIndex);
         setState((prev) => ({
           ...prev,
           skipped: [
@@ -1074,8 +1074,8 @@ export function MakerWorldSync({
         // Check if this was a captcha error - if so, skip remaining designs and break
         if (captchaRequiredRef.current || errorMessage === "CAPTCHA_REQUIRED") {
           log.info(`[MakerWorld Sync] Captcha required - pausing sync`);
-          // Add remaining designs (including current) to skipped
-          const remainingDesigns = designsToSync.slice(i);
+          // Add remaining designs (including current) to skipped list
+          const remainingDesigns = designsToSync.slice(designIndex);
           setState((prev) => ({
             ...prev,
             skipped: [

@@ -26,21 +26,41 @@ function getValidAssetFileNames(makerWorldDesignId: string): Set<string> {
   const validFiles = new Set<string>();
   try {
     const db = getDatabase();
-    // Look up PubMan design ID via design_platform.platform_design_id
-    // Then get all non-deleted assets for that design
+
+    // First, resolve the PubMan design ID(s) for this MakerWorld design ID
+    const designRows = db.prepare(`
+      SELECT design_id FROM design_platform
+      WHERE platform_design_id = ? AND deleted_at IS NULL
+    `).all(makerWorldDesignId) as Array<{ design_id: number }>;
+
+    if (designRows.length === 0) {
+      log.info(`[Download] No PubMan designs found for MakerWorld design ${makerWorldDesignId}; skipping asset lookup`);
+      return validFiles;
+    }
+
+    // Get unique design IDs (in case of duplicates)
+    const uniqueDesignIds = Array.from(new Set(designRows.map((row) => row.design_id)));
+
+    if (uniqueDesignIds.length > 1) {
+      log.warn(`[Download] Multiple PubMan designs (${uniqueDesignIds.join(", ")}) found for MakerWorld design ${makerWorldDesignId}; using the first one for asset lookup`);
+    }
+
+    // Deterministically pick the first design ID (sorted) to avoid ambiguity
+    uniqueDesignIds.sort((a, b) => a - b);
+    const designIdToUse = uniqueDesignIds[0];
+
+    // Get all non-deleted assets for that single design
     const assets = db.prepare(`
-      SELECT da.file_path FROM design_asset da
-      INNER JOIN design_platform dp ON da.design_id = dp.design_id
-      WHERE dp.platform_design_id = ?
-        AND da.deleted_at IS NULL
-    `).all(makerWorldDesignId) as Array<{ file_path: string }>;
+      SELECT file_path FROM design_asset
+      WHERE design_id = ? AND deleted_at IS NULL
+    `).all(designIdToUse) as Array<{ file_path: string }>;
 
     for (const asset of assets) {
       // Extract just the filename from the path
       const fileName = path.basename(asset.file_path);
       validFiles.add(fileName);
     }
-    log.info(`[Download] Found ${validFiles.size} valid assets in database for MakerWorld design ${makerWorldDesignId}`);
+    log.info(`[Download] Found ${validFiles.size} valid assets in database for MakerWorld design ${makerWorldDesignId} (design_id=${designIdToUse})`);
   } catch (error) {
     log.warn(`[Download] Could not query database for valid assets:`, error);
   }
@@ -80,7 +100,7 @@ async function findExistingFileByHash(dir: string, hash: string, ext: string, va
         return filePath;
       }
     }
-  } catch (error) {
+  } catch {
     // Directory might not exist yet, that's fine
   }
   return null;

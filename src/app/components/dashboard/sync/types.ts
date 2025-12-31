@@ -56,6 +56,13 @@ export interface MWDesignDetails {
  * - Single paragraphs with no block elements: unwrap <p> tag
  * - Multi-paragraph or complex content: keep HTML structure
  * - Strip inline styles and MakerWorld-specific attributes
+ *
+ * Edge cases:
+ * - Inline elements like <strong>, <em>, <a> within a single <p> are preserved
+ *   and the outer <p> is still unwrapped: `<p>text <strong>bold</strong></p>` → `text <strong>bold</strong>`
+ * - Nested block elements keep the outer structure: `<p><div>...</div></p>` is kept as-is
+ * - Empty or whitespace-only input returns empty string
+ * - Invalid HTML falls back to stripping all tags
  */
 export function normalizeDescription(html: string): string {
   if (!html || typeof html !== 'string') return '';

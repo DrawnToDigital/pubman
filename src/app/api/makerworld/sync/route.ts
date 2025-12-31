@@ -85,8 +85,10 @@ export async function POST(request: NextRequest) {
     const pubmanCategory = makerWorldCategoryIdToPubman(design.categoryId);
     const platformDesignId = design.designId > 0 ? design.designId.toString() : design.id.toString();
 
-    // Check if design already exists in PubMan (linked to this MakerWorld design)
-    log.info(`[Sync] Looking for existing design with platform_id=${PLATFORM_IDS.MAKERWORLD}, designId=${design.designId}, id=${design.id}`);
+    // Wrap all database operations in a transaction for atomicity
+    const syncDesign = db.transaction(() => {
+      // Check if design already exists in PubMan (linked to this MakerWorld design)
+      log.info(`[Sync] Looking for existing design with platform_id=${PLATFORM_IDS.MAKERWORLD}, designId=${design.designId}, id=${design.id}`);
 
     let existingLink = db.prepare(`
       SELECT dp.design_id, d.id as design_exists
@@ -235,11 +237,17 @@ export async function POST(request: NextRequest) {
       createAssetRecord(db, designId, designer.id, asset);
     }
 
-    return NextResponse.json({
-      success: true,
-      designId: designId.toString(),
-      isNew: isNewDesign,
-    });
+    return { designId, isNew: isNewDesign };
+  }); // End of transaction
+
+  // Execute the transaction
+  const result = syncDesign();
+
+  return NextResponse.json({
+    success: true,
+    designId: result.designId.toString(),
+    isNew: result.isNew,
+  });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     log.error("[Sync] Failed to sync MakerWorld design:", error);
