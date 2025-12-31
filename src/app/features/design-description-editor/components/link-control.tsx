@@ -1,12 +1,12 @@
-import { Editor } from "@tiptap/react";
 import { useState } from "react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { Button } from "@/src/app/components/ui/button";
+import { Input } from "@/src/app/components/ui/input";
 import { Dialog, DialogTrigger, DialogTitle, DialogContent, DialogDescription } from "@radix-ui/react-dialog";
-import { DialogHeader } from "../ui/dialog";
+import { DialogHeader } from "@/src/app/components/ui/dialog";
 import { LinkIcon } from "lucide-react";
-import { ControlButton } from "./control-button";
+import ControlButton from "@/src/app/features/design-description-editor/components/control-button";
 import log from "electron-log/renderer";
+import { useDescriptionContext } from '@/src/app/features/design-description-editor/context/description-context';
 
 const sanitizeUrl = (url: string) => {
     if (!url) return '';
@@ -22,16 +22,13 @@ const sanitizeUrl = (url: string) => {
     }
 }
 
-
-interface LinkControlProps {
-  editor: Editor;
-}
-
-export function LinkControl({ editor }: LinkControlProps) {
+export default function LinkControl() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [linkUrl, setLinkUrl] = useState('')
     const [linkText, setLinkText] = useState('')
     const [needText, setNeedText] = useState(false)
+    const { editor } = useDescriptionContext();
+    if (!editor) return null;
 
     const openLinkDialog = () => {
         if (!editor) return
