@@ -15,6 +15,7 @@ import {
   MakerWorldClientAPIError,
   getLicenseDisplayName,
   licensesAreEqual,
+  isDailyDownloadLimitError,
 } from "../../lib/makerworld-client";
 import log from "electron-log/renderer";
 import { RefreshCw, Check, Download, AlertCircle, ExternalLink, GitMerge, ChevronDown, Settings2 } from "lucide-react";
@@ -92,6 +93,8 @@ interface SyncState {
   failed: Array<{ id: number; name: string; error: string }>;
   skipped: Array<{ id: number; name: string; reason: string }>;
   captcha: CaptchaState | null;
+  // Set when MakerWorld's daily download-link quota is hit; sync stops entirely (see syncDesigns)
+  dailyLimitReached: boolean;
   // Sync options
   syncOptions: SyncOptions;
   // Merge handling - maps MakerWorld design ID to merge config
@@ -141,6 +144,7 @@ export function MakerWorldSync({
     failed: [],
     skipped: [],
     captcha: null,
+    dailyLimitReached: false,
     syncOptions: {
       downloadCoverImages: true,
       downloadModelFiles: true,
@@ -161,6 +165,8 @@ export function MakerWorldSync({
   const cancelledRef = useRef(false);
   // Ref to track if captcha was required (to break out of sync loop)
   const captchaRequiredRef = useRef(false);
+  // Ref to track if MakerWorld's daily download limit was hit (to break out of sync loop)
+  const dailyLimitRef = useRef(false);
 
   const fetchDesigns = useCallback(async (userHandle: string, userId?: number) => {
     setState((prev) => ({ ...prev, isFetching: true, error: null }));
@@ -233,6 +239,7 @@ export function MakerWorldSync({
         failed: [],
         skipped: [],
         syncCancelled: false,
+        dailyLimitReached: false,
         mergeConfigs: new Map(),
         showSummary: false,
         mergePreviewDesignId: null,
@@ -301,6 +308,13 @@ export function MakerWorldSync({
     setState((prev) => ({
       ...prev,
       captcha: null,
+    }));
+  };
+
+  const dismissDailyLimit = () => {
+    setState((prev) => ({
+      ...prev,
+      dailyLimitReached: false,
     }));
   };
 
@@ -606,6 +620,7 @@ export function MakerWorldSync({
     }));
     cancelledRef.current = false;
     captchaRequiredRef.current = false;
+    dailyLimitRef.current = false;
 
     setState((prev) => ({
       ...prev,
@@ -720,6 +735,7 @@ export function MakerWorldSync({
         const assets: Array<{ fileName: string; fileExt: string; filePath: string; fileSize?: number }> = [];
         const failedDownloads: string[] = [];  // Track which files failed to download
         let captchaRequired = false;
+        let dailyLimitReached = false;
 
         // Estimate total files for progress tracking
         const instances = designDetails?.instances || [];
@@ -809,6 +825,9 @@ export function MakerWorldSync({
             if (isCaptchaError(modelError)) {
               log.warn(`[MakerWorld Sync] Captcha required for model download URL`);
               captchaRequired = true;
+            } else if (isDailyDownloadLimitError(modelError)) {
+              log.error(`[MakerWorld Sync] MakerWorld daily download limit reached while fetching model download URL`);
+              dailyLimitReached = true;
             } else {
               const errorMsg = modelError instanceof Error ? modelError.message : 'unknown error';
               log.warn(`[MakerWorld Sync] Failed to fetch model download URL:`, modelError);
@@ -819,6 +838,15 @@ export function MakerWorldSync({
           log.info(`[MakerWorld Sync] No model files in design ${design.id} - will use instance downloads`);
         } else {
           log.info(`[MakerWorld Sync] Skipping model files download (disabled in options)`);
+        }
+
+        // If the daily download-link quota is used up, every further getModelDownloadUrl/
+        // getInstanceDownloadUrl call will fail identically - stop the ENTIRE sync now
+        // instead of hammering MakerWorld's API once per remaining design.
+        if (dailyLimitReached) {
+          dailyLimitRef.current = true;
+          setState((prev) => ({ ...prev, isSyncing: false, dailyLimitReached: true }));
+          throw new Error("MAKERWORLD_DAILY_LIMIT_REACHED");
         }
 
         // If captcha required, pause and prompt user - break out of sync loop
@@ -874,6 +902,10 @@ export function MakerWorldSync({
                   log.warn(`[MakerWorld Sync] Captcha required for instance ${instance.id} 3MF download URL`);
                   captchaRequired = true;
                   break;
+                } else if (isDailyDownloadLimitError(instanceError)) {
+                  log.error(`[MakerWorld Sync] MakerWorld daily download limit reached while fetching instance ${instance.id} 3MF download URL`);
+                  dailyLimitReached = true;
+                  break;
                 } else {
                   const errorMsg = instanceError instanceof Error ? instanceError.message : 'unknown error';
                   log.warn(`[MakerWorld Sync] Failed to fetch instance ${instance.id} 3MF:`, instanceError);
@@ -882,6 +914,14 @@ export function MakerWorldSync({
               }
             }
           }
+        }
+
+        // If the daily download-link quota is used up, stop the ENTIRE sync now (see the
+        // comment on the identical check above, after the model-files download step).
+        if (dailyLimitReached) {
+          dailyLimitRef.current = true;
+          setState((prev) => ({ ...prev, isSyncing: false, dailyLimitReached: true }));
+          throw new Error("MAKERWORLD_DAILY_LIMIT_REACHED");
         }
 
         // If captcha required, pause and prompt user
@@ -1071,6 +1111,26 @@ export function MakerWorldSync({
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
+        // Check if the daily download limit was hit - if so, stop the whole sync (every
+        // remaining design would just fail the exact same way) rather than treating it as
+        // a per-design failure and continuing to hammer MakerWorld's API.
+        if (dailyLimitRef.current || errorMessage === "MAKERWORLD_DAILY_LIMIT_REACHED") {
+          log.error(`[MakerWorld Sync] Daily download limit reached - stopping sync`);
+          const remainingDesigns = designsToSync.slice(designIndex);
+          setState((prev) => ({
+            ...prev,
+            skipped: [
+              ...prev.skipped,
+              ...remainingDesigns.map((d) => ({
+                id: d.id,
+                name: d.title,
+                reason: "MakerWorld daily download limit reached - sync stopped",
+              })),
+            ],
+          }));
+          break;
+        }
+
         // Check if this was a captcha error - if so, skip remaining designs and break
         if (captchaRequiredRef.current || errorMessage === "CAPTCHA_REQUIRED") {
           log.info(`[MakerWorld Sync] Captcha required - pausing sync`);
@@ -1098,8 +1158,8 @@ export function MakerWorldSync({
       }
     }
 
-    // Only show summary if we didn't pause for captcha
-    if (!captchaRequiredRef.current) {
+    // Only show summary if we didn't pause for captcha or stop for a daily limit
+    if (!captchaRequiredRef.current && !dailyLimitRef.current) {
       setState((prev) => ({ ...prev, isSyncing: false, showSummary: true }));
     }
 
@@ -1343,6 +1403,35 @@ export function MakerWorldSync({
                       size="sm"
                       onClick={dismissCaptcha}
                       className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Daily Download Limit Alert - shown when MakerWorld's download-link quota is hit */}
+          {state.dailyLimitReached && (
+            <div className="mt-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-medium text-red-800">MakerWorld Daily Download Limit Reached</h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    MakerWorld limits how many download links it will issue per account each day.
+                    Sync has been stopped so it doesn&apos;t keep hitting that limit. Any
+                    remaining designs were skipped - reopen this dialog and sync again once the
+                    limit resets (MakerWorld doesn&apos;t publish an exact reset time, but it is
+                    generally daily).
+                  </p>
+                  <div className="mt-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={dismissDailyLimit}
+                      className="border-red-300 text-red-700 hover:bg-red-100"
                     >
                       Dismiss
                     </Button>
