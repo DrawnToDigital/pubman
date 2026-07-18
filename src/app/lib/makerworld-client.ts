@@ -203,6 +203,40 @@ export class MakerWorldClientAPIError extends Error {
   }
 }
 
+/**
+ * Pulls a human-readable message out of a MakerWorld/BambuLab JSON error body
+ * (typically shaped like {code, error} or {code, message}). Returns undefined if the
+ * body isn't JSON or doesn't have a recognizable message field.
+ */
+function extractApiErrorDetail(responseBody?: string): string | undefined {
+  if (!responseBody) return undefined;
+  try {
+    const parsed = JSON.parse(responseBody);
+    if (typeof parsed?.error === 'string') return parsed.error;
+    if (typeof parsed?.message === 'string') return parsed.message;
+  } catch {
+    // Not JSON - nothing to extract.
+  }
+  return undefined;
+}
+
+/**
+ * True when `error` is a MakerWorldClientAPIError reporting that the account's daily
+ * download-link quota has been used up. BambuLab returns this as HTTP 400 with a body
+ * like {"code":-1,"error":"You've reached your daily download limit."} - there's no
+ * client-side workaround, and every further getModelDownloadUrl/getInstanceDownloadUrl
+ * call will keep failing the exact same way until the quota resets, so callers should
+ * stop retrying entirely rather than treating it like a per-file failure.
+ */
+export function isDailyDownloadLimitError(error: unknown): boolean {
+  return (
+    error instanceof MakerWorldClientAPIError &&
+    error.responseStatus === 400 &&
+    typeof error.responseBody === 'string' &&
+    /download limit/i.test(error.responseBody)
+  );
+}
+
 // MakerWorld draft status codes
 export const MAKERWORLD_STATUS = {
   0: 'new',
@@ -282,8 +316,14 @@ export class MakerWorldClientAPI {
     }
 
     if (!response.ok) {
+      // MakerWorld/BambuLab error responses are typically {code, error} JSON bodies with a
+      // human-readable message (e.g. rate limits, quota errors) - surface that instead of
+      // just the bare HTTP status, which by itself gives no actionable information.
+      const detail = extractApiErrorDetail(response.body);
       const error = new MakerWorldClientAPIError({
-        message: `MakerWorld API error: ${response.status} ${response.statusText}`,
+        message: detail
+          ? `MakerWorld API error: ${response.status} ${response.statusText} - ${detail}`
+          : `MakerWorld API error: ${response.status} ${response.statusText}`,
         url,
         method,
         requestBody: options.body,
