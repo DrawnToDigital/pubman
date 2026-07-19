@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "../../../../lib/betterSqlite3";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 const MAKERWORLD_PLATFORM_ID = 5;
 const PUBLISHED_STATUS_DRAFT = 1;

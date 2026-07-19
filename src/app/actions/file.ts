@@ -3,7 +3,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { customAlphabet } from 'nanoid';
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 

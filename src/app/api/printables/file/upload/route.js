@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrintablesAPI } from '../../printables-lib';
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 export async function POST(request) {
   try {

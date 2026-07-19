@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "../../../lib/betterSqlite3";
 import { makerWorldLicenseToPubman, makerWorldCategoryIdToPubman } from "../makerworld-lib";
 import { PLATFORM_IDS, PUBLISHED_STATUS } from "../../../lib/constants/platforms";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 import path from "path";
 
 interface MakerWorldDesignData {

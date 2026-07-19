@@ -1,4 +1,4 @@
-import log from 'electron-log/renderer';
+import log from 'electron-log/node';
 
 export const printablesImageFileTypes = ["gif", "heic", "heif", "jpeg", "jpg", "png", "svg", "webp"];
 

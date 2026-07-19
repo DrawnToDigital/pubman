@@ -1,6 +1,6 @@
 import {getDatabase} from "../../../../lib/betterSqlite3";
 import {NextResponse} from "next/server";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 const PROVIDER_NAME = 'makerworld';
 

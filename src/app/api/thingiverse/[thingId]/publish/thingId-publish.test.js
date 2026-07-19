@@ -1,7 +1,7 @@
 import {POST} from './route';
 import {ThingiverseAPI} from '../../thingiverse-lib';
 import {getDatabase} from "../../../../lib/betterSqlite3";
-import log from 'electron-log/renderer';
+import log from 'electron-log/node';
 
 // Mock dependencies
 jest.mock('../../thingiverse-lib');

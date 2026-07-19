@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ThingiverseAPI } from '../thingiverse-lib';
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 export async function GET(request) {
   try {

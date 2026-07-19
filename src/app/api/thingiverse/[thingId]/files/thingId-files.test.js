@@ -1,6 +1,6 @@
 import { GET, POST } from './route';
 import { ThingiverseAPI } from '../../thingiverse-lib';
-import log from 'electron-log/renderer';
+import log from 'electron-log/node';
 
 jest.mock('../../thingiverse-lib', () => ({
   ThingiverseAPI: jest.fn().mockImplementation(() => ({

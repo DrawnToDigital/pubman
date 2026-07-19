@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ThingiverseAPI } from '../../thingiverse-lib';
 import {getDatabase} from "../../../../lib/betterSqlite3";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 export async function POST(request, { params }) {
   try {

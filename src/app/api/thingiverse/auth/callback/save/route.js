@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import {getDatabase} from "../../../../../lib/betterSqlite3";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 const THINGIVERSE_CLIENT_ID = process.env.THINGIVERSE_CLIENT_ID;
 

@@ -7,7 +7,7 @@ import {
   MakerWorldAPIError,
   makerWorldImageFileTypes
 } from "../makerworld-lib";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 import { getDatabase } from "../../../lib/betterSqlite3";
 import {designSchema} from "../../../components/design/types";
 import path from "path";

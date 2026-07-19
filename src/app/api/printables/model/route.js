@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrintablesAPI } from '../printables-lib';
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 import path from "path";
 import fs from "fs";
 import {getDatabase} from "../../../lib/betterSqlite3";

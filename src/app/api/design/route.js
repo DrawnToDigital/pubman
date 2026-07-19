@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { designCreateSchema, pubmanImageFileTypes } from '@/src/app/components/design/types';
 import { getDatabase } from "../../lib/betterSqlite3"
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 // TODO: Move this to a shared location
 const platformMap = {
