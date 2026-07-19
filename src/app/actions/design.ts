@@ -6,7 +6,7 @@ import {
   designSchema,
   designUpdateSchema, designCreateSchema
 } from "@/src/app/components/design/types";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 

@@ -1,7 +1,7 @@
 import {NextResponse} from 'next/server';
 import {getDatabase} from "../../../lib/betterSqlite3";
 import { designUpdateSchema, pubmanImageFileTypes } from "../../../components/design/types";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 // TODO: Move this to a shared location
 // Map platform IDs to readable names

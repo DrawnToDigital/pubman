@@ -3,7 +3,7 @@ import {ThingiverseAPI} from "../thingiverse-lib";
 import {getDatabase} from "../../../lib/betterSqlite3";
 import fs from "fs";
 import path from "path";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 import { formatApiError } from '../../../lib/logApiError.js';
 
 // Thingiverse platform ID is 3 according to the schema

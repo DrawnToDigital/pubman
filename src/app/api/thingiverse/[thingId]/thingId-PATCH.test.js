@@ -1,7 +1,7 @@
 // In src/app/api/thingiverse/[thingId]/thingId-PATCH.test.js
 import { PATCH } from './route';  // Fix the import path
 import { ThingiverseAPI } from '../thingiverse-lib';
-import log from 'electron-log/renderer';
+import log from 'electron-log/node';
 import { formatApiError } from '../../../lib/logApiError.js';
 
 jest.mock('../thingiverse-lib', () => ({

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from "../../../../../lib/betterSqlite3";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 export async function GET(request, context) {
   const { designID, assetID } = await context.params; // Await params

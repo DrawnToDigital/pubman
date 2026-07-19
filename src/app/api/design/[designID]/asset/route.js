@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import {z} from "zod";
 import { getDatabase } from "../../../../lib/betterSqlite3";
-import log from "electron-log/renderer"
+import log from "electron-log/node"
 import path from 'path';
 
 export async function GET(request, context) {
