@@ -1,6 +1,6 @@
 import { POST } from './route';
 import { getDatabase } from '../../../../lib/betterSqlite3';
-import log from 'electron-log/renderer';
+import log from 'electron-log/node';
 
 jest.mock('../../../../lib/betterSqlite3', () => ({
   getDatabase: jest.fn(),

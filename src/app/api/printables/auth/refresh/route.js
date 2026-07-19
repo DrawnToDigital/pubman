@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from "../../../../lib/betterSqlite3";
 import { formatApiError } from "../../../../lib/logApiError.js";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 
 export async function POST() {
   try {
