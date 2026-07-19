@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from "../../../../lib/betterSqlite3";
+import { formatApiError } from "../../../../lib/logApiError.js";
 import log from "electron-log/renderer";
 
 export async function POST() {
@@ -66,7 +67,7 @@ export async function POST() {
 
     return NextResponse.json({ success: true, token: accessToken, expiresAt });
   } catch (error) {
-    log.error('Printables token refresh error:', error);
+    log.error('Printables token refresh error:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
