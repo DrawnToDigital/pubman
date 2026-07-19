@@ -44,8 +44,18 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Access token not provided by OAuth server' }, { status: 500 });
     }
 
+    // Prusa3D's token endpoint also returns a refresh_token + expires_in (seconds) -
+    // store both so /api/printables/auth/refresh can silently renew the access token
+    // later instead of forcing the user through the interactive login popup again.
+    const refreshToken = data.refresh_token || null;
+    const expiresAt = typeof data.expires_in === 'number'
+      ? new Date(Date.now() + data.expires_in * 1000).toISOString()
+      : null;
+
     // Store token in database
-    await db.prepare('INSERT OR REPLACE INTO auth_tokens (provider, token) VALUES (?, ?)').run('printables', accessToken);
+    await db.prepare(
+      'INSERT OR REPLACE INTO auth_tokens (provider, token, refresh_token, expires_at) VALUES (?, ?, ?, ?)'
+    ).run('printables', accessToken, refreshToken, expiresAt);
 
     return NextResponse.json({
       message: 'Authentication successful',
