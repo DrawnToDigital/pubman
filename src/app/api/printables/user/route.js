@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrintablesAPI } from '../printables-lib';
 import log from "electron-log/renderer";
+import { formatApiError } from '../../../lib/logApiError.js';
 
 export async function GET(request) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request) {
 
     return NextResponse.json(userData, { status: 200 });
   } catch (error) {
-    log.error('Failed to get Printables user info:', error);
+    log.error('Failed to get Printables user info:', formatApiError(error));
 
     // Check if the error is due to an invalid token
     if (error.message && error.message.includes('401')) {

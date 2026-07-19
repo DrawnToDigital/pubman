@@ -1,6 +1,7 @@
 import {getDatabase} from "../../../../lib/betterSqlite3";
 import {NextResponse} from "next/server";
 import log from "electron-log/renderer";
+import { formatApiError } from "../../../../lib/logApiError.js";
 
 const PROVIDER_NAME = 'makerworld';
 
@@ -15,7 +16,7 @@ export async function GET() {
       return NextResponse.json({ token: null });
     }
   } catch (error) {
-    log.error('Failed to get token:', error);
+    log.error('Failed to get token:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -32,7 +33,7 @@ export async function POST(request) {
     await db.prepare('INSERT OR REPLACE INTO auth_tokens (provider, token) VALUES (?, ?)').run(PROVIDER_NAME, token);
     return NextResponse.json({ success: true });
   } catch (error) {
-    log.error('Failed to save token:', error);
+    log.error('Failed to save token:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -43,7 +44,7 @@ export async function DELETE() {
     await db.prepare('DELETE FROM auth_tokens WHERE provider = ?').run(PROVIDER_NAME);
     return NextResponse.json({ success: true });
   } catch (error) {
-    log.error('Failed to delete token:', error);
+    log.error('Failed to delete token:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

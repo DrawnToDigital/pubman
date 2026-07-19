@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ThingiverseAPI } from '../thingiverse-lib';
 import log from "electron-log/renderer";
+import { formatApiError } from '../../../lib/logApiError.js';
 
 export async function GET(request, { params }) {
   try {
@@ -15,7 +16,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(thing, { status: 200 });
   } catch (error) {
-    log.error('Failed to get Thingiverse thing:', error);
+    log.error('Failed to get Thingiverse thing:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -34,7 +35,7 @@ export async function PATCH(request, { params }) {
     const updatedThing = await api.updateThing(thingId, updates);
     return NextResponse.json(updatedThing, { status: 200 });
   }  catch (error) {
-    log.error('Failed to update Thingiverse thing:', error);
+    log.error('Failed to update Thingiverse thing:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

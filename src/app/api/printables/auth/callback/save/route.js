@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import {getDatabase} from "../../../../../lib/betterSqlite3";
 import log from "electron-log/renderer";
+import { formatApiError } from '../../../../../lib/logApiError.js';
 
 export async function GET(request) {
   try {
@@ -52,7 +53,7 @@ export async function GET(request) {
       accessToken,
     });
   } catch (error) {
-    log.error('OAuth callback error:', error);
+    log.error('OAuth callback error:', formatApiError(error));
     return NextResponse.json({ error: 'Authentication failed' }, { status: 500 });
   }
 }

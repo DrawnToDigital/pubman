@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import log from "electron-log/renderer";
+import { formatApiError } from "../../../lib/logApiError.js";
 
 export default function MakerWorldAuthPage() {
   const [step, setStep] = useState("login"); // login | code | done
@@ -39,7 +40,7 @@ export default function MakerWorldAuthPage() {
         setError("Unexpected response from MakerWorld.");
       }
     } catch (err) {
-      log.error("MakerWorld login failed:", err);
+      log.error("MakerWorld login failed:", formatApiError(err));
       setError(err.message || "Login failed");
     } finally {
       setIsSubmitting(false);
@@ -67,7 +68,7 @@ export default function MakerWorldAuthPage() {
         setError("Invalid code or unexpected response.");
       }
     } catch (err) {
-      log.error("MakerWorld code verification failed:", err);
+      log.error("MakerWorld code verification failed:", formatApiError(err));
       setError(err.message || "Code verification failed");
     } finally {
       setIsSubmitting(false);
@@ -95,7 +96,7 @@ export default function MakerWorldAuthPage() {
         setError("TFA verification failed or unexpected response.");
       }
     } catch (err) {
-      log.error("MakerWorld TFA verification failed:", err);
+      log.error("MakerWorld TFA verification failed:", formatApiError(err));
       setError(err.message || "TFA verification failed");
     } finally {
       setIsSubmitting(false);

@@ -6,6 +6,7 @@ import { customAlphabet } from "nanoid";
 import AdmZip from "adm-zip";
 import crypto from "crypto";
 import { getDatabase } from "../../../../lib/betterSqlite3";
+import { formatApiError } from "../../../../lib/logApiError.js";
 
 // Length of random prefix for unique filenames (6 hex chars = 16M combinations)
 const FILENAME_RANDOM_LENGTH = 6;
@@ -343,7 +344,7 @@ export async function POST(request: NextRequest) {
           totalSize: extractedFiles.reduce((sum, f) => sum + f.size, 0),
         });
       } catch (extractError) {
-        log.error("[Download] Failed to extract zip file:", extractError);
+        log.error("[Download] Failed to extract zip file:", formatApiError(extractError));
         // Fall back to returning the zip file itself
         return NextResponse.json({
           success: true,
@@ -390,7 +391,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    log.error("[Download] Failed to download file:", error);
+    log.error("[Download] Failed to download file:", formatApiError(error));
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
