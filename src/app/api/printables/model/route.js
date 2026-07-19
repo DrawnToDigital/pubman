@@ -4,6 +4,7 @@ import log from "electron-log/renderer";
 import path from "path";
 import fs from "fs";
 import {getDatabase} from "../../../lib/betterSqlite3";
+import { formatApiError } from '../../../lib/logApiError.js';
 
 const PRINTABLES_PLATFORM_ID = 4;
 const PUBLISHED_STATUS_DRAFT = 1;
@@ -54,7 +55,7 @@ export async function POST(request) {
             fileIds.push(uploadResult.id)
           }
         } catch (error) {
-          log.error(`Failed to upload file ${asset.file_name}:`, error);
+          log.error(`Failed to upload file ${asset.file_name}:`, formatApiError(error));
           hasFileErrors = true;
           fileResults.push({
             action: 'upload',
@@ -216,7 +217,7 @@ export async function POST(request) {
       designPlatform: designPlatform
     }, { status: designId ? 200 : 201 });
   } catch (error) {
-    log.error('Failed to create Printables model:', error);
+    log.error('Failed to create Printables model:', formatApiError(error));
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

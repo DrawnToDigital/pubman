@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import log from 'electron-log/renderer';
+import { formatApiError } from './logApiError.js';
 
 // Window.electron types are defined in MakerWorldAuthContext.tsx
 
@@ -291,19 +292,14 @@ export class MakerWorldClientAPI {
         responseStatusText: response.statusText,
         responseBody: response.body,
       });
-      log.error(`[MakerWorld API] Request failed:`, {
-        url,
-        method,
-        status: response.status,
-        statusText: response.statusText,
-      });
+      log.error(`[MakerWorld API] Request failed:`, formatApiError(error));
       throw error;
     }
 
     try {
       return response.body ? JSON.parse(response.body) : null;
     } catch (parseError) {
-      log.error(`[MakerWorld API] Failed to parse response as JSON:`, parseError);
+      log.error(`[MakerWorld API] Failed to parse response as JSON:`, formatApiError(parseError));
       throw new MakerWorldClientAPIError({
         message: 'Failed to parse response',
         url,
@@ -451,7 +447,7 @@ export class MakerWorldClientAPI {
       log.info(`[MakerWorld S3] <<< Upload successful: ${resultUrl}`);
       return { url: resultUrl };
     } catch (error) {
-      log.error(`[MakerWorld S3] <<< Upload failed:`, error);
+      log.error(`[MakerWorld S3] <<< Upload failed:`, formatApiError(error));
       throw error;
     }
   }
@@ -569,7 +565,7 @@ export class MakerWorldClientAPI {
           log.warn('[MakerWorld API] Could not find designs in __NEXT_DATA__, pageProps keys:', Object.keys(pageProps).join(', '));
         }
       } catch (e) {
-        log.error('[MakerWorld API] Failed to parse __NEXT_DATA__:', e);
+        log.error('[MakerWorld API] Failed to parse __NEXT_DATA__:', formatApiError(e));
       }
     }
 

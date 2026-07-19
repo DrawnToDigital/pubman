@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import {getDatabase} from "../../../../../lib/betterSqlite3";
 import log from "electron-log/renderer";
+import { formatApiError } from '../../../../../lib/logApiError.js';
 
 const THINGIVERSE_CLIENT_ID = process.env.THINGIVERSE_CLIENT_ID;
 
@@ -62,7 +63,7 @@ export async function GET(request) {
       }
     );
   } catch (error) {
-    log.error('OAuth callback error:', error);
+    log.error('OAuth callback error:', formatApiError(error));
     return NextResponse.json({ error: 'Authentication failed' }, { status: 500 });
   }
 }

@@ -12,6 +12,7 @@ import { getDatabase } from "../../../lib/betterSqlite3";
 import {designSchema} from "../../../components/design/types";
 import path from "path";
 import fs from "fs";
+import { formatApiError } from "../../../lib/logApiError.js";
 
 const MAKERWORLD_PLATFORM_ID = 5;
 const PUBLISHED_STATUS_DRAFT = 1;
@@ -118,7 +119,7 @@ export async function POST(request) {
             });
           }
         } catch (error) {
-          log.error(`Failed to upload file ${asset.file_name}:`, error);
+          log.error(`Failed to upload file ${asset.file_name}:`, formatApiError(error));
           return NextResponse.json({ error: 'Some files failed to upload', details: error }, { status: 500 });
         }
       }
@@ -171,7 +172,7 @@ export async function POST(request) {
             }
           } catch (error) {
             if (error instanceof MakerWorldAPIError) {
-              log.error(error.validationIssues);
+              log.error(formatApiError(error));
             }
             lastError = error;
           }
@@ -229,7 +230,7 @@ export async function POST(request) {
       designPlatform
     }, { status: makerWorldId ? 200 : 201 });
   } catch (error) {
-    log.error('Failed to create MakerWorld model:', error);
+    log.error('Failed to create MakerWorld model:', formatApiError(error));
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

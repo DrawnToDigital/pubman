@@ -17,6 +17,7 @@ import {
   licensesAreEqual,
 } from "../../lib/makerworld-client";
 import log from "electron-log/renderer";
+import { formatApiError } from "../../lib/logApiError.js";
 import { RefreshCw, Check, Download, AlertCircle, ExternalLink, GitMerge, ChevronDown, Settings2 } from "lucide-react";
 import {
   DraftSummary,
@@ -214,7 +215,7 @@ export function MakerWorldSync({
       }));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch designs";
-      log.error("[MakerWorld Sync] Error fetching designs:", error);
+      log.error("[MakerWorld Sync] Error fetching designs:", formatApiError(error));
       setState((prev) => ({
         ...prev,
         isFetching: false,
@@ -326,7 +327,7 @@ export function MakerWorldSync({
           }, 500);
         }
       } catch (error) {
-        log.error("[MakerWorld Sync] Failed to open captcha window:", error);
+        log.error("[MakerWorld Sync] Failed to open captcha window:", formatApiError(error));
         // Fallback to external browser with design page
         const url = designId
           ? `https://makerworld.com/en/models/${designId}`
@@ -1090,7 +1091,7 @@ export function MakerWorldSync({
           break;
         }
 
-        log.error(`[MakerWorld Sync] Failed to sync ${design.title}:`, error);
+        log.error(`[MakerWorld Sync] Failed to sync ${design.title}:`, formatApiError(error));
         setState((prev) => ({
           ...prev,
           failed: [...prev.failed, { id: design.id, name: design.title, error: errorMessage }],
@@ -1192,7 +1193,7 @@ export function MakerWorldSync({
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      log.error(`[MakerWorld Sync] Download failed for ${fileName}:`, error);
+      log.error(`[MakerWorld Sync] Download failed for ${fileName}:`, formatApiError(error));
       return { success: false, error: errorMessage };
     }
   };
