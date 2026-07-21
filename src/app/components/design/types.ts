@@ -202,6 +202,28 @@ export const makerWorldCategories = z.enum([
 
 export const pubmanImageFileTypes = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'svg'];
 
+export const printProfileSchema = z.object({
+    printer_model: z.string().nullable(),
+    printer_settings_name: z.string().nullable(),
+    nozzle_diameter: z.number().nullable(),
+    bed_type: z.string().nullable(),
+    layer_height: z.number().nullable(),
+    first_layer_height: z.number().nullable(),
+    wall_loops: z.number().nullable(),
+    infill_density: z.number().nullable(),
+    infill_pattern: z.string().nullable(),
+    supports_enabled: z.boolean(),
+    support_type: z.string().nullable(),
+    print_settings_name: z.string().nullable(),
+    filament_types: z.array(z.string()),
+    filament_colors: z.array(z.string()),
+    filament_names: z.array(z.string()),
+    plate_count: z.number().nullable(),
+    makerworld_profile_id: z.string().nullable(),
+});
+
+export type PrintProfileSchema = z.infer<typeof printProfileSchema>
+
 export const designSchema = z.object({
     id: z.string(),
     main_name: z.string(),
@@ -227,6 +249,7 @@ export const designSchema = z.object({
             original_file_mtime: z.string().datetime({ offset: false }).nullish(),
             url: z.string(),
             created_at: z.string().datetime({ offset: false }),
+            print_profile: printProfileSchema.nullish(),
         }),
     ),
     platforms: z.array(

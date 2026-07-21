@@ -1,6 +1,7 @@
 import {NextResponse} from 'next/server';
 import {getDatabase} from "../../../lib/betterSqlite3";
 import { designUpdateSchema, pubmanImageFileTypes } from "../../../components/design/types";
+import { getPrintProfilesByAssetIds } from "../../../lib/printProfile";
 import log from "electron-log/node";
 
 // TODO: Move this to a shared location
@@ -56,9 +57,12 @@ export async function GET(request, {params}) {
     const assets = db.prepare(`
           SELECT id, file_name, file_ext, file_path, original_file_path, original_file_size, original_file_mtime,
                  strftime('%Y-%m-%dT%H:%M:%fZ', created_at) AS created_at
-          FROM design_asset 
+          FROM design_asset
           WHERE design_id = ? AND deleted_at IS NULL
         `).all(design.id);
+
+    // Fetch print profiles for any 3MF assets
+    const printProfilesByAssetId = getPrintProfilesByAssetIds(db, assets.map((asset) => asset.id));
 
     // Fetch platform publishing information
     const platforms = db.prepare(`
@@ -99,6 +103,7 @@ export async function GET(request, {params}) {
         original_file_mtime: asset.original_file_mtime,
         url: `local://${asset.file_path}`,
         created_at: asset.created_at,
+        print_profile: printProfilesByAssetId[asset.id] || null,
       })),
       platforms: platforms.map((platform) => ({
         platform: platformMap[platform.platform_id] || 'UNKNOWN',

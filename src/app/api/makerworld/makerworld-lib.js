@@ -485,6 +485,118 @@ export const UpdateDraftRequestSchema = z.object({
   scadIsVaildating: z.boolean().default(false),
 });
 
+// Request shape for MakerWorld's "add print profile" (their term for what shows as
+// "Print Profile" on a design page) action. Reverse-engineered from a real captured request
+// (2026-07-21) - do NOT reuse UpdateDraftRequestSchema for this; it's a different, narrower
+// shape keyed by mode: "addProfile", and parentId here is the MakerWorld DESIGN id, not a draft id.
+export const AddPrintProfileRequestSchema = z.object({
+  parentId: z.number(),
+  profileId: z.number().default(0),
+  mode: z.literal('addProfile').default('addProfile'),
+  clickWhich: z.string().default('publish'),
+  modelSource: z.string().default('profile'),
+  modelId: z.string().default(''),
+  title: z.string(),
+  profileTitle: z.string(),
+  profileSummary: z.string().default(''),
+  profileCover: z.string(),
+  model3Mf: z.object({
+    name: z.string().default(''),
+    url: z.string().default(''),
+    size: z.number().default(0),
+  }),
+  auxiliaryPictures: z.array(
+    z.object({
+      name: z.string().default(''),
+      url: z.string().default(''),
+      uploadUrl: z.string().default(''),
+      cdnPrefix: z.string().default(''),
+    })
+  ).default([]),
+  auxiliaryBom: z.array(z.any()).default([]),
+  auxiliaryGuide: z.array(z.any()).default([]),
+  auxiliaryOther: z.array(z.any()).default([]),
+  designBom: z.array(z.any()).default([]),
+  designGuide: z.array(z.any()).default([]),
+  designOther: z.array(z.any()).default([]),
+  designPictures: z.array(z.any()).default([]),
+  details: z.array(z.string()).default([]),
+  tempDetails: z.array(z.any()).default([]),
+  original: z.array(z.any()).default([]),
+  otherCompatibility: z.array(
+    z.object({
+      devModelName: z.string(),
+      devProductName: z.string(),
+      nozzleDiameter: z.number(),
+    })
+  ).default([]),
+  unsupportedDevModels: z.array(z.any()).default([]),
+  compatibility: z.object({
+    devModelName: z.string().default(''),
+    devProductName: z.string().default(''),
+    nozzleDiameter: z.number().default(0),
+  }).default({ devModelName: '', devProductName: '', nozzleDiameter: 0 }),
+  printer: z.object({
+    model: z.string().default(''),
+    variant: z.number().default(0),
+    settingsId: z.string().default(''),
+  }).default({ model: '', variant: 0, settingsId: '' }),
+  projectSettings: z.object({
+    layerHeight: z.string().default(''),
+    wallLoops: z.string().default(''),
+    sparseInfillDensity: z.string().default(''),
+  }).default({ layerHeight: '', wallLoops: '', sparseInfillDensity: '' }),
+  draftSetting: z.object({
+    customGCode: z.boolean().default(false),
+  }).default({ customGCode: false }),
+  instanceSetting: z.object({
+    submitAsPrivate: z.boolean().default(false),
+    isPrinterPresetChanged: z.boolean().default(true),
+    isPrinterTested: z.boolean().default(true),
+    isDonateToAuthor: z.boolean().default(false),
+    makerLab: z.string().default(''),
+    makerLabVersion: z.string().default(''),
+  }).default({
+    submitAsPrivate: false,
+    isPrinterPresetChanged: true,
+    isPrinterTested: true,
+    isDonateToAuthor: false,
+    makerLab: '',
+    makerLabVersion: '',
+  }),
+  makerLabSvg: z.array(z.any()).default([]),
+  syncToMWGlobal: z.boolean().default(true),
+  picturesIsUploading: z.boolean().default(false),
+  videosIsUploading: z.boolean().default(false),
+  accessoriesIsUploading: z.boolean().default(false),
+  profilePicturesIsUploading: z.boolean().default(false),
+  templateFileIsUploading: z.boolean().default(false),
+  modelDetailIsUploading: z.boolean().default(false),
+  rawModelFileIsUploading: z.boolean().default(false),
+  uploading3mfStatus: z.number().default(2),
+});
+
+// PubMan's parsed printer_model string -> MakerWorld's internal printer identifiers.
+// Every entry here was read directly off a real captured "add print profile" request - never
+// add an entry by guessing the code, since a wrong devModelName misrepresents printer
+// compatibility on a live listing. Printers not listed (e.g. "Bambu Lab A1 mini" as of
+// 2026-07-21) are unconfirmed; leave compatibility fields blank for those rather than guess.
+export const makerWorldPrinterDevModels = {
+  'Bambu Lab P1P': { devModelName: 'C11', devProductName: 'P1P' },
+  'Bambu Lab P1S': { devModelName: 'C12', devProductName: 'P1S' },
+  'Bambu Lab X1': { devModelName: 'BL-P002', devProductName: 'X1' },
+  'Bambu Lab X1 Carbon': { devModelName: 'BL-P001', devProductName: 'X1 Carbon' },
+  'Bambu Lab X1E': { devModelName: 'C13', devProductName: 'X1E' },
+  'Bambu Lab A1': { devModelName: 'N2S', devProductName: 'A1' },
+  'Bambu Lab P2S': { devModelName: 'N7', devProductName: 'P2S' },
+  'Bambu Lab X2D': { devModelName: 'N6', devProductName: 'X2D' },
+  'Bambu Lab A2L': { devModelName: 'N9', devProductName: 'A2L' },
+  'Bambu Lab H2D': { devModelName: 'O1D', devProductName: 'H2D' },
+  'Bambu Lab H2D Pro': { devModelName: 'O1E', devProductName: 'H2D Pro' },
+  'Bambu Lab H2S': { devModelName: 'O1S', devProductName: 'H2S' },
+  'Bambu Lab H2C': { devModelName: 'O1C2', devProductName: 'H2C' },
+};
+
 // --- End Zod Schemas ---
 
 export class MakerWorldAPI {

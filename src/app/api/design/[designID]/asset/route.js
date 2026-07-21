@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import {z} from "zod";
 import { getDatabase } from "../../../../lib/betterSqlite3";
+import { generatePrintProfileForAsset, getPrintProfilesByAssetIds } from "../../../../lib/printProfile";
 import log from "electron-log/node"
 import path from 'path';
 
@@ -35,7 +36,13 @@ export async function GET(request, context) {
     WHERE design_id = ? AND deleted_at IS NULL
   `).all(designID);
 
-  return NextResponse.json(assets);
+  const printProfilesByAssetId = getPrintProfilesByAssetIds(db, assets.map((asset) => asset.id));
+  const assetsWithProfiles = assets.map((asset) => ({
+    ...asset,
+    print_profile: printProfilesByAssetId[asset.id] || null,
+  }));
+
+  return NextResponse.json(assetsWithProfiles);
 }
 
 const assetCreateSchema = z.object({
@@ -80,7 +87,7 @@ export async function POST(request, context) {
 
   // Add file metadata to design_asset
   try {
-    db.prepare(`
+    const insertResult = db.prepare(`
     INSERT INTO design_asset (design_id, designer_id, file_name, file_ext, file_path, original_file_path, original_file_size, original_file_mtime, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(
@@ -97,6 +104,14 @@ export async function POST(request, context) {
     db.prepare(
       `UPDATE design SET updated_at = datetime('now') WHERE id = ? AND designer_id = ?`
     ).run(designID, designer.id)
+
+    if (fileExt.toLowerCase() === '3mf') {
+      try {
+        generatePrintProfileForAsset(db, insertResult.lastInsertRowid, filePathAbs);
+      } catch (error) {
+        log.warn('Failed to generate print profile for new asset:', error);
+      }
+    }
 
     return NextResponse.json({ message: 'File metadata added successfully' }, { status: 200 });
   } catch (error) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "../../../lib/betterSqlite3";
 import { makerWorldLicenseToPubman, makerWorldCategoryIdToPubman } from "../makerworld-lib";
 import { PLATFORM_IDS, PUBLISHED_STATUS } from "../../../lib/constants/platforms";
+import { generatePrintProfileForAsset } from "../../../lib/printProfile";
 import log from "electron-log/node";
 import path from "path";
 import { formatApiError } from "../../../lib/logApiError.js";
@@ -324,10 +325,18 @@ function createAssetRecord(
   `).get(designId, filePath);
 
   if (!existing) {
-    db.prepare(`
+    const insertResult = db.prepare(`
       INSERT INTO design_asset (design_id, designer_id, file_name, file_ext, file_path, original_file_size, created_at)
       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
     `).run(designId, designerId, asset.fileName, asset.fileExt, filePath, asset.fileSize || null);
+
+    if (asset.fileExt.toLowerCase() === "3mf") {
+      try {
+        generatePrintProfileForAsset(db, insertResult.lastInsertRowid, asset.filePath);
+      } catch (error) {
+        log.warn("Failed to generate print profile for synced asset:", formatApiError(error));
+      }
+    }
   } else {
     // Update file size if it was missing
     if (asset.fileSize) {
