@@ -2,7 +2,7 @@
 
 import { useState, Fragment } from "react";
 import { PlatformPublishing, PlatformPublishingProps } from "./platform-publishing";
-import { isPubmanLicenseSupported, makerWorldImageFileTypes, licenseToMakerWorldMap, makerWorldCategories, UpdateDraftRequestSchema, AddPrintProfileRequestSchema, makerWorldPrinterDevModels } from "@/src/app/api/makerworld/makerworld-lib";
+import { isPubmanLicenseSupported, makerWorldImageFileTypes, licenseToMakerWorldMap, makerWorldCategories, UpdateDraftRequestSchema, makerWorldPrinterDevModels } from "@/src/app/api/makerworld/makerworld-lib";
 import { useMakerWorldAuth, MakerWorldUser } from "@/src/app/contexts/MakerWorldAuthContext";
 import { MakerWorldClientAPI, getMakerWorldStatusName } from "@/src/app/lib/makerworld-client";
 import { Button } from "@/src/app/components/ui/button";
@@ -395,59 +395,26 @@ function MakerWorldPrintProfiles({ design, designID, onDesignUpdated }: { design
     setBusyAssetId(asset.id);
     setErrorByAsset(prev => ({ ...prev, [asset.id]: "" }));
     try {
-      const api = new MakerWorldClientAPI();
-      const appDataPath = await getAppDataPath();
-
-      log.info(`[MakerWorld] Uploading print profile model + photo for ${asset.file_name}`);
-      const modelUpload = await uploadAsset(api, asset, user.uid, appDataPath);
-      const photoUpload = await uploadAsset(api, photo, user.uid, appDataPath);
-
-      const profile = asset.print_profile;
-      const printerModel = profile?.printer_model || "";
-      const knownPrinter = makerWorldPrinterDevModels[printerModel as keyof typeof makerWorldPrinterDevModels];
-
-      const payload = AddPrintProfileRequestSchema.parse({
-        parentId: Number(mwPlatform.platform_design_id),
-        title,
-        profileTitle: title,
-        profileCover: photoUpload.url,
-        auxiliaryPictures: [{ name: photo.file_name, url: photoUpload.url }],
-        model3Mf: { name: asset.file_name, url: modelUpload.url, size: modelUpload.size },
-        printer: {
-          model: printerModel,
-          variant: profile?.nozzle_diameter || 0,
-          settingsId: profile?.printer_settings_name || "",
-        },
-        compatibility: knownPrinter
-          ? { ...knownPrinter, nozzleDiameter: profile?.nozzle_diameter || 0 }
-          : undefined,
-        projectSettings: {
-          layerHeight: profile?.layer_height != null ? String(profile.layer_height) : "",
-          wallLoops: profile?.wall_loops != null ? String(profile.wall_loops) : "",
-          sparseInfillDensity: profile?.infill_density != null ? `${profile.infill_density}%` : "",
-        },
+      // The whole create+upload+submit flow runs server-side (reading files off disk and
+      // talking to MakerWorld both happen in the API route) so this works whether PubMan is
+      // driven from the packaged Electron window or any other HTTP client against the same
+      // server - no window.electron/IPC dependency here.
+      log.info(`[MakerWorld] Creating print profile "${title}" for ${asset.file_name}`);
+      const response = await fetch(`/api/design/${designID}/asset/${asset.id}/print-profile/makerworld`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, photo_asset_id: photo.id }),
       });
+      const result = await response.json();
 
-      log.info(`[MakerWorld] Creating print profile "${title}" for ${asset.file_name}:`, payload);
-      const result = await api.createDraft(payload) as { id?: number };
-      log.info(`[MakerWorld] Print profile create response for ${asset.file_name}:`, result);
-
-      if (result?.id) {
-        // Creating the draft only saves it - it has to be submitted separately to actually publish.
-        log.info(`[MakerWorld] Submitting print profile draft ${result.id} for ${asset.file_name}`);
-        await api.publishDraft(result.id);
-
-        await fetch(`/api/design/${designID}/asset/${asset.id}/print-profile`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ makerworld_profile_id: String(result.id) }),
-        });
-        setCreatedAssetIds(prev => new Set(prev).add(asset.id));
-        const updatedDesign = await fetchDesign(designID);
-        onDesignUpdated(updatedDesign);
-      } else {
-        setErrorByAsset(prev => ({ ...prev, [asset.id]: "MakerWorld didn't return a profile id - check the log before retrying." }));
+      if (!response.ok) {
+        throw new Error(result?.error || `Failed to create print profile (${response.status})`);
       }
+
+      log.info(`[MakerWorld] Print profile created for ${asset.file_name}: id=${result.makerworld_profile_id}`);
+      setCreatedAssetIds(prev => new Set(prev).add(asset.id));
+      const updatedDesign = await fetchDesign(designID);
+      onDesignUpdated(updatedDesign);
     } catch (error) {
       log.error(`[MakerWorld] Failed to create print profile for ${asset.file_name}:`, error);
       setErrorByAsset(prev => ({ ...prev, [asset.id]: error instanceof Error ? error.message : "Failed to create print profile" }));

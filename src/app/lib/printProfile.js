@@ -188,13 +188,19 @@ export function formatPrintProfileRow(row) {
 
 /**
  * Record the MakerWorld draft/profile id a 3MF's print profile was uploaded as, so a later
- * publish updates that same MakerWorld instance instead of creating a duplicate.
+ * publish updates that same MakerWorld instance instead of creating a duplicate. Upserts rather
+ * than plain-updates because a MakerWorld profile can be created for an asset that was synced in
+ * before local print-profile extraction existed (or whose 3mf has no recognized slicer
+ * settings), in which case there's no print_profile row yet to update.
  */
 export function setMakerWorldProfileId(db, assetId, makerworldProfileId) {
   db.prepare(`
-    UPDATE print_profile SET makerworld_profile_id = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE design_asset_id = ?
-  `).run(String(makerworldProfileId), assetId);
+    INSERT INTO print_profile (design_asset_id, makerworld_profile_id, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(design_asset_id) DO UPDATE SET
+      makerworld_profile_id = excluded.makerworld_profile_id,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(assetId, String(makerworldProfileId));
 }
 
 /** Bulk-fetch print profiles for a set of design_asset ids, keyed by asset id. */

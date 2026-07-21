@@ -179,12 +179,40 @@ describe('formatPrintProfileRow', () => {
 });
 
 describe('setMakerWorldProfileId', () => {
-  it('updates the row for the given asset id with a stringified profile id', () => {
-    const db = createFakeDb();
+  // Uses a real in-memory database (not the mocked createFakeDb) because this needs to verify
+  // actual upsert semantics, not just which SQL string got called.
+  function createInMemoryDb() {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Database = require('better-sqlite3-local');
+    const db = new Database(':memory:');
+    db.exec(`
+      CREATE TABLE print_profile (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        design_asset_id INTEGER NOT NULL UNIQUE,
+        makerworld_profile_id TEXT,
+        updated_at TEXT
+      );
+    `);
+    return db;
+  }
+
+  it('inserts a new row when the asset has no print_profile row yet (e.g. synced before local extraction existed)', () => {
+    const db = createInMemoryDb();
+    setMakerWorldProfileId(db, 1801, 8918182);
+
+    const row = db.prepare('SELECT * FROM print_profile WHERE design_asset_id = ?').get(1801);
+    expect(row.makerworld_profile_id).toBe('8918182');
+  });
+
+  it('updates the existing row in place rather than creating a duplicate', () => {
+    const db = createInMemoryDb();
+    db.prepare('INSERT INTO print_profile (design_asset_id, makerworld_profile_id) VALUES (?, ?)').run(42, null);
+
     setMakerWorldProfileId(db, 42, 12345);
 
-    expect(db._run).toHaveBeenCalledTimes(1);
-    expect(db._run).toHaveBeenCalledWith('12345', 42);
+    const rows = db.prepare('SELECT * FROM print_profile WHERE design_asset_id = ?').all(42);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].makerworld_profile_id).toBe('12345');
   });
 });
 
