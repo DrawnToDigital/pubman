@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ThingiverseAPI } from './thingiverse-lib';
 import log from "electron-log/node";
+import { formatApiError } from '../../lib/logApiError.js';
 
 export async function GET(request) {
   try {
@@ -22,7 +23,7 @@ export async function GET(request) {
       return NextResponse.json(userInfo, { status: 200 });
     }
   } catch (error) {
-    log.error('Thingiverse API error:', error);
+    log.error('Thingiverse API error:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

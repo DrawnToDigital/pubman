@@ -1,19 +1,25 @@
 import {getDatabase} from "../../../../lib/betterSqlite3";
 import {NextResponse} from "next/server";
 import log from "electron-log/node";
+import { formatApiError } from '../../../../lib/logApiError.js';
 
 export async function GET() {
   try {
     const db = getDatabase();
-    const row = await db.prepare('SELECT token FROM auth_tokens WHERE provider = ? ORDER BY updated_at DESC, created_at DESC').get('printables');
+    const row = await db.prepare(
+      'SELECT token, expires_at FROM auth_tokens WHERE provider = ? ORDER BY updated_at DESC, created_at DESC'
+    ).get('printables');
 
     if (row) {
-      return NextResponse.json({ token: row.token });
+      // expiresAt lets the client (PrintablesAuthContext) decide whether to call
+      // /api/printables/auth/refresh before using this token, instead of waiting for a
+      // 401 from Printables itself.
+      return NextResponse.json({ token: row.token, expiresAt: row.expires_at });
     } else {
-      return NextResponse.json({ token: null });
+      return NextResponse.json({ token: null, expiresAt: null });
     }
   } catch (error) {
-    log.error('Failed to get token:', error);
+    log.error('Failed to get token:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -30,7 +36,7 @@ export async function POST(request) {
     await db.prepare('INSERT OR REPLACE INTO auth_tokens (provider, token) VALUES (?, ?)').run('printables', token);
     return NextResponse.json({ success: true });
   } catch (error) {
-    log.error('Failed to save token:', error);
+    log.error('Failed to save token:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -41,7 +47,7 @@ export async function DELETE() {
     await db.prepare('DELETE FROM auth_tokens WHERE provider = ?').run('printables');
     return NextResponse.json({ success: true });
   } catch (error) {
-    log.error('Failed to delete token:', error);
+    log.error('Failed to delete token:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { GET, POST } from './route';
 import { ThingiverseAPI } from '../../thingiverse-lib';
 import log from 'electron-log/node';
+import { formatApiError } from '../../../../lib/logApiError.js';
 
 jest.mock('../../thingiverse-lib', () => ({
   ThingiverseAPI: jest.fn().mockImplementation(() => ({
@@ -48,7 +49,8 @@ describe('GET /api/thingiverse/[thingId]/files', () => {
   });
 
   it('should return 500 on internal server error', async () => {
-    const mockGetFilesForThing = jest.fn().mockRejectedValue(new Error('Internal error'));
+    const mockError = new Error('Internal error');
+    const mockGetFilesForThing = jest.fn().mockRejectedValue(mockError);
     ThingiverseAPI.mockImplementation(() => ({ getFilesForThing: mockGetFilesForThing }));
 
     const request = {
@@ -63,7 +65,7 @@ describe('GET /api/thingiverse/[thingId]/files', () => {
     expect(await response.json()).toEqual({ error: 'Internal server error' });
     expect(log.error).toHaveBeenCalledWith(
       'Failed to get Thingiverse files:',
-      expect.any(Error)
+      formatApiError(mockError)
     );
   });
 });
@@ -138,7 +140,8 @@ describe('POST /api/thingiverse/[thingId]/files', () => {
   });
 
   it('should return 500 on internal server error', async () => {
-    const mockUploadFile = jest.fn().mockRejectedValue(new Error('Internal error'));
+    const mockError = new Error('Internal error');
+    const mockUploadFile = jest.fn().mockRejectedValue(mockError);
     ThingiverseAPI.mockImplementation(() => ({ uploadFile: mockUploadFile }));
 
     const mockFile = {
@@ -162,7 +165,7 @@ describe('POST /api/thingiverse/[thingId]/files', () => {
     expect(await response.json()).toEqual({ error: 'Internal server error' });
     expect(log.error).toHaveBeenCalledWith(
       'Failed to upload file to Thingiverse:',
-      expect.any(Error)
+      formatApiError(mockError)
     );
   });
 });

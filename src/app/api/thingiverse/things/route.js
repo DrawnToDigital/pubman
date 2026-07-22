@@ -4,6 +4,7 @@ import {getDatabase} from "../../../lib/betterSqlite3";
 import fs from "fs";
 import path from "path";
 import log from "electron-log/node";
+import { formatApiError } from '../../../lib/logApiError.js';
 
 // Thingiverse platform ID is 3 according to the schema
 const THINGIVERSE_PLATFORM_ID = 3;
@@ -26,7 +27,7 @@ export async function GET(request) {
     const things = await api.getThingsByUsername(username);
     return NextResponse.json(things, { status: 200 });
   } catch (error) {
-    log.error('Failed to get Thingiverse things:', error);
+    log.error('Failed to get Thingiverse things:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -96,7 +97,7 @@ export async function POST(request) {
             result: deleteResult
           });
         } catch (error) {
-          log.error(`Failed to delete image ${image.id} ${image.name}:`, error);
+          log.error(`Failed to delete image ${image.id} ${image.name}:`, formatApiError(error));
           hasFileErrors = true;
           fileResults.push({
             action: 'delete',
@@ -119,7 +120,7 @@ export async function POST(request) {
             result: deleteResult
           });
         } catch (error) {
-          log.error(`Failed to delete file ${file.id} ${file.name}:`, error);
+          log.error(`Failed to delete file ${file.id} ${file.name}:`, formatApiError(error));
           hasFileErrors = true;
           fileResults.push({
             action: 'delete',
@@ -148,7 +149,7 @@ export async function POST(request) {
             result: uploadResult
           });
         } catch (error) {
-          log.error(`Failed to upload file ${asset.file_name}:`, error);
+          log.error(`Failed to upload file ${asset.file_name}:`, formatApiError(error));
           hasFileErrors = true;
           fileResults.push({
             action: 'upload',
@@ -189,7 +190,7 @@ export async function POST(request) {
       designPlatform: designPlatform
     }, { status: thingId ? 200 : 201 });
   } catch (error) {
-    log.error('Failed to create Thingiverse thing:', error);
+    log.error('Failed to create Thingiverse thing:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

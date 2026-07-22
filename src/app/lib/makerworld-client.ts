@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import log from 'electron-log/renderer';
+import { formatApiError } from './logApiError.js';
 
 // Window.electron types are defined in MakerWorldAuthContext.tsx
 
@@ -203,6 +204,40 @@ export class MakerWorldClientAPIError extends Error {
   }
 }
 
+/**
+ * Pulls a human-readable message out of a MakerWorld/BambuLab JSON error body
+ * (typically shaped like {code, error} or {code, message}). Returns undefined if the
+ * body isn't JSON or doesn't have a recognizable message field.
+ */
+function extractApiErrorDetail(responseBody?: string): string | undefined {
+  if (!responseBody) return undefined;
+  try {
+    const parsed = JSON.parse(responseBody);
+    if (typeof parsed?.error === 'string') return parsed.error;
+    if (typeof parsed?.message === 'string') return parsed.message;
+  } catch {
+    // Not JSON - nothing to extract.
+  }
+  return undefined;
+}
+
+/**
+ * True when `error` is a MakerWorldClientAPIError reporting that the account's daily
+ * download-link quota has been used up. BambuLab returns this as HTTP 400 with a body
+ * like {"code":-1,"error":"You've reached your daily download limit."} - there's no
+ * client-side workaround, and every further getModelDownloadUrl/getInstanceDownloadUrl
+ * call will keep failing the exact same way until the quota resets, so callers should
+ * stop retrying entirely rather than treating it like a per-file failure.
+ */
+export function isDailyDownloadLimitError(error: unknown): boolean {
+  return (
+    error instanceof MakerWorldClientAPIError &&
+    error.responseStatus === 400 &&
+    typeof error.responseBody === 'string' &&
+    /download limit/i.test(error.responseBody)
+  );
+}
+
 // MakerWorld draft status codes
 export const MAKERWORLD_STATUS = {
   0: 'new',
@@ -282,8 +317,14 @@ export class MakerWorldClientAPI {
     }
 
     if (!response.ok) {
+      // MakerWorld/BambuLab error responses are typically {code, error} JSON bodies with a
+      // human-readable message (e.g. rate limits, quota errors) - surface that instead of
+      // just the bare HTTP status, which by itself gives no actionable information.
+      const detail = extractApiErrorDetail(response.body);
       const error = new MakerWorldClientAPIError({
-        message: `MakerWorld API error: ${response.status} ${response.statusText}`,
+        message: detail
+          ? `MakerWorld API error: ${response.status} ${response.statusText} - ${detail}`
+          : `MakerWorld API error: ${response.status} ${response.statusText}`,
         url,
         method,
         requestBody: options.body,
@@ -291,19 +332,14 @@ export class MakerWorldClientAPI {
         responseStatusText: response.statusText,
         responseBody: response.body,
       });
-      log.error(`[MakerWorld API] Request failed:`, {
-        url,
-        method,
-        status: response.status,
-        statusText: response.statusText,
-      });
+      log.error(`[MakerWorld API] Request failed:`, formatApiError(error));
       throw error;
     }
 
     try {
       return response.body ? JSON.parse(response.body) : null;
     } catch (parseError) {
-      log.error(`[MakerWorld API] Failed to parse response as JSON:`, parseError);
+      log.error(`[MakerWorld API] Failed to parse response as JSON:`, formatApiError(parseError));
       throw new MakerWorldClientAPIError({
         message: 'Failed to parse response',
         url,
@@ -451,7 +487,7 @@ export class MakerWorldClientAPI {
       log.info(`[MakerWorld S3] <<< Upload successful: ${resultUrl}`);
       return { url: resultUrl };
     } catch (error) {
-      log.error(`[MakerWorld S3] <<< Upload failed:`, error);
+      log.error(`[MakerWorld S3] <<< Upload failed:`, formatApiError(error));
       throw error;
     }
   }
@@ -569,7 +605,7 @@ export class MakerWorldClientAPI {
           log.warn('[MakerWorld API] Could not find designs in __NEXT_DATA__, pageProps keys:', Object.keys(pageProps).join(', '));
         }
       } catch (e) {
-        log.error('[MakerWorld API] Failed to parse __NEXT_DATA__:', e);
+        log.error('[MakerWorld API] Failed to parse __NEXT_DATA__:', formatApiError(e));
       }
     }
 

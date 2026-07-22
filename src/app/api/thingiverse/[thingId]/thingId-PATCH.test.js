@@ -2,6 +2,7 @@
 import { PATCH } from './route';  // Fix the import path
 import { ThingiverseAPI } from '../thingiverse-lib';
 import log from 'electron-log/node';
+import { formatApiError } from '../../../lib/logApiError.js';
 
 jest.mock('../thingiverse-lib', () => ({
   ThingiverseAPI: jest.fn().mockImplementation(() => ({
@@ -43,7 +44,8 @@ describe('PATCH /api/thingiverse/[thingId]', () => {
   });
 
   it('should return 500 on internal server error', async () => {
-    const mockUpdateThing = jest.fn().mockRejectedValue(new Error('Internal error'));
+    const mockError = new Error('Internal error');
+    const mockUpdateThing = jest.fn().mockRejectedValue(mockError);
     ThingiverseAPI.mockImplementation(() => ({ updateThing: mockUpdateThing }));
 
     const request = {
@@ -58,7 +60,7 @@ describe('PATCH /api/thingiverse/[thingId]', () => {
     expect(await response.json()).toEqual({ error: 'Internal server error' });
     expect(log.error).toHaveBeenCalledWith(
       'Failed to update Thingiverse thing:',
-      expect.any(Error)
+      formatApiError(mockError)
     );
   });
 });

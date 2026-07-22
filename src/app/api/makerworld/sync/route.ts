@@ -4,6 +4,7 @@ import { makerWorldLicenseToPubman, makerWorldCategoryIdToPubman } from "../make
 import { PLATFORM_IDS, PUBLISHED_STATUS } from "../../../lib/constants/platforms";
 import log from "electron-log/node";
 import path from "path";
+import { formatApiError } from "../../../lib/logApiError.js";
 
 interface MakerWorldDesignData {
   id: number;           // MakerWorld internal ID (used for drafts and API calls)
@@ -250,7 +251,7 @@ export async function POST(request: NextRequest) {
   });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    log.error("[Sync] Failed to sync MakerWorld design:", error);
+    log.error("[Sync] Failed to sync MakerWorld design:", formatApiError(error));
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
@@ -433,7 +434,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    log.error("[Sync] Failed to get sync status:", error);
+    log.error("[Sync] Failed to get sync status:", formatApiError(error));
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

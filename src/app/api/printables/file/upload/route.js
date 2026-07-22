@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrintablesAPI } from '../../printables-lib';
 import log from "electron-log/node";
+import { formatApiError } from '../../../../lib/logApiError.js';
 
 export async function POST(request) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request) {
 
     return NextResponse.json({"success": true, file: result}, { status: 201 });
   } catch (error) {
-    log.error('Failed to upload file to Printables:', error);
+    log.error('Failed to upload file to Printables:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

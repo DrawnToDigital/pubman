@@ -1018,7 +1018,18 @@ export class PrintablesAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Printables API error: ${url} ${JSON.stringify(variables)} ${response.status} ${response.statusText}`);
+      // Capture the response body before throwing - it's the actual reason the GraphQL
+      // call was rejected (e.g. a specific field validation error), and was previously
+      // being dropped entirely, leaving every Printables failure looking identical.
+      const responseBody = await response.text();
+      const error = new Error(`Printables API error: ${url} ${response.status} ${response.statusText}`);
+      error.url = url;
+      error.method = 'POST';
+      error.requestBody = variables;
+      error.responseStatus = response.status;
+      error.responseStatusText = response.statusText;
+      error.responseBody = responseBody;
+      throw error;
     }
 
     return response.json();

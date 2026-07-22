@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDatabase } from "../../../../lib/betterSqlite3";
 import { ThingiverseAPI } from '../../thingiverse-lib';
 import log from 'electron-log/node';
+import { formatApiError } from '../../../../lib/logApiError.js';
 
 export async function POST() {
   try {
@@ -29,7 +30,7 @@ export async function POST() {
       // Token is invalid or expired, need to get a new one
       // Unfortunately, Thingiverse OAuth doesn't support refresh tokens without user interaction
       // We need to tell the client to initiate a new auth flow
-      log.error('Token refresh error:', tokenError);
+      log.error('Token refresh error:', formatApiError(tokenError));
 
       // Delete the invalid token
       await db.prepare('DELETE FROM auth_tokens WHERE provider = ?').run('thingiverse');
@@ -45,7 +46,7 @@ export async function POST() {
       );
     }
   } catch (error) {
-    log.error('Token refresh error:', error);
+    log.error('Token refresh error:', formatApiError(error));
     return NextResponse.json({ error: 'Failed to refresh token' }, { status: 500 });
   }
 }

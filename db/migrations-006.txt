@@ -1,0 +1,6 @@
+-- Migration 006: Add refresh_token + expiry tracking to auth_tokens, enabling silent
+-- token refresh for OAuth providers whose token exchange returns a refresh_token
+-- (currently Printables; Thingiverse's OAuth API never issues a refresh_token, for any
+-- grant type, so it has nothing to store here).
+ALTER TABLE auth_tokens ADD COLUMN refresh_token TEXT;
+ALTER TABLE auth_tokens ADD COLUMN expires_at TEXT;

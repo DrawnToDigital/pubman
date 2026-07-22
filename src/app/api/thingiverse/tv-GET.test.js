@@ -1,6 +1,7 @@
 import { GET } from './route';
 import { ThingiverseAPI } from './thingiverse-lib';
 import log from 'electron-log/node';
+import { formatApiError } from '../../lib/logApiError.js';
 
 jest.mock('./thingiverse-lib', () => ({
   ThingiverseAPI: jest.fn().mockImplementation(() => ({
@@ -73,7 +74,8 @@ describe('GET /api/thingiverse', () => {
   });
 
   it('should return 500 on internal server error', async () => {
-    const mockGetUserInfo = jest.fn().mockRejectedValue(new Error('Internal error'));
+    const mockError = new Error('Internal error');
+    const mockGetUserInfo = jest.fn().mockRejectedValue(mockError);
     ThingiverseAPI.mockImplementation(() => ({ getUserInfo: mockGetUserInfo }));
 
     const request = {
@@ -93,7 +95,7 @@ describe('GET /api/thingiverse', () => {
     expect(await response.json()).toEqual({ error: 'Internal server error' });
     expect(log.error).toHaveBeenCalledWith(
       'Thingiverse API error:',
-      expect.any(Error)
+      formatApiError(mockError)
     );
   });
 });

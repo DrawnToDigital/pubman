@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { ThingiverseAPI } from '../../thingiverse-lib';
 import {getDatabase} from "../../../../lib/betterSqlite3";
 import log from "electron-log/node";
+import { formatApiError } from '../../../../lib/logApiError.js';
 
 export async function POST(request, { params }) {
   try {
@@ -77,7 +78,7 @@ export async function POST(request, { params }) {
       }
     }, { status: 200 });
   } catch (error) {
-    log.error('Failed to publish Thingiverse thing:', error);
+    log.error('Failed to publish Thingiverse thing:', formatApiError(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

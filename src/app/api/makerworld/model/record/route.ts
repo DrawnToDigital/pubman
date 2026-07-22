@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "../../../../lib/betterSqlite3";
 import log from "electron-log/node";
+import { formatApiError } from "../../../../lib/logApiError.js";
 
 const MAKERWORLD_PLATFORM_ID = 5;
 const PUBLISHED_STATUS_DRAFT = 1;
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    log.error('Failed to record MakerWorld status:', error);
+    log.error('Failed to record MakerWorld status:', formatApiError(error));
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

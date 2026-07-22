@@ -2,6 +2,7 @@ import {POST} from './route';
 import {ThingiverseAPI} from '../../thingiverse-lib';
 import {getDatabase} from "../../../../lib/betterSqlite3";
 import log from 'electron-log/node';
+import { formatApiError } from '../../../../lib/logApiError.js';
 
 // Mock dependencies
 jest.mock('../../thingiverse-lib');
@@ -153,6 +154,6 @@ describe('POST /api/thingiverse/[thingId]/publish', () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({error: 'Internal server error'});
-    expect(log.error).toHaveBeenCalledWith('Failed to publish Thingiverse thing:', mockError);
+    expect(log.error).toHaveBeenCalledWith('Failed to publish Thingiverse thing:', formatApiError(mockError));
   });
 });
