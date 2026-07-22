@@ -1,0 +1,3 @@
+-- Migration 008: Track the MakerWorld draft/profile id each 3MF print profile was uploaded as,
+-- so re-publishing updates that MakerWorld instance instead of creating a duplicate.
+ALTER TABLE print_profile ADD COLUMN makerworld_profile_id TEXT;

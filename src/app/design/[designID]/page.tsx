@@ -1,13 +1,13 @@
 'use client';
 
 import path from "path";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/src/app/components/ui/button";
 import { fetchDesign, updateDesign } from "@/src/app/actions/design";
 import { DesignSchema, thingiverseCategories, pubmanImageFileTypes } from "@/src/app/components/design/types";
 import {FieldValues, useForm} from 'react-hook-form';
-import {addFile, removeFile} from "@/src/app/actions/file";
+import {addFile, removeFile, generatePrintProfile} from "@/src/app/actions/file";
 import {Input} from "@/src/app/components/ui/input";
 import {useRouter} from "next/navigation";
 import { ThingiversePublishing } from "@/src/app/components/design/thingiverse-publishing";
@@ -18,7 +18,7 @@ import {printablesCategories} from "@/src/app/api/printables/printables-lib";
 import {makerWorldCategories} from "@/src/app/api/makerworld/makerworld-lib";
 import {MakerWorldPublishing} from "@/src/app/components/design/makerworld-publishing";
 import Image from 'next/image';
-import {CircleDashed, ExternalLinkIcon, RefreshCwIcon} from "lucide-react";
+import {CircleDashed, ChevronDown, ExternalLinkIcon, RefreshCwIcon} from "lucide-react";
 
 const getLicenseName = (licenseKey: string): string => {
   const licenseMap: Record<string, string> = {
@@ -157,6 +157,43 @@ const DesignDetailsPage = () => {
     } catch (error) {
       log.error(error);
       setErrorMessage("Failed to remove file.");
+    }
+  };
+
+  // Print profile UI state: which 3MF rows are expanded, and which are mid-extraction
+  const [expandedProfileIds, setExpandedProfileIds] = useState<Set<string>>(new Set());
+  const [generatingProfileIds, setGeneratingProfileIds] = useState<Set<string>>(new Set());
+
+  const toggleProfileExpanded = (assetID: string) => {
+    setExpandedProfileIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(assetID)) {
+        next.delete(assetID);
+      } else {
+        next.add(assetID);
+      }
+      return next;
+    });
+  };
+
+  const handleGenerateProfile = async (assetID: string) => {
+    if (!designID) return;
+
+    setGeneratingProfileIds((prev) => new Set(prev).add(assetID));
+    try {
+      await generatePrintProfile(designID.toString(), assetID);
+      const updatedDesign = await fetchDesign(designID.toString());
+      setDesign(updatedDesign);
+      setExpandedProfileIds((prev) => new Set(prev).add(assetID));
+    } catch (error) {
+      log.error(error);
+      setErrorMessage("Failed to read print settings from file.");
+    } finally {
+      setGeneratingProfileIds((prev) => {
+        const next = new Set(prev);
+        next.delete(assetID);
+        return next;
+      });
     }
   };
 
@@ -582,53 +619,160 @@ const DesignDetailsPage = () => {
               {design.assets && design.assets.filter(asset => !pubmanImageFileTypes.includes(asset.file_ext?.toLowerCase())).length > 0 ? (
                 design.assets.filter(asset => !pubmanImageFileTypes.includes(asset.file_ext?.toLowerCase())).map((asset) => {
                   const status = fileStatus[asset.id];
+                  const is3mf = asset.file_ext?.toLowerCase() === '3mf';
+                  const profile = asset.print_profile;
+                  const isExpanded = expandedProfileIds.has(asset.id);
+                  const isGenerating = generatingProfileIds.has(asset.id);
                   return (
-                    <tr key={asset.id} className="align-middle">
-                      <td className="px-4 py-2 flex gap-3 items-center">
-                        <div className="w-18 h-18 flex items-center justify-center bg-gray-200 rounded text-gray-600 text-base font-bold">
-                          {asset.file_ext?.toUpperCase() || '?'}
-                        </div>
-                        <div>{asset.file_name}</div>
-                      </td>
-                      <td className="px-4 py-2 text-sm text-gray-700">{formatBytes(asset.original_file_size)}</td>
-                      <td className="px-4 py-2 text-xs text-gray-500">{asset.original_file_mtime ? new Date(asset.original_file_mtime).toLocaleString() : '-'}</td>
-                      <td className="px-4 py-2">
-                        {asset.original_file_path ? (
-                          <div className="flex items-center gap-2">
-                            {status && !status.exists ? (
-                              <div
-                                className="text-red-500 cursor-help border border-red-200 bg-red-50 rounded text-xs inline-flex items-center p-1"
-                                title={`File not found:\n${asset.original_file_path}`}
-                              >
-                                <CircleDashed className="h-4 w-4 inline mr-1" />
-                                <span>Missing</span>
-                              </div>
-                            ) : (
-                              <Button size="sm" variant="outline" onClick={
-                                // @ts-expect-error electron is defined in preload script
-                                () => window.electron.shell.showItemInFolder(asset.original_file_path)
-                              } title={`Show in Finder:\n${asset.original_file_path}`} className="p-1 h-7 w-7 min-w-0">
-                                <ExternalLinkIcon/>
-                              </Button>
-                            )}
-                            {status ? (
-                              status.exists ? (
-                                status.modified ? (
-                                  <span title="File has been modified since import" className="text-yellow-500">⚠️</span>
-                                ) : (
-                                  <span title="File is unchanged" className="text-green-500">
-                                    <RefreshCwIcon width={16} height={16}/>
-                                  </span>
-                                )
-                              ) : null
-                            ) : (<span className="text-gray-500">-</span>)}
+                    <Fragment key={asset.id}>
+                      <tr className="align-middle">
+                        <td className="px-4 py-2 flex gap-3 items-center">
+                          <div className="w-18 h-18 flex items-center justify-center bg-gray-200 rounded text-gray-600 text-base font-bold shrink-0">
+                            {asset.file_ext?.toUpperCase() || '?'}
                           </div>
-                        ) : (<span className="text-gray-500">-</span>)}
-                      </td>
-                      <td className="px-4 py-2">
-                        <Button onClick={() => handleFileRemove(asset.id)} variant="destructive" size="sm">Remove</Button>
-                      </td>
-                    </tr>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span>{asset.file_name}</span>
+                              {is3mf && profile && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleProfileExpanded(asset.id)}
+                                  className="text-gray-400 hover:text-gray-600"
+                                  title={isExpanded ? "Hide print settings" : "Show print settings"}
+                                >
+                                  <ChevronDown width={14} height={14} className={isExpanded ? "rotate-180 transition-transform" : "transition-transform"} />
+                                </button>
+                              )}
+                            </div>
+                            {is3mf && profile && (
+                              <div className="text-xs text-gray-500 mt-0.5 truncate">
+                                {profile.printer_model || 'Unknown printer'}
+                                {profile.layer_height != null && ` • ${profile.layer_height}mm layer`}
+                                {profile.infill_density != null && ` • ${profile.infill_density}% infill`}
+                              </div>
+                            )}
+                            {is3mf && !profile && (
+                              <button
+                                type="button"
+                                onClick={() => handleGenerateProfile(asset.id)}
+                                disabled={isGenerating}
+                                className="text-xs text-blue-600 hover:underline mt-0.5 disabled:text-gray-400 disabled:no-underline"
+                              >
+                                {isGenerating ? 'Reading print settings…' : 'Read print settings'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-700">{formatBytes(asset.original_file_size)}</td>
+                        <td className="px-4 py-2 text-xs text-gray-500">{asset.original_file_mtime ? new Date(asset.original_file_mtime).toLocaleString() : '-'}</td>
+                        <td className="px-4 py-2">
+                          {asset.original_file_path ? (
+                            <div className="flex items-center gap-2">
+                              {status && !status.exists ? (
+                                <div
+                                  className="text-red-500 cursor-help border border-red-200 bg-red-50 rounded text-xs inline-flex items-center p-1"
+                                  title={`File not found:\n${asset.original_file_path}`}
+                                >
+                                  <CircleDashed className="h-4 w-4 inline mr-1" />
+                                  <span>Missing</span>
+                                </div>
+                              ) : (
+                                <Button size="sm" variant="outline" onClick={
+                                  // @ts-expect-error electron is defined in preload script
+                                  () => window.electron.shell.showItemInFolder(asset.original_file_path)
+                                } title={`Show in Finder:\n${asset.original_file_path}`} className="p-1 h-7 w-7 min-w-0">
+                                  <ExternalLinkIcon/>
+                                </Button>
+                              )}
+                              {status ? (
+                                status.exists ? (
+                                  status.modified ? (
+                                    <span title="File has been modified since import" className="text-yellow-500">⚠️</span>
+                                  ) : (
+                                    <span title="File is unchanged" className="text-green-500">
+                                      <RefreshCwIcon width={16} height={16}/>
+                                    </span>
+                                  )
+                                ) : null
+                              ) : (<span className="text-gray-500">-</span>)}
+                            </div>
+                          ) : (<span className="text-gray-500">-</span>)}
+                        </td>
+                        <td className="px-4 py-2">
+                          <Button onClick={() => handleFileRemove(asset.id)} variant="destructive" size="sm">Remove</Button>
+                        </td>
+                      </tr>
+                      {is3mf && profile && isExpanded && (
+                        <tr>
+                          <td colSpan={5} className="px-4 pb-4 bg-gray-50">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs text-gray-700 pt-3">
+                              <div>
+                                <div className="text-gray-400">Printer</div>
+                                {profile.printer_model || '—'}
+                              </div>
+                              <div>
+                                <div className="text-gray-400">Nozzle</div>
+                                {profile.nozzle_diameter != null ? `${profile.nozzle_diameter}mm` : '—'}
+                              </div>
+                              <div>
+                                <div className="text-gray-400">Bed</div>
+                                {profile.bed_type || '—'}
+                              </div>
+                              <div>
+                                <div className="text-gray-400">Layer height</div>
+                                {profile.layer_height != null ? `${profile.layer_height}mm (first ${profile.first_layer_height ?? '—'}mm)` : '—'}
+                              </div>
+                              <div>
+                                <div className="text-gray-400">Walls</div>
+                                {profile.wall_loops ?? '—'}
+                              </div>
+                              <div>
+                                <div className="text-gray-400">Infill</div>
+                                {profile.infill_density != null ? `${profile.infill_density}% ${profile.infill_pattern || ''}` : '—'}
+                              </div>
+                              <div>
+                                <div className="text-gray-400">Supports</div>
+                                {profile.supports_enabled ? (profile.support_type || 'On') : 'Off'}
+                              </div>
+                              <div>
+                                <div className="text-gray-400">Plates</div>
+                                {profile.plate_count ?? '—'}
+                              </div>
+                              <div className="col-span-2 sm:col-span-4">
+                                <div className="text-gray-400">Profile</div>
+                                {profile.print_settings_name || '—'}
+                              </div>
+                              {profile.filament_types.length > 0 && (
+                                <div className="col-span-2 sm:col-span-4">
+                                  <div className="text-gray-400 mb-1">Filament</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {profile.filament_types.map((type, i) => (
+                                      <span key={i} className="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded px-1.5 py-0.5">
+                                        <span
+                                          className="w-3 h-3 rounded-full border border-gray-300 shrink-0"
+                                          style={{ backgroundColor: profile.filament_colors[i] || '#cccccc' }}
+                                        />
+                                        {type}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="col-span-2 sm:col-span-4">
+                                <button
+                                  type="button"
+                                  onClick={() => handleGenerateProfile(asset.id)}
+                                  disabled={isGenerating}
+                                  className="text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                                >
+                                  {isGenerating ? 'Re-reading…' : 'Re-read print settings'}
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })
               ) : (

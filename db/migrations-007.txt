@@ -1,0 +1,26 @@
+-- Migration 007: Add print_profile table for print settings extracted from 3MF slicer projects
+CREATE TABLE IF NOT EXISTS print_profile (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    design_asset_id INTEGER NOT NULL UNIQUE,
+    printer_model TEXT,
+    printer_settings_name TEXT,
+    nozzle_diameter REAL,
+    bed_type TEXT,
+    layer_height REAL,
+    first_layer_height REAL,
+    wall_loops INTEGER,
+    infill_density REAL,
+    infill_pattern TEXT,
+    supports_enabled INTEGER NOT NULL DEFAULT 0,
+    support_type TEXT,
+    print_settings_name TEXT,
+    filament_types TEXT NOT NULL DEFAULT '[]',
+    filament_colors TEXT NOT NULL DEFAULT '[]',
+    filament_names TEXT NOT NULL DEFAULT '[]',
+    plate_count INTEGER,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(design_asset_id) REFERENCES design_asset(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_print_profile_design_asset_id ON print_profile(design_asset_id);

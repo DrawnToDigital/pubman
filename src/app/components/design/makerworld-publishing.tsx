@@ -1,9 +1,13 @@
 'use client';
 
+import { useState, Fragment } from "react";
 import { PlatformPublishing, PlatformPublishingProps } from "./platform-publishing";
-import { isPubmanLicenseSupported, makerWorldImageFileTypes, licenseToMakerWorldMap, makerWorldCategories, UpdateDraftRequestSchema } from "@/src/app/api/makerworld/makerworld-lib";
+import { isPubmanLicenseSupported, makerWorldImageFileTypes, licenseToMakerWorldMap, makerWorldCategories, UpdateDraftRequestSchema, makerWorldPrinterDevModels } from "@/src/app/api/makerworld/makerworld-lib";
 import { useMakerWorldAuth, MakerWorldUser } from "@/src/app/contexts/MakerWorldAuthContext";
 import { MakerWorldClientAPI, getMakerWorldStatusName } from "@/src/app/lib/makerworld-client";
+import { Button } from "@/src/app/components/ui/button";
+import { fetchDesign } from "@/src/app/actions/design";
+import { DesignSchema } from "@/src/app/components/design/types";
 import log from 'electron-log/renderer';
 
 // Browser-compatible path join (simple version for assets)
@@ -172,6 +176,7 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
   const { isAuthenticated, accessToken, user } = useMakerWorldAuth();
 
   return (
+    <Fragment>
     <PlatformPublishing
       {...props}
       platformName="MakerWorld"
@@ -354,5 +359,128 @@ export function MakerWorldPublishing(props: PlatformPublishingProps) {
         };
       }}
     />
+    <MakerWorldPrintProfiles design={props.design} designID={props.designID} onDesignUpdated={props.onDesignUpdated} />
+    </Fragment>
+  );
+}
+
+// Create a MakerWorld "print profile" (their term - shows as "Print Profile" on the design
+// page) for a specific .3mf, as its own deliberate, user-confirmed action rather than an
+// automatic side effect of publishing. MakerWorld requires a real printed photo per profile
+// and discourages splitting one model into many profiles (see their upload guidelines), so this
+// is scoped to one asset at a time with a required photo, not a bulk loop over every 3mf.
+function MakerWorldPrintProfiles({ design, designID, onDesignUpdated }: { design: PlatformPublishingProps['design']; designID: string; onDesignUpdated: (design: DesignSchema) => void }) {
+  const { isAuthenticated, user } = useMakerWorldAuth();
+  const [busyAssetId, setBusyAssetId] = useState<string | null>(null);
+  const [titleByAsset, setTitleByAsset] = useState<Record<string, string>>({});
+  const [photoByAsset, setPhotoByAsset] = useState<Record<string, string>>({});
+  const [errorByAsset, setErrorByAsset] = useState<Record<string, string>>({});
+  const [createdAssetIds, setCreatedAssetIds] = useState<Set<string>>(new Set());
+
+  const mwPlatform = design.platforms.find(p => p.platform === "MAKERWORLD");
+  const threeMfAssets = design.assets.filter(a => a.file_ext.toLowerCase() === "3mf");
+  const imageAssets = design.assets.filter(a => makerWorldImageFileTypes.includes(a.file_ext.toLowerCase()));
+
+  // Only confirmed to work against a published design (parentId = the published MakerWorld
+  // design id) - that's the only case this was captured and verified against.
+  if (!isAuthenticated || !user) return null;
+  if (!mwPlatform?.platform_design_id || mwPlatform.published_status !== 2) return null;
+  if (threeMfAssets.length === 0) return null;
+
+  const handleCreate = async (asset: PlatformPublishingProps['design']['assets'][number]) => {
+    const title = (titleByAsset[asset.id] || asset.file_name.replace(/\.3mf$/i, "")).trim();
+    const photo = imageAssets.find(img => img.id === photoByAsset[asset.id]);
+    if (!title || !photo) return;
+
+    setBusyAssetId(asset.id);
+    setErrorByAsset(prev => ({ ...prev, [asset.id]: "" }));
+    try {
+      // The whole create+upload+submit flow runs server-side (reading files off disk and
+      // talking to MakerWorld both happen in the API route) so this works whether PubMan is
+      // driven from the packaged Electron window or any other HTTP client against the same
+      // server - no window.electron/IPC dependency here.
+      log.info(`[MakerWorld] Creating print profile "${title}" for ${asset.file_name}`);
+      const response = await fetch(`/api/design/${designID}/asset/${asset.id}/print-profile/makerworld`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, photo_asset_id: photo.id }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || `Failed to create print profile (${response.status})`);
+      }
+
+      log.info(`[MakerWorld] Print profile created for ${asset.file_name}: id=${result.makerworld_profile_id}`);
+      setCreatedAssetIds(prev => new Set(prev).add(asset.id));
+      const updatedDesign = await fetchDesign(designID);
+      onDesignUpdated(updatedDesign);
+    } catch (error) {
+      log.error(`[MakerWorld] Failed to create print profile for ${asset.file_name}:`, error);
+      setErrorByAsset(prev => ({ ...prev, [asset.id]: error instanceof Error ? error.message : "Failed to create print profile" }));
+    } finally {
+      setBusyAssetId(null);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg p-6">
+      <h2 className="text-xl font-bold mb-1">MakerWorld Print Profiles</h2>
+      <p className="text-xs text-gray-500 mb-3">
+        MakerWorld requires a real printed photo for each profile - pick one per file and confirm to submit it.
+      </p>
+      <div className="space-y-3">
+        {threeMfAssets.map((asset) => {
+          const isCreated = !!asset.print_profile?.makerworld_profile_id || createdAssetIds.has(asset.id);
+          if (isCreated) {
+            return (
+              <div key={asset.id} className="text-sm text-green-700 flex items-center gap-2">
+                <span>✓</span><span>{asset.file_name} — profile created</span>
+              </div>
+            );
+          }
+
+          const printerModel = asset.print_profile?.printer_model;
+          const knownPrinter = printerModel ? makerWorldPrinterDevModels[printerModel as keyof typeof makerWorldPrinterDevModels] : undefined;
+          const isBusy = busyAssetId === asset.id;
+
+          return (
+            <div key={asset.id} className="border border-gray-200 rounded p-3 space-y-2">
+              <div className="text-sm font-medium">{asset.file_name}</div>
+              {printerModel && !knownPrinter && (
+                <div className="text-xs text-yellow-600">
+                  Printer &quot;{printerModel}&quot; isn&apos;t mapped to a MakerWorld printer code yet - submitting without a specific printer tag.
+                </div>
+              )}
+              <input
+                type="text"
+                placeholder="Profile title (e.g. Metal Frets)"
+                value={titleByAsset[asset.id] ?? ""}
+                onChange={(e) => setTitleByAsset(prev => ({ ...prev, [asset.id]: e.target.value }))}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+              />
+              <select
+                value={photoByAsset[asset.id] ?? ""}
+                onChange={(e) => setPhotoByAsset(prev => ({ ...prev, [asset.id]: e.target.value }))}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+              >
+                <option value="">Select a printed photo (required)…</option>
+                {imageAssets.map((img) => (
+                  <option key={img.id} value={img.id}>{img.file_name}</option>
+                ))}
+              </select>
+              {errorByAsset[asset.id] && <div className="text-xs text-red-600">{errorByAsset[asset.id]}</div>}
+              <Button
+                size="sm"
+                disabled={!photoByAsset[asset.id] || isBusy}
+                onClick={() => handleCreate(asset)}
+              >
+                {isBusy ? "Creating…" : "Create Print Profile"}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

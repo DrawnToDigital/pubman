@@ -71,3 +71,18 @@ export async function removeFile(designID: string, assetID: string) {
     throw new Error('Failed to remove file');
   }
 }
+
+export async function generatePrintProfile(designID: string, assetID: string) {
+  try {
+    const response = await fetch(`${API_URL}/api/design/${designID}/asset/${assetID}/print-profile`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      throw new Error('Failed to generate print profile');
+    }
+    return await response.json();
+  } catch (error) {
+    log.error('Error generating print profile:', error);
+    throw new Error('Failed to generate print profile');
+  }
+}
