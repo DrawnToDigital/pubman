@@ -24,7 +24,6 @@ async function getMakerWorldSession() {
 }
 
 const MW_API_URL = 'https://makerworld.com/api';
-const BBL_API_URL = 'https://api.bambulab.com';
 
 const ALLOWED_MAKERWORLD_DOMAINS = ['makerworld.com', 'api.bambulab.com', 'bambulab.com'];
 
@@ -78,10 +77,6 @@ async function makerWorldSessionFetch(url, options = {}) {
   } catch {
     throw new Error('Failed to parse MakerWorld response as JSON');
   }
-}
-
-export async function getMakerWorldUserInfo() {
-  return makerWorldSessionFetch(`${BBL_API_URL}/v1/design-user-service/my/preference`);
 }
 
 export async function getMakerWorldS3Config() {

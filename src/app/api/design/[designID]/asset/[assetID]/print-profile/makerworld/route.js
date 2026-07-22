@@ -10,7 +10,7 @@ import {
   updateMakerWorldDraft,
   submitMakerWorldDraft,
 } from '../../../../../../../lib/makerworldServer';
-import { AddPrintProfileRequestSchema, makerWorldPrinterDevModels, MakerWorldAPI } from '../../../../../../makerworld/makerworld-lib';
+import { AddPrintProfileRequestSchema, makerWorldPrinterDevModels, MakerWorldAPI, makerWorldImageFileTypes } from '../../../../../../makerworld/makerworld-lib';
 import log from 'electron-log/node';
 
 const MAKERWORLD_PLATFORM_ID = 5;
@@ -52,6 +52,9 @@ export async function POST(request, context) {
   `).get(photoAssetId, designID);
   if (!photo) {
     return NextResponse.json({ error: 'Photo asset not found' }, { status: 404 });
+  }
+  if (!makerWorldImageFileTypes.includes(photo.file_ext.toLowerCase())) {
+    return NextResponse.json({ error: 'Photo asset must be an image file' }, { status: 400 });
   }
 
   const mwPlatform = db.prepare(`
@@ -130,12 +133,13 @@ export async function POST(request, context) {
         log.error('[MakerWorld] (server) Create draft response had no id:', createResult);
         return NextResponse.json({ error: "MakerWorld didn't return a profile id" }, { status: 502 });
       }
+      // Persist the id immediately, before submit. If submit then fails, a retry finds this
+      // stored id and updates the same draft instead of creating a duplicate profile.
+      setMakerWorldProfileId(db, asset.id, newProfileId);
     }
 
     log.info(`[MakerWorld] (server) Submitting print profile draft ${newProfileId}`);
     await submitMakerWorldDraft(newProfileId);
-
-    setMakerWorldProfileId(db, asset.id, newProfileId);
 
     return NextResponse.json({ makerworld_profile_id: String(newProfileId) }, { status: 200 });
   } catch (error) {
