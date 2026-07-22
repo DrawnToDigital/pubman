@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 import path from "path";
 import fs from "fs/promises";
 import { customAlphabet } from "nanoid";

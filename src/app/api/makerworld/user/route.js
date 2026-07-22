@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MakerWorldAPI, MakerWorldAPIError } from '../makerworld-lib';
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 import { formatApiError } from '../../../lib/logApiError.js';
 
 export async function GET(request) {

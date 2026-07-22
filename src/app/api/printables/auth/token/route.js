@@ -1,6 +1,6 @@
 import {getDatabase} from "../../../../lib/betterSqlite3";
 import {NextResponse} from "next/server";
-import log from "electron-log/renderer";
+import log from "electron-log/node";
 import { formatApiError } from '../../../../lib/logApiError.js';
 
 export async function GET() {
