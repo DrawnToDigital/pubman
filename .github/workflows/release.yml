@@ -15,7 +15,7 @@ jobs:
     # Platforms to build on/for
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-22.04, windows-latest]
+        os: [macos-latest, ubuntu-22.04, windows-2022]
       fail-fast: false
 
     steps:
